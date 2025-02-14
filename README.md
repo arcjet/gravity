@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> This is a very early release of Gravity. Many WIT features are not yet implemented
+and the project is is likely to change significantly as we develop it further.
+
 # Gravity
 
 Gravity is a host generator for WebAssembly Components. It currently targets [Wazero][wazero], a zero dependency WebAssembly runtime for Go.
