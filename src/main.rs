@@ -20,7 +20,7 @@ where
     T: Into<ItemStr>,
 {
     fn format_into(self, tokens: &mut Tokens<Go>) {
-        // TODO: Submit patch to genco that will allow aliases for go imports
+        // TODO(#13): Submit patch to genco that will allow aliases for go imports
         // tokens.register(go::import("embed", ""));
         tokens.push();
         tokens.append(static_literal("//go:embed"));
@@ -211,7 +211,7 @@ impl FormatInto<Go> for &GoIdentifier<'_> {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         let mut chars = self.chars();
 
-        // TODO: Check for invalid first character
+        // TODO(#12): Check for invalid first character
 
         if let GoIdentifier::Public { .. } = self {
             // https://stackoverflow.com/a/38406885
@@ -412,7 +412,7 @@ impl Bindgen for Func {
                 let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
                 let default = &format!("default{tmp}");
-                // TODO(#2013): Wrapping every argument in `uint64` is bad and we should instead be looking
+                // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
                 quote_in! { self.body =>
                     $['\r']
@@ -763,14 +763,14 @@ impl Bindgen for Func {
                 let args = quote!($(for op in operands.iter() join (, ) => $op));
                 let returns = match &func.results {
                     Results::Named(p) if p.is_empty() => GoType::Nothing,
-                    Results::Named(_) => todo!("handle named results"),
+                    Results::Named(_) => todo!("TODO(#11): handle named results"),
                     Results::Anon(typ) => resolve_type(typ, resolve),
                 };
                 let value = &format!("value{tmp}");
                 let err = &format!("err{tmp}");
                 let ok = &format!("ok{tmp}");
                 match &self.direction {
-                    Direction::Export { .. } => todo!(),
+                    Direction::Export { .. } => todo!("TODO(#10): handle export direction"),
                     Direction::Import { interface_name, .. } => {
                         let iface = GoIdentifier::Local {
                             name: interface_name,
@@ -787,7 +787,7 @@ impl Bindgen for Func {
                                 GoType::ValueOrOk(_) => {
                                     $value, $ok := $iface.$ident(ctx, $args)
                                 }
-                                _ => $(comment(&["TODO"]))
+                                _ => $(comment(&["TODO(#9): handle return type"]))
                             })
                         }
                     }
@@ -806,7 +806,7 @@ impl Bindgen for Func {
                     GoType::ValueOrOk(_) => {
                         results.push(Operand::MultiValue((value.into(), ok.into())))
                     }
-                    _ => todo!("{returns:?}"),
+                    _ => todo!("TODO(#9): handle return type - {returns:?}"),
                 }
             }
             Instruction::VariantPayloadName => {
@@ -845,7 +845,7 @@ impl Bindgen for Func {
                                 case 1:
                                     $(&byte) = 1
                                 default:
-                                    $(comment(["TODO: Return an error if the return type allows it"]))
+                                    $(comment(["TODO(#8): Return an error if the return type allows it"]))
                                     panic($errors_new("invalid int8 value encountered"))
                                 }
                                 i.module.Memory().WriteByte($ptr+$(*offset), $byte)
@@ -1041,7 +1041,7 @@ impl Bindgen for Func {
                     Operand::Literal(_) => {
                         panic!("impossible: expected Operand::MultiValue but got Operand::Literal")
                     }
-                    // TODO: This is a weird hack to implement `option<string>`
+                    // TODO(#7): This is a weird hack to implement `option<string>`
                     // as arguments that currently only works for strings
                     // because it checks the empty string as the zero value to
                     // consider it None
@@ -1388,7 +1388,7 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
         Type::F64 => GoType::Float64,
         Type::Char => {
             // Is this a Go "rune"?
-            todo!("resolve char type")
+            todo!("TODO(#6): resolve char type")
         }
         Type::String => GoType::String,
         Type::Id(typ_id) => {
@@ -1398,10 +1398,10 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     let typ = name.clone().expect("record to have a name");
                     GoType::UserDefined(typ)
                 }
-                TypeDefKind::Resource => todo!("resolve resource type"),
-                TypeDefKind::Handle(_) => todo!(),
-                TypeDefKind::Flags(_) => todo!(),
-                TypeDefKind::Tuple(_) => todo!(),
+                TypeDefKind::Resource => todo!("TODO(#5): implement resources"),
+                TypeDefKind::Handle(_) => todo!("TODO(#5): implement resources"),
+                TypeDefKind::Flags(_) => todo!("TODO(#4): implement flag conversion"),
+                TypeDefKind::Tuple(_) => todo!("TODO(#4): implement tuple conversion"),
                 // Variants are handled as an empty interfaces in type signatures; however, that
                 // means they require runtime type reflection
                 TypeDefKind::Variant(_) => GoType::Interface,
@@ -1420,7 +1420,7 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     ok: Some(_),
                     err: Some(_),
                 }) => {
-                    todo!()
+                    todo!("TODO(#4): implement remaining result conversion")
                 }
                 TypeDefKind::Result(Result_ {
                     ok: Some(ok),
@@ -1433,19 +1433,19 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: Some(_),
-                }) => todo!(),
+                }) => todo!("TODO(#4): implement remaining result conversion"),
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: None,
                 }) => GoType::Nothing,
                 TypeDefKind::List(typ) => GoType::Slice(Box::new(resolve_type(typ, resolve))),
-                TypeDefKind::Future(_) => todo!(),
-                TypeDefKind::Stream(_) => todo!(),
+                TypeDefKind::Future(_) => todo!("TODO(#4): implement future conversion"),
+                TypeDefKind::Stream(_) => todo!("TODO(#4): implement stream conversion"),
                 TypeDefKind::Type(_) => {
                     let typ = name.clone().expect("type alias to have a name");
                     GoType::UserDefined(typ)
                 }
-                TypeDefKind::Unknown => todo!(),
+                TypeDefKind::Unknown => todo!("TODO(#4): implement unknown conversion"),
             }
         }
     }
@@ -1481,12 +1481,12 @@ impl Bindings {
                     }
                 }
             }
-            TypeDefKind::Resource => todo!("generate resource type definition"),
-            TypeDefKind::Handle(_) => todo!("generate handle type definition"),
-            TypeDefKind::Flags(_) => todo!("generate flags type definition"),
-            TypeDefKind::Tuple(_) => todo!("generate tuple type definition"),
+            TypeDefKind::Resource => todo!("TODO(#5): implement resources"),
+            TypeDefKind::Handle(_) => todo!("TODO(#5): implement resources"),
+            TypeDefKind::Flags(_) => todo!("TODO(#4):generate flags type definition"),
+            TypeDefKind::Tuple(_) => todo!("TODO(#4):generate tuple type definition"),
             TypeDefKind::Variant(_) => {
-                // TODO: Generate aliases if the variant name doesn't match the struct name
+                // TODO(#4): Generate aliases if the variant name doesn't match the struct name
             }
             TypeDefKind::Enum(inner) => {
                 let name = name.clone().expect("enum to have a name");
@@ -1517,31 +1517,31 @@ impl Bindings {
                     )
                 }
             }
-            TypeDefKind::Option(_) => todo!("generate option type definition"),
-            TypeDefKind::Result(_) => todo!("generate result type definition"),
-            TypeDefKind::List(_) => todo!("generate list type definition"),
-            TypeDefKind::Future(_) => todo!("generate future type definition"),
-            TypeDefKind::Stream(_) => todo!("generate stream type definition"),
+            TypeDefKind::Option(_) => todo!("TODO(#4): generate option type definition"),
+            TypeDefKind::Result(_) => todo!("TODO(#4): generate result type definition"),
+            TypeDefKind::List(_) => todo!("TODO(#4): generate list type definition"),
+            TypeDefKind::Future(_) => todo!("TODO(#4): generate future type definition"),
+            TypeDefKind::Stream(_) => todo!("TODO(#4): generate stream type definition"),
             TypeDefKind::Type(Type::Id(_)) => {
-                // TODO: Only skip this if we have already generated the type
+                // TODO(#4):  Only skip this if we have already generated the type
             }
-            TypeDefKind::Type(Type::Bool) => todo!("generate bool type alias"),
-            TypeDefKind::Type(Type::U8) => todo!("generate u8 type alias"),
-            TypeDefKind::Type(Type::U16) => todo!("generate u16 type alias"),
-            TypeDefKind::Type(Type::U32) => todo!("generate u32 type alias"),
-            TypeDefKind::Type(Type::U64) => todo!("generate u64 type alias"),
-            TypeDefKind::Type(Type::S8) => todo!("generate s8 type alias"),
-            TypeDefKind::Type(Type::S16) => todo!("generate s16 type alias"),
-            TypeDefKind::Type(Type::S32) => todo!("generate s32 type alias"),
-            TypeDefKind::Type(Type::S64) => todo!("generate s64 type alias"),
-            TypeDefKind::Type(Type::F32) => todo!("generate f32 type alias"),
-            TypeDefKind::Type(Type::F64) => todo!("generate f64 type alias"),
-            TypeDefKind::Type(Type::Char) => todo!("generate char type alias"),
+            TypeDefKind::Type(Type::Bool) => todo!("TODO(#4): generate bool type alias"),
+            TypeDefKind::Type(Type::U8) => todo!("TODO(#4): generate u8 type alias"),
+            TypeDefKind::Type(Type::U16) => todo!("TODO(#4): generate u16 type alias"),
+            TypeDefKind::Type(Type::U32) => todo!("TODO(#4): generate u32 type alias"),
+            TypeDefKind::Type(Type::U64) => todo!("TODO(#4): generate u64 type alias"),
+            TypeDefKind::Type(Type::S8) => todo!("TODO(#4): generate s8 type alias"),
+            TypeDefKind::Type(Type::S16) => todo!("TODO(#4): generate s16 type alias"),
+            TypeDefKind::Type(Type::S32) => todo!("TODO(#4): generate s32 type alias"),
+            TypeDefKind::Type(Type::S64) => todo!("TODO(#4): generate s64 type alias"),
+            TypeDefKind::Type(Type::F32) => todo!("TODO(#4): generate f32 type alias"),
+            TypeDefKind::Type(Type::F64) => todo!("TODO(#4): generate f64 type alias"),
+            TypeDefKind::Type(Type::Char) => todo!("TODO(#4): generate char type alias"),
             TypeDefKind::Type(Type::String) => {
                 let name = GoIdentifier::Public {
                     name: &name.clone().expect("string alias to have a name"),
                 };
-                // TODO: We might want a Type Definition (newtype) instead of Type Alias here
+                // TODO(#4): We might want a Type Definition (newtype) instead of Type Alias here
                 quote_in! { self.out =>
                     $['\n']
                     type $name = string
@@ -1645,14 +1645,14 @@ fn main() -> Result<ExitCode, ()> {
             })
             .collect::<Vec<Tokens<Go>>>();
 
-        // TODO(#2016): Don't use the internal bindings.out field
+        // TODO(#16): Don't use the internal bindings.out field
         quote_in! { bindings.out =>
             var $raw_wasm = []byte{
                 $(for row in hex_rows join ($['\r']) => $row)
             }
         };
     } else {
-        // TODO(#2016): Don't use the internal bindings.out field
+        // TODO(#16): Don't use the internal bindings.out field
         quote_in! { bindings.out =>
             import _ "embed"
 
@@ -1666,7 +1666,7 @@ fn main() -> Result<ExitCode, ()> {
             continue;
         }
 
-        // TODO(#2016): Don't use the internal bindings.out field
+        // TODO(#16): Don't use the internal bindings.out field
         quote_in! { bindings.out =>
             $['\n']
             type $factory struct {
@@ -1719,7 +1719,7 @@ fn main() -> Result<ExitCode, ()> {
                                 GoResult::Empty
                             }
                             wit_bindgen_core::wit_parser::Results::Named(_) => {
-                                todo!("Handle named results")
+                                todo!("TODO(#11): Handle named results")
                             }
                             wit_bindgen_core::wit_parser::Results::Anon(wit_type) => {
                                 let go_type = resolve_type(wit_type, &bindgen.resolve);
@@ -1741,7 +1741,7 @@ fn main() -> Result<ExitCode, ()> {
                     };
                     ifaces.push(interface_name.clone());
 
-                    // TODO(#2016): Don't use the internal bindings.out field
+                    // TODO(#16): Don't use the internal bindings.out field
                     quote_in! { bindings.out =>
                         $['\n']
                         type $iface_name interface {
@@ -1765,7 +1765,7 @@ fn main() -> Result<ExitCode, ()> {
                                     GoResult::Empty
                                 }
                                 wit_bindgen_core::wit_parser::Results::Named(p) => {
-                                    todo!("Handle Results::Named({p:?})")
+                                    todo!("TODO(#11): Handle Results::Named({p:?})")
                                 }
                                 wit_bindgen_core::wit_parser::Results::Anon(Type::Bool) => {
                                     GoResult::Anon(GoType::Uint32)
@@ -1828,7 +1828,7 @@ fn main() -> Result<ExitCode, ()> {
             };
         }
 
-        // TODO(#2016): Don't use the internal bindings.out field
+        // TODO(#16): Don't use the internal bindings.out field
         quote_in! { bindings.out =>
             $['\n']
             func $new_factory(
@@ -1867,7 +1867,7 @@ fn main() -> Result<ExitCode, ()> {
         };
 
         // TODO: Only apply helpers like `writeString` if they are needed
-        // TODO(#2016): Don't use the internal bindings.out field
+        // TODO(#16): Don't use the internal bindings.out field
         quote_in! { bindings.out =>
             $['\n']
             type $instance struct {
@@ -1934,7 +1934,7 @@ fn main() -> Result<ExitCode, ()> {
                             GoResult::Empty
                         }
                         wit_bindgen_core::wit_parser::Results::Named(_) => {
-                            todo!("Handle named results")
+                            todo!("TODO(#11): Handle named results")
                         }
                         wit_bindgen_core::wit_parser::Results::Anon(wit_type) => {
                             let go_type = resolve_type(wit_type, &bindgen.resolve);
@@ -1959,7 +1959,7 @@ fn main() -> Result<ExitCode, ()> {
                         .collect::<Vec<(&String, &GoIdentifier)>>();
 
                     let fn_name = &GoIdentifier::Public { name: &func.name };
-                    // TODO(#2016): Don't use the internal bindings.out field
+                    // TODO(#16): Don't use the internal bindings.out field
                     quote_in! { bindings.out =>
                         $['\n']
                         func (i *$instance) $fn_name(
@@ -1982,7 +1982,7 @@ fn main() -> Result<ExitCode, ()> {
     let fmt = genco::fmt::Config::from_lang::<Go>().with_indentation(genco::fmt::Indentation::Tab);
     let config = go::Config::default().with_package(selected_world.replace('-', "_"));
 
-    // TODO(#2016): Don't use the internal bindings.out field
+    // TODO(#16): Don't use the internal bindings.out field
     bindings
         .out
         .format_file(&mut w.as_formatter(&fmt), &config)
