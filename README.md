@@ -1,6 +1,6 @@
-# Wazero Gravity
+# Gravity
 
-The Wazero host generator for WebAssembly Components.
+Gravity is a host generator for WebAssembly Components. It currently targets [Wazero](https://github.com/tetratelabs/wazero), a zero dependency WebAssembly runtime for Go.
 
 ## What?
 
