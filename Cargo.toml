@@ -2,7 +2,7 @@
 authors = ["The Arcjet team"]
 categories = ["wasm"]
 default-run = "gravity"
-name = "wazero-gravity"
+name = "arcjet-gravity"
 version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
