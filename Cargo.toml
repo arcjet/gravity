@@ -13,6 +13,7 @@ Gravity is a host generator for WebAssembly Components. It currently targets Waz
 
 [[bin]]
 name = "gravity"
+path = "src/main.rs"
 
 [dependencies]
 clap = "=4.5.21"

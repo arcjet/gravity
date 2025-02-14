@@ -144,16 +144,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gravity"
-version = "0.0.1"
-dependencies = [
- "clap",
- "genco",
- "wit-bindgen-core",
- "wit-component",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,6 +378,16 @@ dependencies = [
  "hashbrown 0.14.5",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wazero-gravity"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "genco",
+ "wit-bindgen-core",
+ "wit-component",
 ]
 
 [[package]]
