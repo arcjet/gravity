@@ -1,13 +1,10 @@
 name: Rust build and test
 
 on:
-  # We cannot filter by path as this is a required check. See
-  # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
   push:
     branches:
       - main
   pull_request:
-    # Recommended by Graphite: https://graphite.dev/docs/github-configuration-guidelines#github-actions
     types: [opened, synchronize, reopened]
 
 concurrency:
@@ -17,7 +14,6 @@ concurrency:
 jobs:
   gravity:
     name: Gravity tests
-    # Using self-hosted results in "error: linker `cc` not found" sometimes.
     runs-on: ubuntu-latest
     steps:
       # Environment security

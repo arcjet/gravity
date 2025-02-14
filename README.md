@@ -1,6 +1,6 @@
 # Gravity
 
-Gravity is a host generator for WebAssembly Components. It currently targets [Wazero](https://github.com/tetratelabs/wazero), a zero dependency WebAssembly runtime for Go.
+Gravity is a host generator for WebAssembly Components. It currently targets [Wazero][wazero], a zero dependency WebAssembly runtime for Go.
 
 ## What?
 
@@ -22,8 +22,8 @@ We were able to leverage `jco transpile` to translate our WebAssembly Components
 to Core Wasm that runs in a JavaScript environment, but we don't have easy
 access to Wasmtime in our server environment. Most of our server logic is
 written in Go, which has fantastic Core Wasm support via [Wazero][wazero].
-Wazero might adopt WIT and the Component model at some point, but we can
-can translate Components to Core today.
+Wazero has [rejected the Component Model][wazero-component-model], but we can
+still translate Components to Core today.
 
 By adopting a similar strategy as `jco transpile`, we've built this tool to
 produced Wazero output that adhere's to the Component Model's [Canonical
@@ -49,7 +49,7 @@ cargo +nightly-2025-01-01 install --path .
 To generate the bindings, you run something like:
 
 ```bash
-gravity bindings-bots/dist/arcjet_analyze_bindings_bots.wasm --world bots --output bindings-bots/dist/bots.go
+gravity my-wasm-component/main.wasm --world foobar --output my-wasm-component/bots.go
 ```
 
 After you generate the code, you'll want to ensure you have all the necessary
@@ -61,8 +61,6 @@ go mod tidy
 
 ## Status
 
-As the project evolves, we plan to support all of WIT, but we primarily focus on
-the bindings our Wasm output needs.
 
 Currently, that means we support:
 
@@ -84,10 +82,10 @@ right Wasm module exist in the correct location. However, this produces some
 very large files (such that a 1.5mb Wasm file produces a 9.5mb Go file)—we may
 revisit this decision in the future.
 
-We produce a "factory" and "instance" per world. Given our `bots` world:
+We produce a "factory" and "instance" per world. Given an `example` world:
 
 ```txt
-package arcjet:bots;
+package arcjet:example;
 
 interface logger {
   debug: func(msg: string);
@@ -96,27 +94,27 @@ interface logger {
   error: func(msg: string);
 }
 
-world bots {
+world example {
   import logger;
 
-  export detect: func(headers: string, patterns-add: string, patterns-remove: string) -> result<string, string>;
+  export foobar: func() -> result<string, string>;
 }
 ```
 
-The generated code will define the `BotsFactory` and `BotsInstance`. Generally,
+The generated code will define the `ExampleFactory` and `ExampleInstance`. Generally,
 the factory is constructed once upon startup because it prepares all of the
 imports and compiles the WebAssembly, which can take a long time. In the example
-above, the `BotsFactory` can be constructed with `NewBotsFactory` which is
-provided with a `context.Context` and a type implementing the `IBotsLogger`
+above, the `ExampleFactory` can be constructed with `NewExampleFactory` which is
+provided with a `context.Context` and a type implementing the `IExampleLogger`
 interface.
 
 Any interfaces defined as imports to the world will have a corresponding
-interface definition in Go, as we saw the `IBotsLogger` above. This defines the
+interface definition in Go, as we saw the `IExampleLogger` above. This defines the
 high-level functions that must be available to call from Wasm. The `logger`
 interface was translated to:
 
 ```go
-type IBotsLogger interface {
+type IExampleLogger interface {
   Debug(ctx context.Context, msg string)
   Log(ctx context.Context, msg string)
   Warn(ctx context.Context, msg string)
@@ -128,9 +126,9 @@ Factories can produce instances using the `Instantiate` function, which only
 takes a `context.Context`. This function prepares the WebAssembly to be executed
 but is generally very fast, since the factory pre-compiles the Wasm module.
 
-Exported functions are called on an instance, such as our `detect` function. You
+Exported functions are called on an instance, such as our `foobar` function. You
 would call this like
-`inst.Detect(ctx, headerString, patternsAddString, patternsRemoveString)`. Since
+`inst.Foobar(ctx)`. Since
 the return value is defined as a `result<string, string>`, it is translated into
 the idiomatic Go return type `(string, error)`.
 
@@ -143,7 +141,7 @@ Consuming the generated bindings should be pretty straightforward. As such,
 writing a test for the above would look something like:
 
 ```go
-package bots
+package example
 
 import (
   "context"
@@ -152,18 +150,18 @@ import (
   "github.com/stretchr/testify/require"
 )
 
-func Test_Generated_Bots(t *testing.T) {
+func Test_Generated_Example(t *testing.T) {
   // Assuming you've generated mocks with Mockery
   logger := NewMockIBotsLogger(t)
   ctx := context.Background()
-  factory, err := NewBotsFactory(ctx, logger)
+  factory, err := NewExampleFactory(ctx, logger)
   require.NoError(t, err)
 
   instance, err := factory.Instantiate(ctx)
   require.NoError(t, err)
   defer instance.Close(ctx)
 
-  result, err := instance.Detect(ctx, "{}", "{}", "[]")
+  result, err := instance.Foobar(ctx)
   require.NoError(t, err)
   require.NotEqual(t, result, "")
 }
@@ -175,3 +173,4 @@ func Test_Generated_Bots(t *testing.T) {
 [jco]: https://github.com/bytecodealliance/jco
 [wazero]: https://github.com/tetratelabs/wazero
 [canonical-abi]: https://github.com/WebAssembly/component-model/blob/a74225c12c152df59f745cfc0fbde79b5310ccd9/design/mvp/CanonicalABI.md
+[wazero-component-model]: https://github.com/tetratelabs/wazero/issues/2200
