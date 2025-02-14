@@ -76,11 +76,12 @@ we can codegen.
 
 ## Output
 
-The generated output embeds a `byte` slice containing the WebAssembly module
-encoded as hex. We do this to avoid using `go:embed` and trying to make sure the
-right Wasm module exist in the correct location. However, this produces some
-very large files (such that a 1.5mb Wasm file produces a 9.5mb Go file)—we may
-revisit this decision in the future.
+The generated output consists of a bindings file and a Wasm file which
+is placed next to it. The bindings file loads the Wasm file using `go:embed`.
+
+Alternatively, if you set the `inline-wasm` flag Gravity will output the Wasm
+file contents encoded as hex if you wish to avoid using `go:embed`. This will likely
+result in much larger file sizes.
 
 We produce a "factory" and "instance" per world. Given an `example` world:
 
