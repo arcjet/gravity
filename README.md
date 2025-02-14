@@ -53,7 +53,7 @@ cargo +nightly-2025-01-01 install --path .
 To generate the bindings, you run something like:
 
 ```bash
-gravity my-wasm-component/main.wasm --world foobar --output my-wasm-component/bots.go
+gravity example/example.wasm --world example --output example/example.go
 ```
 
 After you generate the code, you'll want to ensure you have all the necessary
