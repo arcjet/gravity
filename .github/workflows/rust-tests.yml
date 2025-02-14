@@ -41,7 +41,7 @@ jobs:
           CARGO_TERM_COLOR: always
 
       - name: cargo test
-        run: cargo +nightly test --locked --verbose
+        run: cargo +nightly-2025-01-01 test --locked --verbose
         env:
           CARGO_TERM_COLOR: always
 
