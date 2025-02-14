@@ -36,7 +36,7 @@ jobs:
       # Workflow
 
       - name: cargo build
-        run: cargo +nightly build --locked --verbose
+        run: cargo +nightly-2025-01-01 build --locked --verbose
         env:
           CARGO_TERM_COLOR: always
 
