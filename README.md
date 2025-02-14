@@ -1,6 +1,6 @@
 > [!IMPORTANT]
 > This is a very early release of Gravity. Many WIT features are not yet implemented
-and the project is is likely to change significantly as we develop it further.
+> and the project is is likely to change significantly as we develop it further.
 
 # Gravity
 
