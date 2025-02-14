@@ -1,7 +1,15 @@
 [package]
-name = "gravity"
+authors = ["The Arcjet team"]
+categories = ["wasm"]
+default-run = "gravity"
+name = "wazero-gravity"
 version = "0.0.1"
 edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/arcjet/gravity"
+description = """
+Gravity is a host generator for WebAssembly Components. It currently targets Wazero, a zero dependency WebAssembly runtime for Go.
+""""
 
 [[bin]]
 name = "gravity"
