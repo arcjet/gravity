@@ -1,0 +1,51 @@
+name: Rust build and test
+
+on:
+  # We cannot filter by path as this is a required check. See
+  # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+  push:
+    branches:
+      - main
+  pull_request:
+    # Recommended by Graphite: https://graphite.dev/docs/github-configuration-guidelines#github-actions
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gravity:
+    name: Gravity tests
+    # Using self-hosted results in "error: linker `cc` not found" sometimes.
+    runs-on: ubuntu-latest
+    steps:
+      # Environment security
+      - name: Step Security
+        uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
+        with:
+          egress-policy: audit
+
+      # Checkout
+      # Most toolchains require checkout first
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Language toolchains
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
+        with:
+          toolchain: nightly
+
+      # Workflow
+
+      - name: cargo build
+        run: cargo +nightly build --locked --verbose
+        env:
+          CARGO_TERM_COLOR: always
+
+      - name: cargo test
+        run: cargo +nightly test --locked --verbose
+        env:
+          CARGO_TERM_COLOR: always
+
