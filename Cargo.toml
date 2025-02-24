@@ -9,7 +9,7 @@ license = "Apache-2.0"
 repository = "https://github.com/arcjet/gravity"
 description = """
 Gravity is a host generator for WebAssembly Components. It currently targets Wazero, a zero dependency WebAssembly runtime for Go.
-""""
+"""
 
 [[bin]]
 name = "gravity"
