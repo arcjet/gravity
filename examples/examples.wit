@@ -1,0 +1,14 @@
+package arcjet:examples;
+
+interface logger {
+  debug: func(msg: string);
+  log: func(msg: string);
+  warn: func(msg: string);
+  error: func(msg: string);
+}
+
+world examples {
+  import logger;
+
+  export foobar: func() -> result<string, string>;
+}

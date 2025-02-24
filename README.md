@@ -63,6 +63,11 @@ dependencies. You can run:
 go mod tidy
 ```
 
+## Example
+
+An runnable example in our [examples/](./examples/) directory. Please see the
+[README](./examples/README.md) for instructions on running it.
+
 ## Status
 
 
