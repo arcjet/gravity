@@ -757,7 +757,7 @@ impl Bindgen for Func {
                     };
                 }
             }
-            Instruction::CallInterface { func } => {
+            Instruction::CallInterface { func, .. } => {
                 let ident = GoIdentifier::Public { name: &func.name };
                 let tmp = self.tmp();
                 let args = quote!($(for op in operands.iter() join (, ) => $op));
@@ -1329,6 +1329,27 @@ impl Bindgen for Func {
             | Instruction::GuestDeallocateVariant { .. } => {
                 unimplemented!("gravity doesn't generate the Guest code")
             }
+            Instruction::FutureLower { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FutureLift { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::StreamLower { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::StreamLift { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::ErrorContextLower { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::ErrorContextLift { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::AsyncMalloc { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::AsyncCallWasm { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::AsyncPostCallInterface { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::AsyncCallReturn { .. } => todo!("implement instruction: {inst:?}"),
+            // From jco:
+            // > For most non-Promise objects, flushing or evaluating the object is a no-op,
+            // > so until async is implemented, we can only pass through objects without modification
+            // >
+            // > During async implementation this flush should check for Promises and await them
+            // > as necessary
+            Instruction::Flush { amt } => {
+                for n in 0..*amt {
+                    results.push(operands[n].clone());
+                }
+            }
         }
     }
 
@@ -1446,6 +1467,7 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     GoType::UserDefined(typ)
                 }
                 TypeDefKind::Unknown => todo!("TODO(#4): implement unknown conversion"),
+                TypeDefKind::ErrorContext => todo!("TODO(#4): implement error context conversion"),
             }
         }
     }
@@ -1547,6 +1569,7 @@ impl Bindings {
                     type $name = string
                 }
             }
+            TypeDefKind::ErrorContext => todo!("TODO(#4): generate error context definition"),
             TypeDefKind::Unknown => panic!("cannot generate Unknown type"),
         }
     }
@@ -1792,6 +1815,8 @@ fn main() -> Result<ExitCode, ()> {
                             LiftLower::LiftArgsLowerResults,
                             func,
                             &mut f,
+                            // async is not currently supported
+                            false,
                         );
                         let name = &func.name;
 
@@ -1949,6 +1974,8 @@ fn main() -> Result<ExitCode, ()> {
                         LiftLower::LowerArgsLiftResults,
                         func,
                         &mut f,
+                        // async is not currently supported
+                        false,
                     );
 
                     let arg_assignments = f

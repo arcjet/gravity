@@ -22,8 +22,8 @@ crate-type = ["cdylib"]
 [dependencies]
 clap = "=4.5.31"
 genco = "=0.17.10"
-wit-bindgen-core = "=0.35.0"
-wit-component = "=0.220.0"
+wit-bindgen-core = "=0.39.0"
+wit-component = "=0.225.0"
 
 [dev-dependencies]
-wit-bindgen = "=0.35.0"
+wit-bindgen = "=0.39.0"
