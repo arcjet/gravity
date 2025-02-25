@@ -48,6 +48,13 @@ From inside this directory, you can install using the command:
 cargo +nightly-2025-01-01 install --path .
 ```
 
+Or alternatively, you can install the latest published version from crates.io
+using this command:
+
+```bash
+cargo +nightly-2025-01-01 install arcjet-gravity
+```
+
 ## Usage
 
 To generate the bindings, you run something like:
