@@ -20,7 +20,7 @@ name = "examples"
 crate-type = ["cdylib"]
 
 [dependencies]
-clap = "=4.5.31"
+clap = "=4.5.35"
 genco = "=0.17.10"
 wit-bindgen-core = "=0.39.0"
 wit-component = "=0.225.0"
