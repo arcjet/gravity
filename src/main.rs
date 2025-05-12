@@ -460,7 +460,7 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(ret.into()));
             }
             Instruction::I32Load8U { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
@@ -533,7 +533,7 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::PointerLoad { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let ptr = &format!("ptr{tmp}");
@@ -566,7 +566,7 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(ptr.into()));
             }
             Instruction::LengthLoad { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let len = &format!("len{tmp}");
@@ -599,7 +599,7 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(len.into()));
             }
             Instruction::I32Load { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
@@ -818,7 +818,7 @@ impl Bindgen for Func {
             }
             Instruction::I32Const { val } => results.push(Operand::Literal(val.to_string())),
             Instruction::I32Store8 { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
@@ -876,7 +876,7 @@ impl Bindgen for Func {
                 }
             }
             Instruction::I32Store { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
@@ -896,7 +896,7 @@ impl Bindgen for Func {
                 }
             }
             Instruction::LengthStore { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let len = &operands[0];
                 let ptr = &operands[1];
@@ -916,7 +916,7 @@ impl Bindgen for Func {
                 }
             }
             Instruction::PointerStore { offset } => {
-                // TODO: Support additional ArchitectureSize
+                // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let value = &operands[0];
                 let ptr = &operands[1];
