@@ -1749,9 +1749,13 @@ fn main() -> Result<ExitCode, ()> {
                             params.push((GoIdentifier::Local { name }, go_type));
                         }
 
-                        let result = func
-                            .result
-                            .map(|wit_type| resolve_type(&wit_type, &bindgen.resolve));
+                        let result = match func.result {
+                            Some(wit_type) => {
+                                let go_type = resolve_type(&wit_type, &bindgen.resolve);
+                                GoResult::Anon(go_type)
+                            }
+                            None => GoResult::Empty,
+                        };
 
                         let func_name = GoIdentifier::Public { name: &func.name };
                         quote_in! { interface_funcs =>
@@ -1793,11 +1797,11 @@ fn main() -> Result<ExitCode, ()> {
                                         bindgen.resolve.types.get(*typ_id).unwrap();
                                     let go_type = match kind {
                                         TypeDefKind::Enum(_) => GoType::Uint32,
-                                        _ => todo!("Handle Results::Anon(Type::Id({typ_id:?}))"),
+                                        _ => todo!("handle Type::Id({typ_id:?})"),
                                     };
                                     GoResult::Anon(go_type)
                                 }
-                                Some(wit_type) => todo!("Handle Results::Anon({wit_type:?})"),
+                                Some(wit_type) => todo!("handle {wit_type:?}"),
                                 None => GoResult::Empty,
                             }
                         };
