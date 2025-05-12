@@ -10,6 +10,7 @@ repository = "https://github.com/arcjet/gravity"
 description = """
 Gravity is a host generator for WebAssembly Components. It currently targets Wazero, a zero dependency WebAssembly runtime for Go.
 """
+build = "build.rs"
 
 [[bin]]
 name = "gravity"
@@ -23,3 +24,6 @@ wit-component = "=0.230.0"
 
 [dev-dependencies]
 wit-bindgen = "=0.42.1"
+
+[build-dependencies]
+rustversion = "=1.0.20"
