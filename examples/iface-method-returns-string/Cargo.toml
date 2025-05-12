@@ -1,0 +1,11 @@
+[package]
+name = "example-iface-method-returns-string"
+version = "0.0.2"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.42.1"
+wit-component = "0.230.0"

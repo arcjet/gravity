@@ -1,0 +1,14 @@
+package arcjet:example;
+
+interface runtime {
+  os: func() -> string;
+  arch: func() -> string;
+
+  puts: func(msg: string);
+}
+
+world example {
+  import runtime;
+
+  export hello: func() -> result<string, string>;
+}
