@@ -64,6 +64,7 @@ version = "0.0.2"
 dependencies = [
  "clap",
  "genco",
+ "rustc_version",
  "wit-bindgen 0.39.0",
  "wit-bindgen-core 0.39.0",
  "wit-component 0.225.0",
@@ -529,6 +530,15 @@ name = "relative-path"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba39f3699c378cd8970968dcbff9c43159ea4cfbd88d43c00b22f2ef10a435d2"
+
+[[package]]
+name = "rustc_version"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
+dependencies = [
+ "semver",
+]
 
 [[package]]
 name = "ryu"
