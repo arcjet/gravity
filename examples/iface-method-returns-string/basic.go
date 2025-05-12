@@ -15,20 +15,14 @@ type HelloFactory struct {
 	module wazero.CompiledModule
 }
 
-type IHelloLogger interface {
-	Debug(
+type IHelloRuntime interface {
+	Os(
 		ctx context.Context,
-		msg string,
-	)
-	Info(
+	) string
+	Arch(
 		ctx context.Context,
-		msg string,
-	)
-	Warn(
-		ctx context.Context,
-		msg string,
-	)
-	Error(
+	) string
+	Puts(
 		ctx context.Context,
 		msg string,
 	)
@@ -36,11 +30,45 @@ type IHelloLogger interface {
 
 func NewHelloFactory(
 	ctx context.Context,
-	logger IHelloLogger,
+	runtime IHelloRuntime,
 ) (*HelloFactory, error) {
 	wasmRT := wazero.NewRuntime(ctx)
 
-	_, err0 := wasmRT.NewHostModuleBuilder("arcjet:basic/logger").
+	_, err0 := wasmRT.NewHostModuleBuilder("arcjet:basic/runtime").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+	) {
+		value0 := runtime.Os(ctx, )
+		memory1 := mod.Memory()
+		realloc1 := mod.ExportedFunction("cabi_realloc")
+		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
+		if err1 != nil {
+			panic(err1)
+		}
+		mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
+		mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
+	}).
+	Export("os").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+	) {
+		value0 := runtime.Arch(ctx, )
+		memory1 := mod.Memory()
+		realloc1 := mod.ExportedFunction("cabi_realloc")
+		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
+		if err1 != nil {
+			panic(err1)
+		}
+		mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
+		mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
+	}).
+	Export("arch").
 	NewFunctionBuilder().
 	WithFunc(func(
 		ctx context.Context,
@@ -53,54 +81,9 @@ func NewHelloFactory(
 			panic(errors.New("failed to read bytes from memory"))
 		}
 		str0 := string(buf0)
-		logger.Debug(ctx, str0)
+		runtime.Puts(ctx, str0)
 	}).
-	Export("debug").
-	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Info(ctx, str0)
-	}).
-	Export("info").
-	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Warn(ctx, str0)
-	}).
-	Export("warn").
-	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Error(ctx, str0)
-	}).
-	Export("error").
+	Export("puts").
 	Instantiate(ctx)
 	if err0 != nil {
 		return nil, err0

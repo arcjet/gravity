@@ -2,10 +2,10 @@ use std::{collections::BTreeMap, fs, mem, path::Path, process::ExitCode, str::Ch
 
 use clap::{Arg, ArgAction, Command};
 use genco::{
-    lang::{go, Go},
-    quote, quote_in,
-    tokens::{quoted, static_literal, FormatInto, ItemStr},
     Tokens,
+    lang::{Go, go},
+    quote, quote_in,
+    tokens::{FormatInto, ItemStr, quoted, static_literal},
 };
 use wit_bindgen_core::{
     abi::{AbiVariant, Bindgen, Instruction, LiftLower, WasmType},
@@ -779,7 +779,7 @@ impl Bindgen for Func {
                             $['\r']
                             $(match returns {
                                 GoType::Nothing => $iface.$ident(ctx, $args),
-                                GoType::Bool | GoType::Uint32 | GoType::Interface | GoType::UserDefined(_) => $value := $iface.$ident(ctx, $args),
+                                GoType::Bool | GoType::Uint32 | GoType::Interface | GoType::String | GoType::UserDefined(_) => $value := $iface.$ident(ctx, $args),
                                 GoType::Error => $err := $iface.$ident(ctx, $args),
                                 GoType::ValueOrError(_) => {
                                     $value, $err := $iface.$ident(ctx, $args)
@@ -794,7 +794,11 @@ impl Bindgen for Func {
                 }
                 match returns {
                     GoType::Nothing => (),
-                    GoType::Bool | GoType::Uint32 | GoType::Interface | GoType::UserDefined(_) => {
+                    GoType::Bool
+                    | GoType::Uint32
+                    | GoType::Interface
+                    | GoType::UserDefined(_)
+                    | GoType::String => {
                         results.push(Operand::SingleValue(value.into()));
                     }
                     GoType::Error => {
@@ -1720,7 +1724,7 @@ fn main() -> Result<ExitCode, ()> {
 
                     let import_chain = import_fns.entry(import_module_name.clone()).or_insert(
                         quote! {
-                            _, $err := runtime.NewHostModuleBuilder($(quoted(import_module_name))).
+                            _, $err := wasmRT.NewHostModuleBuilder($(quoted(import_module_name))).
                         },
                     );
 
@@ -1862,7 +1866,7 @@ fn main() -> Result<ExitCode, ()> {
                     name: &format!("i-{selected_world}-{interface_name}"),
                 }),)
             ) (*$factory, error) {
-                runtime := $wazero_new_runtime(ctx)
+                wasmRT := $wazero_new_runtime(ctx)
 
                 $(for import_fn in import_fns.values() join ($['\r']) => $import_fn)
 
@@ -1870,12 +1874,12 @@ fn main() -> Result<ExitCode, ()> {
                     "Compiling the module takes a LONG time, so we want to do it once and hold",
                     "onto it with the Runtime"
                 ]))
-                module, err := runtime.CompileModule(ctx, $raw_wasm)
+                module, err := wasmRT.CompileModule(ctx, $raw_wasm)
                 if err != nil {
                     return nil, err
                 }
 
-                return &$factory{runtime, module}, nil
+                return &$factory{wasmRT, module}, nil
             }
 
             func (f *$factory) Instantiate(ctx $context) (*$instance, error) {
