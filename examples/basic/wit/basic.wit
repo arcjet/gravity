@@ -1,8 +1,8 @@
-package arcjet:example;
+package arcjet:basic;
 
 interface logger {
   debug: func(msg: string);
-  log: func(msg: string);
+  info: func(msg: string);
   warn: func(msg: string);
   error: func(msg: string);
 }

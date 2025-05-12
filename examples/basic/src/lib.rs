@@ -1,4 +1,4 @@
-use arcjet::example::logger;
+use arcjet::basic::logger;
 
 wit_bindgen::generate!({
     world: "basic",
@@ -12,6 +12,6 @@ impl Guest for BasicWorld {
     fn hello() -> Result<String, String> {
         logger::debug("DEBUG MESSAGE");
 
-        Ok("Baz".into())
+        Ok("Hello, world!".into())
     }
 }
