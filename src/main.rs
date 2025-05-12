@@ -2,15 +2,16 @@ use std::{collections::BTreeMap, fs, mem, path::Path, process::ExitCode, str::Ch
 
 use clap::{Arg, ArgAction, Command};
 use genco::{
-    lang::{go, Go},
-    quote, quote_in,
-    tokens::{quoted, static_literal, FormatInto, ItemStr},
     Tokens,
+    lang::{Go, go},
+    quote, quote_in,
+    tokens::{FormatInto, ItemStr, quoted, static_literal},
 };
 use wit_bindgen_core::{
     abi::{AbiVariant, Bindgen, Instruction, LiftLower, WasmType},
     wit_parser::{
-        Record, Resolve, Result_, Results, SizeAlign, Type, TypeDef, TypeDefKind, WorldItem,
+        Alignment, ArchitectureSize, Record, Resolve, Result_, SizeAlign, Type, TypeDef,
+        TypeDefKind, WorldItem,
     },
 };
 
@@ -459,7 +460,8 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(ret.into()));
             }
             Instruction::I32Load8U { offset } => {
-                let off = *offset;
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
                 let ok = &format!("ok{tmp}");
@@ -467,7 +469,7 @@ impl Bindgen for Func {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $value, $ok := i.module.Memory().ReadByte(uint32($operand + $off))
+                    $value, $ok := i.module.Memory().ReadByte(uint32($operand + $offset))
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if !$ok {
@@ -531,7 +533,8 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::PointerLoad { offset } => {
-                let off = *offset;
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let ptr = &format!("ptr{tmp}");
                 let ok = &format!("ok{tmp}");
@@ -539,7 +542,7 @@ impl Bindgen for Func {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $ptr, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $off))
+                    $ptr, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if !$ok {
@@ -563,7 +566,8 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(ptr.into()));
             }
             Instruction::LengthLoad { offset } => {
-                let off = *offset;
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let len = &format!("len{tmp}");
                 let ok = &format!("ok{tmp}");
@@ -571,7 +575,7 @@ impl Bindgen for Func {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $len, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $off))
+                    $len, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if !$ok {
@@ -595,7 +599,8 @@ impl Bindgen for Func {
                 results.push(Operand::SingleValue(len.into()));
             }
             Instruction::I32Load { offset } => {
-                let off = *offset;
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
                 let ok = &format!("ok{tmp}");
@@ -603,7 +608,7 @@ impl Bindgen for Func {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $value, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $off))
+                    $value, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if !$ok {
@@ -761,10 +766,9 @@ impl Bindgen for Func {
                 let ident = GoIdentifier::Public { name: &func.name };
                 let tmp = self.tmp();
                 let args = quote!($(for op in operands.iter() join (, ) => $op));
-                let returns = match &func.results {
-                    Results::Named(p) if p.is_empty() => GoType::Nothing,
-                    Results::Named(_) => todo!("TODO(#11): handle named results"),
-                    Results::Anon(typ) => resolve_type(typ, resolve),
+                let returns = match &func.result {
+                    None => GoType::Nothing,
+                    Some(typ) => resolve_type(typ, resolve),
                 };
                 let value = &format!("value{tmp}");
                 let err = &format!("err{tmp}");
@@ -814,6 +818,8 @@ impl Bindgen for Func {
             }
             Instruction::I32Const { val } => results.push(Operand::Literal(val.to_string())),
             Instruction::I32Store8 { offset } => {
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
                 if let Operand::Literal(byte) = tag {
@@ -821,13 +827,13 @@ impl Bindgen for Func {
                         Direction::Export => {
                             quote_in! { self.body =>
                                 $['\r']
-                                i.module.Memory().WriteByte($ptr+$(*offset), $byte)
+                                i.module.Memory().WriteByte($ptr+$offset, $byte)
                             }
                         }
                         Direction::Import { .. } => {
                             quote_in! { self.body =>
                                 $['\r']
-                                mod.Memory().WriteByte($ptr+$(*offset), $byte)
+                                mod.Memory().WriteByte($ptr+$offset, $byte)
                             }
                         }
                     }
@@ -848,7 +854,7 @@ impl Bindgen for Func {
                                     $(comment(["TODO(#8): Return an error if the return type allows it"]))
                                     panic($errors_new("invalid int8 value encountered"))
                                 }
-                                i.module.Memory().WriteByte($ptr+$(*offset), $byte)
+                                i.module.Memory().WriteByte($ptr+$offset, $byte)
                             }
                         }
                         Direction::Import { .. } => {
@@ -863,62 +869,68 @@ impl Bindgen for Func {
                                 default:
                                     panic($errors_new("invalid int8 value encountered"))
                                 }
-                                mod.Memory().WriteByte($ptr+$(*offset), $byte)
+                                mod.Memory().WriteByte($ptr+$offset, $byte)
                             }
                         }
                     }
                 }
             }
             Instruction::I32Store { offset } => {
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
                 match &self.direction {
                     Direction::Export => {
                         quote_in! { self.body =>
                             $['\r']
-                            i.module.Memory().WriteUint32Le($ptr+$(*offset), $tag)
+                            i.module.Memory().WriteUint32Le($ptr+$offset, $tag)
                         }
                     }
                     Direction::Import { .. } => {
                         quote_in! { self.body =>
                             $['\r']
-                            mod.Memory().WriteUint32Le($ptr+$(*offset), $tag)
+                            mod.Memory().WriteUint32Le($ptr+$offset, $tag)
                         }
                     }
                 }
             }
             Instruction::LengthStore { offset } => {
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let len = &operands[0];
                 let ptr = &operands[1];
                 match &self.direction {
                     Direction::Export => {
                         quote_in! { self.body =>
                             $['\r']
-                            i.module.Memory().WriteUint32Le($ptr+$(*offset), uint32($len))
+                            i.module.Memory().WriteUint32Le($ptr+$offset, uint32($len))
                         }
                     }
                     Direction::Import { .. } => {
                         quote_in! { self.body =>
                             $['\r']
-                            mod.Memory().WriteUint32Le($ptr+$(*offset), uint32($len))
+                            mod.Memory().WriteUint32Le($ptr+$offset, uint32($len))
                         }
                     }
                 }
             }
             Instruction::PointerStore { offset } => {
+                // TODO: Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
                 let value = &operands[0];
                 let ptr = &operands[1];
                 match &self.direction {
                     Direction::Export => {
                         quote_in! { self.body =>
                             $['\r']
-                            i.module.Memory().WriteUint32Le($ptr+$(*offset), uint32($value))
+                            i.module.Memory().WriteUint32Le($ptr+$offset, uint32($value))
                         }
                     }
                     Direction::Import { .. } => {
                         quote_in! { self.body =>
                             $['\r']
-                            mod.Memory().WriteUint32Le($ptr+$(*offset), uint32($value))
+                            mod.Memory().WriteUint32Le($ptr+$offset, uint32($value))
                         }
                     }
                 }
@@ -1335,16 +1347,8 @@ impl Bindgen for Func {
             Instruction::StreamLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::ErrorContextLower { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::ErrorContextLift { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::AsyncMalloc { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::AsyncCallWasm { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::AsyncPostCallInterface { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::AsyncCallReturn { .. } => todo!("implement instruction: {inst:?}"),
-            // From jco:
-            // > For most non-Promise objects, flushing or evaluating the object is a no-op,
-            // > so until async is implemented, we can only pass through objects without modification
-            // >
-            // > During async implementation this flush should check for Promises and await them
-            // > as necessary
+            Instruction::AsyncTaskReturn { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::DropHandle { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Flush { amt } => {
                 for n in 0..*amt {
                     results.push(operands[n].clone());
@@ -1353,7 +1357,7 @@ impl Bindgen for Func {
         }
     }
 
-    fn return_pointer(&mut self, _size: usize, _align: usize) -> Self::Operand {
+    fn return_pointer(&mut self, _size: ArchitectureSize, _align: Alignment) -> Self::Operand {
         unimplemented!("return_pointer")
     }
 
@@ -1412,6 +1416,7 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
             todo!("TODO(#6): resolve char type")
         }
         Type::String => GoType::String,
+        Type::ErrorContext => todo!("TODO(#4): implement error context conversion"),
         Type::Id(typ_id) => {
             let TypeDef { name, kind, .. } = resolve.types.get(*typ_id).unwrap();
             match kind {
@@ -1466,8 +1471,10 @@ fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     let typ = name.clone().expect("type alias to have a name");
                     GoType::UserDefined(typ)
                 }
+                TypeDefKind::FixedSizeList(_, _) => {
+                    todo!("TODO(#4): implement fixed size list conversion")
+                }
                 TypeDefKind::Unknown => todo!("TODO(#4): implement unknown conversion"),
-                TypeDefKind::ErrorContext => todo!("TODO(#4): implement error context conversion"),
             }
         }
     }
@@ -1569,7 +1576,12 @@ impl Bindings {
                     type $name = string
                 }
             }
-            TypeDefKind::ErrorContext => todo!("TODO(#4): generate error context definition"),
+            TypeDefKind::Type(Type::ErrorContext) => {
+                todo!("TODO(#4): generate error context definition")
+            }
+            TypeDefKind::FixedSizeList(_, _) => {
+                todo!("TODO(#4): generate fixed size list definition")
+            }
             TypeDefKind::Unknown => panic!("cannot generate Unknown type"),
         }
     }
@@ -1737,18 +1749,9 @@ fn main() -> Result<ExitCode, ()> {
                             params.push((GoIdentifier::Local { name }, go_type));
                         }
 
-                        let result = match &func.results {
-                            wit_bindgen_core::wit_parser::Results::Named(p) if p.is_empty() => {
-                                GoResult::Empty
-                            }
-                            wit_bindgen_core::wit_parser::Results::Named(_) => {
-                                todo!("TODO(#11): Handle named results")
-                            }
-                            wit_bindgen_core::wit_parser::Results::Anon(wit_type) => {
-                                let go_type = resolve_type(wit_type, &bindgen.resolve);
-                                GoResult::Anon(go_type)
-                            }
-                        };
+                        let result = func
+                            .result
+                            .map(|wit_type| resolve_type(&wit_type, &bindgen.resolve));
 
                         let func_name = GoIdentifier::Public { name: &func.name };
                         quote_in! { interface_funcs =>
@@ -1783,17 +1786,9 @@ fn main() -> Result<ExitCode, ()> {
                             GoResult::Empty
                         } else {
                             // TODO: Should this instead produce the results based on the wasm_sig?
-                            match &func.results {
-                                wit_bindgen_core::wit_parser::Results::Named(p) if p.is_empty() => {
-                                    GoResult::Empty
-                                }
-                                wit_bindgen_core::wit_parser::Results::Named(p) => {
-                                    todo!("TODO(#11): Handle Results::Named({p:?})")
-                                }
-                                wit_bindgen_core::wit_parser::Results::Anon(Type::Bool) => {
-                                    GoResult::Anon(GoType::Uint32)
-                                }
-                                wit_bindgen_core::wit_parser::Results::Anon(Type::Id(typ_id)) => {
+                            match &func.result {
+                                Some(Type::Bool) => GoResult::Anon(GoType::Uint32),
+                                Some(Type::Id(typ_id)) => {
                                     let TypeDef { kind, .. } =
                                         bindgen.resolve.types.get(*typ_id).unwrap();
                                     let go_type = match kind {
@@ -1802,9 +1797,8 @@ fn main() -> Result<ExitCode, ()> {
                                     };
                                     GoResult::Anon(go_type)
                                 }
-                                wit_bindgen_core::wit_parser::Results::Anon(wit_type) => {
-                                    todo!("Handle Results::Anon({wit_type:?})");
-                                }
+                                Some(wit_type) => todo!("Handle Results::Anon({wit_type:?})"),
+                                None => GoResult::Empty,
                             }
                         };
 
@@ -1954,17 +1948,12 @@ fn main() -> Result<ExitCode, ()> {
                     let mut sizes = SizeAlign::default();
                     sizes.fill(&bindgen.resolve);
 
-                    let result = match &func.results {
-                        wit_bindgen_core::wit_parser::Results::Named(p) if p.is_empty() => {
-                            GoResult::Empty
-                        }
-                        wit_bindgen_core::wit_parser::Results::Named(_) => {
-                            todo!("TODO(#11): Handle named results")
-                        }
-                        wit_bindgen_core::wit_parser::Results::Anon(wit_type) => {
+                    let result = match &func.result {
+                        Some(wit_type) => {
                             let go_type = resolve_type(wit_type, &bindgen.resolve);
                             GoResult::Anon(go_type)
                         }
+                        None => GoResult::Empty,
                     };
 
                     let mut f = Func::export(result, sizes);
