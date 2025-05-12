@@ -4,9 +4,10 @@ updates:
     directory: /
     schedule:
       interval: daily
-    assignees:
-      - blaine-arcjet
-      - e-moran
-    reviewers:
-      - blaine-arcjet
-      - e-moran
+    groups:
+      # WIT packages need to be updated together
+      wit:
+        patterns:
+          - wit-bindgen-core
+          - wit-bindgen
+          - wit-component
