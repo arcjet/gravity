@@ -26,4 +26,4 @@ wit-bindgen-core = "=0.39.0"
 wit-component = "=0.225.0"
 
 [dev-dependencies]
-wit-bindgen = "=0.39.0"
+wit-bindgen = "=0.42.1"
