@@ -1,5 +1,5 @@
 [toolchain]
-channel = "nightly-2025-01-01"
+channel = "stable"
 components = [
     "rustc",
     "cargo",
@@ -7,7 +7,7 @@ components = [
     "rust-std",
     "rust-analyzer",
     "clippy",
-    "rust-src"
+    "rust-src",
 ]
-targets = []
+targets = ["wasm32-wasip1"]
 profile = "default"
