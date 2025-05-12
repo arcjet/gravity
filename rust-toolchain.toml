@@ -7,7 +7,7 @@ components = [
     "rust-std",
     "rust-analyzer",
     "clippy",
-    "rust-src"
+    "rust-src",
 ]
-targets = []
+targets = ["wasm32-unknown-unknown"]
 profile = "default"

@@ -1,4 +1,4 @@
-package arcjet:examples;
+package arcjet:example;
 
 interface logger {
   debug: func(msg: string);
@@ -7,8 +7,8 @@ interface logger {
   error: func(msg: string);
 }
 
-world examples {
+world basic {
   import logger;
 
-  export foobar: func() -> result<string, string>;
+  export hello: func() -> result<string, string>;
 }

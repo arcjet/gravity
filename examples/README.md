@@ -15,10 +15,11 @@ rustup target add wasm32-unknown-unknown
 ## 2. Build the example to Core Wasm
 
 Gravity currently needs a "Core Wasm" file with an embedded WIT custom section.
-This can be built via [Cargo Examples][cargo-examples]
+This can be built using `cargo build` using the
+`--target wasm32-unknown-unknown` flag.
 
 ```sh
-cargo build --example examples --target wasm32-unknown-unknown
+cargo build -p example-basic --target wasm32-unknown-unknown
 ```
 
 ## 3. Run Gravity against the Core Wasm file
@@ -26,12 +27,10 @@ cargo build --example examples --target wasm32-unknown-unknown
 Gravity can be run against the Wasm file produced in Rust's `target/` directory.
 
 ```sh
-cargo run target/wasm32-unknown-unknown/debug/examples/examples.wasm  -o examples/examples.go --world examples
+cargo run target/wasm32-unknown-unknown/debug/example_basic.wasm  -o examples/basic/bindings.go --world basic
 ```
 
 ## 4. Use the generate Go & Wasm files
 
-The above command will produce a `examples.go` and `examples.wasm` file inside
-the `examples/` directory. These could be used within a Go project.
-
-[cargo-examples]: https://doc.rust-lang.org/cargo/reference/cargo-targets.html#examples
+The above command will produce a `bindings.go` and `basic.wasm` file inside the
+`examples/basic` directory. These could be used within a Go project.

@@ -1,2 +1,2 @@
-examples.go
-examples.wasm
+*/*.go
+*/*.wasm
