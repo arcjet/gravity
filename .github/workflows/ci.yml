@@ -45,6 +45,8 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b
         with:
+          # We start by installing the stable toolchain but the
+          # `rust-toolchain.toml` file takes precendence
           toolchain: stable
 
       - name: Inspect toolchain versions
