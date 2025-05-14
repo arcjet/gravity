@@ -23,6 +23,7 @@ jobs:
           disable-sudo-and-containers: true
           egress-policy: block
           allowed-endpoints: >
+            raw.githubusercontent.com:443
             github.com:443
             index.crates.io:443
             static.crates.io:443
