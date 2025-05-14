@@ -19,7 +19,7 @@ This can be built using `cargo build` using the
 `--target wasm32-unknown-unknown` flag.
 
 ```sh
-cargo build -p example-basic --target wasm32-unknown-unknown
+cargo build -p example-basic --target wasm32-unknown-unknown --release
 ```
 
 ## 3. Run Gravity against the Core Wasm file
@@ -27,10 +27,10 @@ cargo build -p example-basic --target wasm32-unknown-unknown
 Gravity can be run against the Wasm file produced in Rust's `target/` directory.
 
 ```sh
-cargo run target/wasm32-unknown-unknown/debug/example_basic.wasm  -o examples/basic/bindings.go --world basic
+cargo run --bin gravity -- --world basic --output examples/basic/basic.go target/wasm32-unknown-unknown/release/example_basic.wasm
 ```
 
 ## 4. Use the generate Go & Wasm files
 
-The above command will produce a `bindings.go` and `basic.wasm` file inside the
+The above command will produce a `basic.go` and `basic.wasm` file inside the
 `examples/basic` directory. These could be used within a Go project.
