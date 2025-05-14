@@ -11,3 +11,8 @@ updates:
           - wit-bindgen-core
           - wit-bindgen
           - wit-component
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
