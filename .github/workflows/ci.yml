@@ -43,6 +43,11 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Inspect toolchain versions
+        run: |
+          cargo -V
+          go version
+
       # Workflow
 
       - name: cargo build
