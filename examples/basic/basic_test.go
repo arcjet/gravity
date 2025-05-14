@@ -14,7 +14,7 @@ func (s SlogLogger) Warn(ctx context.Context, msg string)  { slog.WarnContext(ct
 func (s SlogLogger) Error(ctx context.Context, msg string) { slog.ErrorContext(ctx, msg) }
 
 func TestBasic(t *testing.T) {
-	fac, err := NewHelloFactory(t.Context(), SlogLogger{})
+	fac, err := NewBasicFactory(t.Context(), SlogLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
