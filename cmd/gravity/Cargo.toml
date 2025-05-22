@@ -26,4 +26,4 @@ wit-component = "=0.230.0"
 wit-bindgen = "=0.42.1"
 
 [build-dependencies]
-rustversion = "=1.0.20"
+rustversion = "=1.0.21"
