@@ -4,7 +4,8 @@
 
 # Gravity
 
-Gravity is a host generator for WebAssembly Components. It currently targets [Wazero][wazero], a zero dependency WebAssembly runtime for Go.
+Gravity is a host generator for WebAssembly Components. It currently targets
+[Wazero][wazero], a zero dependency WebAssembly runtime for Go.
 
 ## What?
 
@@ -30,7 +31,7 @@ Wazero has [rejected the Component Model][wazero-component-model], but we can
 still translate Components to Core today.
 
 By adopting a similar strategy as `jco transpile`, we've built this tool to
-produced Wazero output that adhere's to the Component Model's [Canonical
+produced Wazero output that adheres to the Component Model's [Canonical
 ABI][canonical-abi].
 
 ## Installation
@@ -45,7 +46,7 @@ rustup toolchain install nightly-2025-01-01
 From inside this directory, you can install using the command:
 
 ```bash
-cargo +nightly-2025-01-01 install --path .
+cargo +nightly-2025-01-01 install --path cmd/gravity
 ```
 
 Or alternatively, you can install the latest published version from crates.io
