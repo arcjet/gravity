@@ -7,5 +7,5 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = "=0.42.1"
-wit-component = "=0.230.0"
+wit-bindgen = "=0.43.0"
+wit-component = "=0.235.0"
