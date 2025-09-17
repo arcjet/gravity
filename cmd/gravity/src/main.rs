@@ -89,6 +89,74 @@ enum GoType {
     Nothing,
 }
 
+impl GoType {
+    /// Returns true if this type needs post-return cleanup (cabi_post_* function)
+    ///
+    /// According to the Component Model Canonical ABI specification, cleanup is needed
+    /// for types that allocate memory in the guest's linear memory when being returned.
+    ///
+    /// Types that need cleanup:
+    /// - Strings: allocate memory for the string data
+    /// - Lists/Slices: allocate memory for the array data
+    /// - Types containing the above (recursively)
+    ///
+    /// Types that DON'T need cleanup:
+    /// - Primitives (bool, integers, floats): passed by value
+    /// - Enums: represented as integers
+    ///
+    /// Limitations:
+    /// - For UserDefined types (records, type aliases), we can't determine here if they
+    ///   contain strings/lists without the full type definition, so we're conservative
+    /// - A perfect implementation would recursively check record fields, but that would
+    ///   require passing the Resolve context here
+    fn needs_cleanup(&self) -> bool {
+        match self {
+            // Primitive types don't need cleanup
+            GoType::Bool
+            | GoType::Uint8
+            | GoType::Uint16
+            | GoType::Uint32
+            | GoType::Uint64
+            | GoType::Int8
+            | GoType::Int16
+            | GoType::Int32
+            | GoType::Int64
+            | GoType::Float32
+            | GoType::Float64 => false,
+
+            // String and slices allocate memory and need cleanup
+            GoType::String | GoType::Slice(_) => true,
+
+            // Complex types need cleanup if their inner types do
+            GoType::ValueOrOk(inner) | GoType::ValueOrError(inner) => inner.needs_cleanup(),
+
+            // Interfaces (variants) might need cleanup (conservative approach)
+            GoType::Interface => true,
+
+            // User-defined types (records, enums, type aliases) need cleanup if they
+            // contain strings or other allocated types. Since we don't have access to
+            // the type definition here, we must be conservative and assume they might.
+            //
+            // This means we might generate unnecessary cleanup calls for:
+            // - Enums (which are just integers)
+            // - Records containing only primitives
+            // - Type aliases to primitives
+            //
+            // TODO(#cleanup): Improve this by either:
+            // 1. Passing the Resolve context to check actual type definitions
+            // 2. Tracking cleanup requirements during type resolution
+            // 3. Using a different representation that carries this information
+            GoType::UserDefined(_) => true,
+
+            // Error is actually Result<None, String> - strings need cleanup!
+            GoType::Error => true,
+
+            // Nothing represents no value, so no cleanup needed
+            GoType::Nothing => false,
+        }
+    }
+}
+
 impl FormatInto<Go> for &GoType {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         match self {
@@ -148,6 +216,16 @@ impl FormatInto<Go> for GoType {
 enum GoResult {
     Empty,
     Anon(GoType),
+}
+
+impl GoResult {
+    /// Returns true if this result type needs post-return cleanup
+    fn needs_cleanup(&self) -> bool {
+        match self {
+            GoResult::Empty => false,
+            GoResult::Anon(typ) => typ.needs_cleanup(),
+        }
+    }
 }
 
 impl FormatInto<Go> for GoResult {
@@ -438,22 +516,23 @@ impl Bindgen for Func {
                         }
                     })
 
-
-                    $(comment(&[
-                        "The cleanup via `cabi_post_*` cleans up the memory in the guest. By",
-                        "deferring this, we ensure that no memory is corrupted before the function",
-                        "is done accessing it."
-                    ]))
-                    defer func() {
-                        if _, err := i.module.ExportedFunction($(quoted(format!("cabi_post_{name}")))).Call(ctx, $raw...); err != nil {
-                            $(comment(&[
-                                "If we get an error during cleanup, something really bad is",
-                                "going on, so we panic. Also, you can't return the error from",
-                                "the `defer`"
-                            ]))
-                            panic($errors_new("failed to cleanup"))
-                        }
-                    }()
+                    $(if self.result.needs_cleanup() {
+                        $(comment(&[
+                            "The cleanup via `cabi_post_*` cleans up the memory in the guest. By",
+                            "deferring this, we ensure that no memory is corrupted before the function",
+                            "is done accessing it."
+                        ]))
+                        defer func() {
+                            if _, err := i.module.ExportedFunction($(quoted(format!("cabi_post_{name}")))).Call(ctx, $raw...); err != nil {
+                                $(comment(&[
+                                    "If we get an error during cleanup, something really bad is",
+                                    "going on, so we panic. Also, you can't return the error from",
+                                    "the `defer`"
+                                ]))
+                                panic($errors_new("failed to cleanup"))
+                            }
+                        }()
+                    })
 
                     $ret := $raw[0]
                 };
