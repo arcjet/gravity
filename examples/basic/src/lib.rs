@@ -14,4 +14,13 @@ impl Guest for BasicWorld {
 
         Ok("Hello, world!".into())
     }
+    fn primitive() -> bool {
+        true
+    }
+    fn optional_primitive() -> Option<bool> {
+        Some(true)
+    }
+    fn result_primitive() -> Result<bool, String> {
+        Ok(true)
+    }
 }
