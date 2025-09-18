@@ -128,7 +128,11 @@ impl GoType {
             GoType::String | GoType::Slice(_) => true,
 
             // Complex types need cleanup if their inner types do
-            GoType::ValueOrOk(inner) | GoType::ValueOrError(inner) => inner.needs_cleanup(),
+            GoType::ValueOrOk(inner) => inner.needs_cleanup(),
+
+            // The inner type of `Err` is always a String so it requires cleanup
+            // TODO(#91): Store the error type to check both inner types.
+            GoType::ValueOrError(_) => true,
 
             // Interfaces (variants) might need cleanup (conservative approach)
             GoType::Interface => true,
