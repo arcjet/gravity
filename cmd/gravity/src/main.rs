@@ -146,7 +146,7 @@ impl GoType {
             // - Records containing only primitives
             // - Type aliases to primitives
             //
-            // TODO(#cleanup): Improve this by either:
+            // TODO(#92): Improve this by either:
             // 1. Passing the Resolve context to check actual type definitions
             // 2. Tracking cleanup requirements during type resolution
             // 3. Using a different representation that carries this information
