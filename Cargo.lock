@@ -64,6 +64,7 @@ version = "0.0.2"
 dependencies = [
  "clap",
  "genco",
+ "indexmap",
  "trycmd",
  "wit-bindgen",
  "wit-bindgen-core",
@@ -173,6 +174,14 @@ dependencies = [
 
 [[package]]
 name = "example-iface-method-returns-string"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
+name = "example-instructions"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",

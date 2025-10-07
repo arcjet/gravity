@@ -8,30 +8,39 @@ use genco::{prelude::*, tokens::ItemStr};
 /// - Public identifiers start with uppercase (exported)
 /// - Private identifiers start with lowercase (unexported)
 /// - Local identifiers are used as-is without transformation
-#[derive(Debug, Clone, Copy)]
-pub enum GoIdentifier<'a> {
+#[derive(Debug, Clone)]
+pub enum GoIdentifier {
     /// Public/exported identifier (will be converted to UpperCamelCase)
-    Public { name: &'a str },
+    Public { name: String },
     /// Private/unexported identifier (will be converted to lowerCamelCase)
-    Private { name: &'a str },
+    Private { name: String },
     /// Local identifier (will be converted to lowerCamelCase)
-    Local { name: &'a str },
+    Local { name: String },
 }
 
-impl<'a> GoIdentifier<'a> {
+impl GoIdentifier {
     /// Creates a new public identifier.
-    pub fn public(name: &'a str) -> Self {
-        Self::Public { name }
+    pub fn public<T>(name: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Public { name: name.into() }
     }
 
     /// Creates a new private identifier.
-    pub fn private(name: &'a str) -> Self {
-        Self::Private { name }
+    pub fn private<T>(name: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Private { name: name.into() }
     }
 
     /// Creates a new local identifier.
-    pub fn local(name: &'a str) -> Self {
-        Self::Local { name }
+    pub fn local<T>(name: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Local { name: name.into() }
     }
 
     /// Returns an iterator over the characters of the underlying name.
@@ -40,7 +49,7 @@ impl<'a> GoIdentifier<'a> {
     ///
     /// # Returns
     /// An iterator over the characters of the identifier's name.
-    pub fn chars(&self) -> Chars<'a> {
+    pub fn chars(&self) -> Chars<'_> {
         match self {
             GoIdentifier::Public { name } => name.chars(),
             GoIdentifier::Private { name } => name.chars(),
@@ -49,15 +58,21 @@ impl<'a> GoIdentifier<'a> {
     }
 }
 
-impl From<GoIdentifier<'_>> for String {
+impl From<GoIdentifier> for String {
     fn from(value: GoIdentifier) -> Self {
+        (&value).into()
+    }
+}
+
+impl From<&GoIdentifier> for String {
+    fn from(value: &GoIdentifier) -> Self {
         let mut tokens: Tokens<Go> = Tokens::new();
         value.format_into(&mut tokens);
         tokens.to_string().expect("to format correctly")
     }
 }
 
-impl FormatInto<Go> for &GoIdentifier<'_> {
+impl FormatInto<Go> for &GoIdentifier {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         let mut chars = self.chars();
 
@@ -83,7 +98,7 @@ impl FormatInto<Go> for &GoIdentifier<'_> {
         }
     }
 }
-impl FormatInto<Go> for GoIdentifier<'_> {
+impl FormatInto<Go> for GoIdentifier {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         (&self).format_into(tokens)
     }

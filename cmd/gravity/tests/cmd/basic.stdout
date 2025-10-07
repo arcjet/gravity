@@ -12,11 +12,6 @@ import _ "embed"
 //go:embed basic.wasm
 var wasmFileBasic []byte
 
-type BasicFactory struct {
-	runtime wazero.Runtime
-	module wazero.CompiledModule
-}
-
 type IBasicLogger interface {
 	Debug(
 		ctx context.Context,
@@ -34,6 +29,11 @@ type IBasicLogger interface {
 		ctx context.Context,
 		msg string,
 	)
+}
+
+type BasicFactory struct {
+	runtime wazero.Runtime
+	module wazero.CompiledModule
 }
 
 func NewBasicFactory(
@@ -114,8 +114,10 @@ func NewBasicFactory(
 	if err != nil {
 		return nil, err
 	}
-
-	return &BasicFactory{wazeroRuntime, module}, nil
+	return &BasicFactory{
+		runtime: wazeroRuntime,
+		module: module,
+	}, nil
 }
 
 func (f *BasicFactory) Instantiate(ctx context.Context) (*BasicInstance, error) {
@@ -132,6 +134,14 @@ func (f *BasicFactory) Close(ctx context.Context) {
 
 type BasicInstance struct {
 	module api.Module
+}
+
+func (i *BasicInstance) Close(ctx context.Context) error {
+	if err := i.module.Close(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
@@ -156,14 +166,6 @@ func writeString(
 		return 1, 0, err
 	}
 	return uint64(ptr), uint64(len(s)), nil
-}
-
-func (i *BasicInstance) Close(ctx context.Context) error {
-	if err := i.module.Close(ctx); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (i *BasicInstance) Hello(

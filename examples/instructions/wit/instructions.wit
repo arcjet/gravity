@@ -1,0 +1,15 @@
+package gravity:instructions;
+
+world instructions {
+  export s8-roundtrip: func(val: s8) -> s8;
+
+  export u8-roundtrip: func(val: u8) -> u8;
+
+  export s16-roundtrip: func(val: s16) -> s16;
+
+  export u16-roundtrip: func(val: u16) -> u16;
+
+  export s32-roundtrip: func(val: s32) -> s32;
+
+  export u32-roundtrip: func(val: u32) -> u32;
+}
