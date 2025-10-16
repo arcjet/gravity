@@ -180,7 +180,7 @@ func (i *InstructionsInstance) U32Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := api.DecodeU32(results1)
+	result2 := api.DecodeU32(uint64(results1))
 	return result2
 }
 

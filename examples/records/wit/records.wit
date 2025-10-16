@@ -1,0 +1,18 @@
+package arcjet:records;
+
+interface types {
+  record foo {
+    float32: f32,
+    float64: f64,
+    uint32: u32,
+    uint64: u64,
+    s: string,
+    vf32: list<f32>,
+    vf64: list<f64>,
+  }
+}
+
+world records {
+  use types.{foo};
+  export modify-foo: func(f: foo) -> foo;
+}
