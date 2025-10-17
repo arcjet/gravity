@@ -28,7 +28,7 @@ test = false
 clap = "=4.5.48"
 genco = "=0.18.1"
 wit-bindgen-core = "=0.46.0"
-wit-component = "=0.239.0"
+wit-component = "=0.240.0"
 
 [dev-dependencies]
 # Cutting out `filesystem` feature
