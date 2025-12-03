@@ -228,13 +228,15 @@ impl Bindgen for Func<'_> {
                             "is done accessing it."
                         ]))
                         defer func() {
-                            if _, err := i.module.ExportedFunction($(quoted(format!("cabi_post_{name}")))).Call(ctx, $raw...); err != nil {
-                                $(comment(&[
-                                    "If we get an error during cleanup, something really bad is",
-                                    "going on, so we panic. Also, you can't return the error from",
-                                    "the `defer`"
-                                ]))
-                                panic($ERRORS_NEW("failed to cleanup"))
+                            if postFn := i.module.ExportedFunction($(quoted(format!("cabi_post_{name}")))); postFn != nil {
+                                if _, err := postFn.Call(ctx, $raw...); err != nil {
+                                    $(comment(&[
+                                        "If we get an error during cleanup, something really bad is",
+                                        "going on, so we panic. Also, you can't return the error from",
+                                        "the `defer`"
+                                    ]))
+                                    panic($ERRORS_NEW("failed to cleanup"))
+                                }
                             }
                         }()
                     })

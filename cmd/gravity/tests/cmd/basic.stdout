@@ -182,11 +182,13 @@ func (i *BasicInstance) Hello(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if _, err := i.module.ExportedFunction("cabi_post_hello").Call(ctx, raw0...); err != nil {
-			// If we get an error during cleanup, something really bad is
-			// going on, so we panic. Also, you can't return the error from
-			// the `defer`
-			panic(errors.New("failed to cleanup"))
+		if postFn := i.module.ExportedFunction("cabi_post_hello"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw0...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
 		}
 	}()
 
@@ -318,11 +320,13 @@ func (i *BasicInstance) ResultPrimitive(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if _, err := i.module.ExportedFunction("cabi_post_result-primitive").Call(ctx, raw0...); err != nil {
-			// If we get an error during cleanup, something really bad is
-			// going on, so we panic. Also, you can't return the error from
-			// the `defer`
-			panic(errors.New("failed to cleanup"))
+		if postFn := i.module.ExportedFunction("cabi_post_result-primitive"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw0...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
 		}
 	}()
 
@@ -402,11 +406,13 @@ func (i *BasicInstance) OptionalString(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if _, err := i.module.ExportedFunction("cabi_post_optional-string").Call(ctx, raw2...); err != nil {
-			// If we get an error during cleanup, something really bad is
-			// going on, so we panic. Also, you can't return the error from
-			// the `defer`
-			panic(errors.New("failed to cleanup"))
+		if postFn := i.module.ExportedFunction("cabi_post_optional-string"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw2...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
 		}
 	}()
 
