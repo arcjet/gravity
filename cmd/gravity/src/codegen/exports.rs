@@ -166,7 +166,7 @@ mod tests {
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
-        assert!(generated.contains("result2 := api.DecodeU32(results1)"));
+        assert!(generated.contains("result2 := api.DecodeU32(uint64(results1))"));
         assert!(generated.contains("return result2"));
     }
 }
