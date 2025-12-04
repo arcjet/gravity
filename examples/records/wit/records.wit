@@ -1,6 +1,6 @@
 package arcjet:records;
 
-interface types {
+world records {
   record foo {
     float32: f32,
     float64: f64,
@@ -10,10 +10,7 @@ interface types {
     vf32: list<f32>,
     vf64: list<f64>,
   }
-}
 
-world records {
-  use types.{foo};
   export modify-foo: func(f: foo) -> foo;
   export modify-foo-fallible: func(f: foo) -> result<foo, string>;
 }
