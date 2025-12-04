@@ -28,4 +28,30 @@ impl Guest for RecordsWorld {
             vf64: vf64.iter().map(|v| v * 2.0).collect(),
         }
     }
+
+    fn modify_foo_fallible(
+        Foo {
+            float64,
+            float32,
+            uint32,
+            uint64,
+            s,
+            vf32,
+            vf64,
+        }: Foo,
+    ) -> Result<Foo, String> {
+        if float64 > 10.0 {
+            Err("float64 too big".to_string())
+        } else {
+            Ok(Foo {
+                float64: float64 * 2.0,
+                float32: float32 * 2.0,
+                uint32: uint32 + 1,
+                uint64: uint64 + 1,
+                s: format!("received {s}"),
+                vf32: vf32.iter().map(|v| v * 2.0).collect(),
+                vf64: vf64.iter().map(|v| v * 2.0).collect(),
+            })
+        }
+    }
 }

@@ -15,4 +15,5 @@ interface types {
 world records {
   use types.{foo};
   export modify-foo: func(f: foo) -> foo;
+  export modify-foo-fallible: func(f: foo) -> result<foo, string>;
 }
