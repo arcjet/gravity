@@ -5,11 +5,8 @@ import (
 	"testing"
 )
 
-type types struct{}
-
 func TestRecord(t *testing.T) {
-	tys := types{}
-	fac, err := NewRecordsFactory(t.Context(), tys)
+	fac, err := NewRecordsFactory(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,8 +43,7 @@ func TestRecord(t *testing.T) {
 }
 
 func TestRecordFallibleSuccess(t *testing.T) {
-	tys := types{}
-	fac, err := NewRecordsFactory(t.Context(), tys)
+	fac, err := NewRecordsFactory(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,8 +83,7 @@ func TestRecordFallibleSuccess(t *testing.T) {
 }
 
 func TestRecordFallibleError(t *testing.T) {
-	tys := types{}
-	fac, err := NewRecordsFactory(t.Context(), tys)
+	fac, err := NewRecordsFactory(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
