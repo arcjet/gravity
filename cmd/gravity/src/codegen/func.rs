@@ -1135,18 +1135,18 @@ impl Bindgen for Func<'_> {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if !$ok {
                                 var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read f64 from memory")
+                                return $default, $ERRORS_NEW("failed to read f32 from memory")
                             }
                         }
                         GoResult::Anon(GoType::Error) => {
                             if !$ok {
-                                return $ERRORS_NEW("failed to read f64 from memory")
+                                return $ERRORS_NEW("failed to read f32 from memory")
                             }
                         }
                         GoResult::Anon(_) | GoResult::Empty => {
                             $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
                             if !$ok {
-                                panic($ERRORS_NEW("failed to read f64 from memory"))
+                                panic($ERRORS_NEW("failed to read f32 from memory"))
                             }
                         }
                     })
