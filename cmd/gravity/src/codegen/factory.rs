@@ -154,7 +154,9 @@ impl<'a> FactoryGenerator<'a> {
         quote! {
             ctx $CONTEXT_CONTEXT,
             $(for interface in interfaces.iter() =>
-            $(&interface.constructor_param_name) $(&interface.go_interface_name),)
+            $(&interface.constructor_param_name) $(&interface.go_interface_name),
+            $['\r']
+            )
         }
     }
 }
