@@ -460,7 +460,7 @@ impl<'a> ImportCodeGenerator<'a> {
             WithFunc(func(
                 $(for param in wasm_params join (,$['\r']) => $param),
                 $(for param in f.args() join (,$['\r']) => $param uint32),
-            ) $(f.result()){
+            ) $(f.result()) {
                 $(f.body())
             }).
             Export($(quoted(func_name))).
