@@ -325,7 +325,7 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := $WAZERO_API_DECODE_U32($operand)
+                    $result := $WAZERO_API_DECODE_U32(uint64($operand))
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
