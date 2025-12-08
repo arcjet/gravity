@@ -4,7 +4,8 @@ use genco::prelude::*;
 use wit_bindgen_core::{
     abi::{AbiVariant, LiftLower},
     wit_parser::{
-        Function, InterfaceId, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World, WorldItem,
+        Function, InterfaceId, Resolve, SizeAlign, Type, TypeDef, TypeDefKind, TypeId, World,
+        WorldItem,
     },
 };
 
@@ -426,7 +427,20 @@ impl<'a> ImportCodeGenerator<'a> {
         let result = if wasm_sig.results.is_empty() {
             GoResult::Empty
         } else {
-            todo!("implement handling of wasm signatures with results");
+            // TODO: Should this instead produce the results based on the wasm_sig?
+            match method.wit_function.result {
+                Some(Type::Bool) => GoResult::Anon(GoType::Uint32),
+                Some(Type::Id(typ_id)) => {
+                    let TypeDef { kind, .. } = self.resolve.types.get(typ_id).unwrap();
+                    let go_type = match kind {
+                        TypeDefKind::Enum(_) => GoType::Uint32,
+                        _ => todo!("handle Type::Id({typ_id:?})"),
+                    };
+                    GoResult::Anon(go_type)
+                }
+                Some(wit_type) => todo!("handle {wit_type:?}"),
+                None => GoResult::Empty,
+            }
         };
         let mut f = Func::import(param_name, result, self.sizes);
 
