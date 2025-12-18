@@ -58,64 +58,96 @@ func NewBasicFactory(
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("arcjet:basic/logger").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Debug(ctx, str0)
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			logger.Debug(ctx, str0)
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("debug").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Info(ctx, str0)
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			logger.Info(ctx, str0)
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("info").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Warn(ctx, str0)
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			logger.Warn(ctx, str0)
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("warn").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		logger.Error(ctx, str0)
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			logger.Error(ctx, str0)
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("error").
 	Instantiate(ctx)
 	if err0 != nil {
@@ -123,28 +155,37 @@ func NewBasicFactory(
 	}
 	_, err1 := wazeroRuntime.NewHostModuleBuilder("arcjet:basic/utils").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-		arg2 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		value1 := utils.Uppercase(ctx, str0)
-		memory2 := mod.Memory()
-		realloc2 := mod.ExportedFunction("cabi_realloc")
-		ptr2, len2, err2 := writeString(ctx, value1, memory2, realloc2)
-		if err2 != nil {
-			panic(err2)
-		}
-		mod.Memory().WriteUint32Le(arg2+4, uint32(len2))
-		mod.Memory().WriteUint32Le(arg2+0, uint32(ptr2))
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			arg2 := api.DecodeU32(stack[2])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			value1 := utils.Uppercase(ctx, str0)
+			memory2 := mod.Memory()
+			realloc2 := mod.ExportedFunction("cabi_realloc")
+			ptr2, len2, err2 := writeString(ctx, value1, memory2, realloc2)
+			if err2 != nil {
+				panic(err2)
+			}
+			mod.Memory().WriteUint32Le(arg2+4, uint32(len2))
+			mod.Memory().WriteUint32Le(arg2+0, uint32(ptr2))
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("uppercase").
 	Instantiate(ctx)
 	if err1 != nil {

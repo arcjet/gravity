@@ -62,11 +62,12 @@ impl<'a> Func<'a> {
     }
 
     /// Create a new exported function.
-    pub fn import(param_name: &'a GoIdentifier, result: GoResult, sizes: &'a SizeAlign) -> Self {
+    pub fn import(param_name: &'a GoIdentifier, sizes: &'a SizeAlign) -> Self {
         Self {
             direction: Direction::Import { param_name },
             args: Vec::new(),
-            result,
+            // Imports use the stack so the generated function never has a return value
+            result: GoResult::Empty,
             tmp: 0,
             body: Tokens::new(),
             block_storage: Vec::new(),
@@ -551,12 +552,22 @@ impl Bindgen for Func<'_> {
             }
             Instruction::ResultLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Return { amt, .. } => {
-                if *amt != 0 {
-                    let operand = &operands[0];
-                    quote_in! { self.body =>
-                        $['\r']
-                        return $operand
-                    };
+                if matches!(self.direction, Direction::Export) {
+                    if *amt != 0 {
+                        let operand = &operands[0];
+                        quote_in! { self.body =>
+                            $['\r']
+                            return $operand
+                        };
+                    }
+                } else {
+                    for idx in 0..*amt {
+                        let operand = &operands[idx];
+                        quote_in! { self.body =>
+                            $['\r']
+                            stack[$idx] = $operand
+                        };
+                    }
                 }
             }
             Instruction::CallInterface { func, .. } => {
