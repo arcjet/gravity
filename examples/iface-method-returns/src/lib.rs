@@ -14,4 +14,8 @@ impl Guest for ExampleWorld {
 
         Ok("Hello, world!".into())
     }
+
+    fn call_get_u32() -> u32 {
+        runtime::get_u32()
+    }
 }

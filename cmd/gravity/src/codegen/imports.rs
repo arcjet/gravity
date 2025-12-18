@@ -18,7 +18,10 @@ use crate::{
     },
     go::{
         GoIdentifier, GoResult, GoType,
-        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
+        imports::{
+            CONTEXT_CONTEXT, GoImport, WAZERO_API_DECODE_U32, WAZERO_API_GO_MODULE_FUNC,
+            WAZERO_API_MODULE, WAZERO_API_VALUE_TYPE,
+        },
     },
     resolve_type,
 };
@@ -414,21 +417,10 @@ impl<'a> ImportCodeGenerator<'a> {
     ) -> Tokens<Go> {
         let func_name = &method.name;
 
-        // Generate Wasm function parameters based on WIT types.
-        let wasm_params = vec![
-            quote! { ctx $CONTEXT_CONTEXT },
-            quote! { mod $WAZERO_API_MODULE },
-        ];
-
         let wasm_sig = self
             .resolve
             .wasm_signature(AbiVariant::GuestImport, &method.wit_function);
-        let result = if wasm_sig.results.is_empty() {
-            GoResult::Empty
-        } else {
-            todo!("implement handling of wasm signatures with results");
-        };
-        let mut f = Func::import(param_name, result, self.sizes);
+        let mut f = Func::import(param_name, self.sizes);
 
         // Magic
         wit_bindgen_core::abi::call(
@@ -441,14 +433,28 @@ impl<'a> ImportCodeGenerator<'a> {
             false,
         );
 
+        let args = f.args().iter().enumerate();
+        let wasm_params = wasm_sig.params.iter().map(GoImport::from);
+        let wasm_results = wasm_sig.results.iter().map(GoImport::from);
+
         quote! {
             NewFunctionBuilder().
-            WithFunc(func(
-                $(for param in wasm_params join (,$['\r']) => $param),
-                $(for param in f.args() join (,$['\r']) => $param uint32),
-            ) $(f.result()){
-                $(f.body())
-            }).
+            WithGoModuleFunction(
+                $WAZERO_API_GO_MODULE_FUNC(func(
+                    ctx $CONTEXT_CONTEXT,
+                    mod $WAZERO_API_MODULE,
+                    stack []uint64,
+                ) {
+                    $(for (idx, arg) in args join ($['\r']) => $arg := $WAZERO_API_DECODE_U32(stack[$idx]))
+                    $(f.body())
+                }),
+                []$WAZERO_API_VALUE_TYPE{
+                    $(for typ in wasm_params join ($['\r']) => $typ,)
+                },
+                []$WAZERO_API_VALUE_TYPE{
+                    $(for typ in wasm_results join ($['\r']) => $typ,)
+                },
+            ).
             Export($(quoted(func_name))).
         }
     }
@@ -564,7 +570,7 @@ mod tests {
 
         // Should have only one uint32 parameter (plus ctx and mod)
         let code_str = result.to_string().unwrap();
-        assert!(code_str.contains("arg0 uint32"));
+        assert!(code_str.contains("arg0 := api.DecodeU32(stack[0])"));
         assert!(!code_str.contains("arg1 uint32"));
         assert!(!code_str.contains("mod.Memory().Read")); // No string reading
 
