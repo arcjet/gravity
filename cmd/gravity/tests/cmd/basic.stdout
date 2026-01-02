@@ -32,6 +32,11 @@ type IBasicLogger interface {
 	)
 }
 
+type Point struct {
+	X uint32
+	Y uint32
+}
+
 type BasicFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
