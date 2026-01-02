@@ -375,7 +375,7 @@ impl<'a> ImportCodeGenerator<'a> {
                     $['\n']
                     type $(enum_type) int
                     $['\n']
-                    func $(enum_type) $enum_function() {}
+                    func ($(enum_type)) $enum_function() {}
                     $['\n']
                     const (
                         $(for name in variants join ($['\r']) => $name $enum_type = iota)
