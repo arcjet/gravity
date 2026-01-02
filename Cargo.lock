@@ -172,7 +172,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "example-iface-method-returns-string"
+name = "example-iface-method-returns"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",

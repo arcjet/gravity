@@ -19,6 +19,9 @@ type IExampleRuntime interface {
 	Arch(
 		ctx context.Context,
 	) string
+	GetU32(
+		ctx context.Context,
+	) uint32
 	Puts(
 		ctx context.Context,
 		msg string,
@@ -38,53 +41,92 @@ func NewExampleFactory(
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("arcjet:example/runtime").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-	) {
-		value0 := runtime.Os(ctx, )
-		memory1 := mod.Memory()
-		realloc1 := mod.ExportedFunction("cabi_realloc")
-		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
-		if err1 != nil {
-			panic(err1)
-		}
-		mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
-		mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			value0 := runtime.Os(ctx, )
+			memory1 := mod.Memory()
+			realloc1 := mod.ExportedFunction("cabi_realloc")
+			ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
+			if err1 != nil {
+				panic(err1)
+			}
+			mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
+			mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("os").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-	) {
-		value0 := runtime.Arch(ctx, )
-		memory1 := mod.Memory()
-		realloc1 := mod.ExportedFunction("cabi_realloc")
-		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
-		if err1 != nil {
-			panic(err1)
-		}
-		mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
-		mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			value0 := runtime.Arch(ctx, )
+			memory1 := mod.Memory()
+			realloc1 := mod.ExportedFunction("cabi_realloc")
+			ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
+			if err1 != nil {
+				panic(err1)
+			}
+			mod.Memory().WriteUint32Le(arg0+4, uint32(len1))
+			mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("arch").
 	NewFunctionBuilder().
-	WithFunc(func(
-		ctx context.Context,
-		mod api.Module,
-		arg0 uint32,
-		arg1 uint32,
-	) {
-		buf0, ok0 := mod.Memory().Read(arg0, arg1)
-		if !ok0 {
-			panic(errors.New("failed to read bytes from memory"))
-		}
-		str0 := string(buf0)
-		runtime.Puts(ctx, str0)
-	}).
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			value0 := runtime.GetU32(ctx, )
+			result1 := api.EncodeU32(value0)
+			stack[0] = result1
+		}),
+		[]api.ValueType{},
+		[]api.ValueType{
+			api.ValueTypeI32,
+		},
+	).
+	Export("get-u32").
+	NewFunctionBuilder().
+	WithGoModuleFunction(
+		api.GoModuleFunc(func(
+			ctx context.Context,
+			mod api.Module,
+			stack []uint64,
+		) {
+			arg0 := api.DecodeU32(stack[0])
+			arg1 := api.DecodeU32(stack[1])
+			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			if !ok0 {
+				panic(errors.New("failed to read bytes from memory"))
+			}
+			str0 := string(buf0)
+			runtime.Puts(ctx, str0)
+		}),
+		[]api.ValueType{
+			api.ValueTypeI32,
+			api.ValueTypeI32,
+		},
+		[]api.ValueType{},
+	).
 	Export("puts").
 	Instantiate(ctx)
 	if err0 != nil {
@@ -223,5 +265,19 @@ func (i *ExampleInstance) Hello(
 		err8 = errors.New("invalid variant discriminant for expected")
 	}
 	return value8, err8
+}
+
+func (i *ExampleInstance) CallGetU32(
+	ctx context.Context,
+) uint32 {
+	raw0, err0 := i.module.ExportedFunction("call-get-u32").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := api.DecodeU32(results0)
+	return result1
 }
 
