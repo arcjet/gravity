@@ -16,4 +16,12 @@ world instructions {
   export f32-roundtrip: func(val: f32) -> f32;
 
   export f64-roundtrip: func(val: f64) -> f64;
+
+  enum enum-values {
+    one,
+    two,
+    three,
+  }
+
+  export enum-input: func(val: enum-values);
 }

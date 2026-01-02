@@ -222,3 +222,21 @@ func Test_F64Roundtrip(t *testing.T) {
 		})
 	}
 }
+
+func Test_EnumInput(t *testing.T) {
+	fac, err := NewInstructionsFactory(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fac.Close(t.Context())
+
+	ins, err := fac.Instantiate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ins.Close(t.Context())
+
+	ins.EnumInput(t.Context(), One)
+	ins.EnumInput(t.Context(), Two)
+	ins.EnumInput(t.Context(), Three)
+}

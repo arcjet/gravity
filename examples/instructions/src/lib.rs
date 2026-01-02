@@ -39,4 +39,10 @@ impl Guest for InstructionsWorld {
         assert!((f64::MIN..=f64::MAX).contains(&val));
         val
     }
+    fn enum_input(val: EnumValues) {
+        assert!(matches!(
+            val,
+            EnumValues::One | EnumValues::Two | EnumValues::Three
+        ));
+    }
 }
