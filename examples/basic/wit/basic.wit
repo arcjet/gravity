@@ -7,8 +7,13 @@ interface logger {
   error: func(msg: string);
 }
 
+interface utils {
+  uppercase: func(val: string) -> string;
+}
+
 world basic {
   import logger;
+  import utils;
 
   record point {
     x: u32,

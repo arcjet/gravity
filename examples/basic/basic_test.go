@@ -3,6 +3,7 @@ package basic
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 )
 
@@ -13,8 +14,14 @@ func (s SlogLogger) Info(ctx context.Context, msg string)  { slog.InfoContext(ct
 func (s SlogLogger) Warn(ctx context.Context, msg string)  { slog.WarnContext(ctx, msg) }
 func (s SlogLogger) Error(ctx context.Context, msg string) { slog.ErrorContext(ctx, msg) }
 
+type Utils struct{}
+
+func (Utils) Uppercase(ctx context.Context, value string) string {
+	return strings.ToUpper(value)
+}
+
 func TestBasic(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{})
+	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +45,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestNoPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{})
+	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +66,7 @@ func TestNoPrimitiveCleanup(t *testing.T) {
 }
 
 func TestNoOptionalPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{})
+	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +90,7 @@ func TestNoOptionalPrimitiveCleanup(t *testing.T) {
 }
 
 func TestResultPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{})
+	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
