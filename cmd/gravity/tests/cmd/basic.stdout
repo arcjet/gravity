@@ -46,7 +46,8 @@ type BasicFactory struct {
 
 func NewBasicFactory(
 	ctx context.Context,
-	logger IBasicLogger,utils IBasicUtils,
+	logger IBasicLogger,
+	utils IBasicUtils,
 ) (*BasicFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
 
