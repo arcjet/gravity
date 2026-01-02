@@ -10,6 +10,11 @@ interface logger {
 world basic {
   import logger;
 
+  record point {
+    x: u32,
+    y: u32,
+  }
+
   export hello: func() -> result<string, string>;
   export primitive: func() -> bool;
   export optional-primitive: func(b: option<bool>) -> option<bool>;
