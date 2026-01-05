@@ -354,6 +354,7 @@ impl Bindgen for Func<'_> {
                 let offset = offset.size_wasm32();
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
+                let encoded = &format!("encoded{tmp}");
                 let ok = &format!("ok{tmp}");
                 let default = &format!("default{tmp}");
                 let operand = &operands[0];
@@ -379,8 +380,9 @@ impl Bindgen for Func<'_> {
                             }
                         }
                     })
+                    $encoded := $WAZERO_API_ENCODE_U32($value)
                 };
-                results.push(Operand::SingleValue(value.into()));
+                results.push(Operand::SingleValue(encoded.into()));
             }
             Instruction::StringLift => {
                 let tmp = self.tmp();
