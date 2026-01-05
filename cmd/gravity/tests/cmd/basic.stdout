@@ -187,9 +187,9 @@ func NewBasicFactory(
 				panic(err2)
 			}
 			ptr3 := api.DecodeU32(arg2)
-			mod.Memory().WriteUint32Le(ptr3+4, len2)
+			mod.Memory().WriteUint32Le(ptr3+4, uint32(len2))
 			ptr4 := api.DecodeU32(arg2)
-			mod.Memory().WriteUint32Le(ptr4+0, ptr2)
+			mod.Memory().WriteUint32Le(ptr4+0, uint32(ptr2))
 		}),
 		[]api.ValueType{
 			api.ValueTypeI32,

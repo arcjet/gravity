@@ -56,9 +56,9 @@ func NewExampleFactory(
 				panic(err1)
 			}
 			ptr2 := api.DecodeU32(arg0)
-			mod.Memory().WriteUint32Le(ptr2+4, len1)
+			mod.Memory().WriteUint32Le(ptr2+4, uint32(len1))
 			ptr3 := api.DecodeU32(arg0)
-			mod.Memory().WriteUint32Le(ptr3+0, ptr1)
+			mod.Memory().WriteUint32Le(ptr3+0, uint32(ptr1))
 		}),
 		[]api.ValueType{
 			api.ValueTypeI32,
@@ -82,9 +82,9 @@ func NewExampleFactory(
 				panic(err1)
 			}
 			ptr2 := api.DecodeU32(arg0)
-			mod.Memory().WriteUint32Le(ptr2+4, len1)
+			mod.Memory().WriteUint32Le(ptr2+4, uint32(len1))
 			ptr3 := api.DecodeU32(arg0)
-			mod.Memory().WriteUint32Le(ptr3+0, ptr1)
+			mod.Memory().WriteUint32Le(ptr3+0, uint32(ptr1))
 		}),
 		[]api.ValueType{
 			api.ValueTypeI32,
