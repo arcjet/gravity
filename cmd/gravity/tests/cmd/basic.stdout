@@ -364,7 +364,7 @@ func (i *BasicInstance) OptionalPrimitive(
 		variant1_1 = 0
 	} else {
 		variantPayload := arg0
-		var value0 uint32
+		var value0 uint64
 		if variantPayload {
 			value0 = 1
 		} else {

@@ -244,7 +244,7 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    var $(&value) uint32
+                    var $(&value) uint64
                     if $operand {
                         $(&value) = 1
                     } else {
@@ -910,7 +910,7 @@ impl Bindgen for Func<'_> {
 
                 quote_in! { self.body =>
                     $['\r']
-                    var $enum_tmp uint32
+                    var $enum_tmp uint64
                     switch $value {
                     $cases
                     default:
