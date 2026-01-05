@@ -568,7 +568,7 @@ mod tests {
 
         // Should have only one uint32 parameter (plus ctx and mod)
         let code_str = result.to_string().unwrap();
-        assert!(code_str.contains("arg0 := api.DecodeU32(stack[0])"));
+        assert!(code_str.contains("arg0 := stack[0]"));
         assert!(!code_str.contains("arg1 uint32"));
         assert!(!code_str.contains("mod.Memory().Read")); // No string reading
 
