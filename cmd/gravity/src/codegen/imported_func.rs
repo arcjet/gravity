@@ -449,7 +449,7 @@ impl Bindgen for ImportedFunc<'_> {
                 quote_in! { self.body =>
                     $['\r']
                     $ptr := $WAZERO_API_DECODE_U32($ptr_op)
-                    mod.Memory().WriteUint32Le($ptr+$offset, $len)
+                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($len))
                 }
             }
             Instruction::PointerStore { offset } => {
@@ -462,7 +462,7 @@ impl Bindgen for ImportedFunc<'_> {
                 quote_in! { self.body =>
                     $['\r']
                     $ptr := $WAZERO_API_DECODE_U32($ptr_op)
-                    mod.Memory().WriteUint32Le($ptr+$offset, $value)
+                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($value))
                 }
             }
             Instruction::ResultLower {
