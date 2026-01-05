@@ -12,6 +12,20 @@ import _ "embed"
 //go:embed instructions.wasm
 var wasmFileInstructions []byte
 
+type EnumValues interface {
+	isEnumValues()
+}
+
+type enumValues int
+
+func (enumValues) isEnumValues() {}
+
+const (
+	One enumValues = iota
+	Two enumValues = iota
+	Three enumValues = iota
+)
+
 type InstructionsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
@@ -216,5 +230,28 @@ func (i *InstructionsInstance) F64Roundtrip(
 	results1 := raw1[0]
 	result2 := api.DecodeF64(results1)
 	return result2
+}
+
+func (i *InstructionsInstance) EnumInput(
+	ctx context.Context,
+	val EnumValues,
+) {
+	arg0 := val
+	var enum0 uint32
+	switch arg0 {
+	case One:
+		enum0 = 0
+	case Two:
+		enum0 = 1
+	case Three:
+		enum0 = 2
+	default:
+		panic(errors.New("invalid enum type provided"))
+	}
+	_, err1 := i.module.ExportedFunction("enum-input").Call(ctx, uint64(enum0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
 }
 
