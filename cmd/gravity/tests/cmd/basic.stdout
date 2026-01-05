@@ -357,8 +357,8 @@ func (i *BasicInstance) OptionalPrimitive(
 	b bool,
 ) (bool, bool) {
 	arg0 := b
-	var variant1_0 uint32
-	var variant1_1 uint32
+	var variant1_0 uint64
+	var variant1_1 uint64
 	if reflect.ValueOf(arg0).IsZero() {
 		variant1_0 = 0
 		variant1_1 = 0
@@ -471,7 +471,7 @@ func (i *BasicInstance) OptionalString(
 	s string,
 ) (string, bool) {
 	arg0 := s
-	var variant1_0 uint32
+	var variant1_0 uint64
 	var variant1_1 uint64
 	var variant1_2 uint64
 	if reflect.ValueOf(arg0).IsZero() {

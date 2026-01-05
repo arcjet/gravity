@@ -15,7 +15,7 @@ use crate::{
             WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32, WAZERO_API_ENCODE_U32,
         },
     },
-    resolve_type, resolve_wasm_type,
+    resolve_type,
 };
 
 pub struct Func<'a> {
@@ -666,12 +666,11 @@ impl Bindgen for Func<'_> {
                 let mut vars: Tokens<Go> = Tokens::new();
                 for i in 0..result_types.len() {
                     let variant = &format!("variant{tmp}_{i}");
-                    let typ = resolve_wasm_type(&result_types[i]);
                     results.push(Operand::SingleValue(variant.into()));
 
                     quote_in! { vars =>
                         $['\r']
-                        var $variant $typ
+                        var $variant uint64
                     }
 
                     let some_result = &some_results[i];
@@ -842,12 +841,11 @@ impl Bindgen for Func<'_> {
                 let value = &operands[0];
                 let default = &format!("default{tmp}");
 
-                for (i, typ) in result_types.iter().enumerate() {
+                for i in 0..result_types.len() {
                     let variant_item = &format!("variant{tmp}_{i}");
-                    let typ = resolve_wasm_type(typ);
                     quote_in! { self.body =>
                         $['\r']
-                        var $variant_item $typ
+                        var $variant_item uint64
                     }
                     results.push(Operand::SingleValue(variant_item.into()));
                 }
