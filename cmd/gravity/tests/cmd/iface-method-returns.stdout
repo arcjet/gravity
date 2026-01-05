@@ -47,8 +47,8 @@ func NewExampleFactory(
 			mod api.Module,
 			stack []uint64,
 		) {
-			arg0 := api.DecodeU32(stack[0])
 			value0 := runtime.Os(ctx, )
+			arg0 := stack[0]
 			memory1 := mod.Memory()
 			realloc1 := mod.ExportedFunction("cabi_realloc")
 			ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
@@ -71,8 +71,8 @@ func NewExampleFactory(
 			mod api.Module,
 			stack []uint64,
 		) {
-			arg0 := api.DecodeU32(stack[0])
 			value0 := runtime.Arch(ctx, )
+			arg0 := stack[0]
 			memory1 := mod.Memory()
 			realloc1 := mod.ExportedFunction("cabi_realloc")
 			ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
@@ -112,9 +112,11 @@ func NewExampleFactory(
 			mod api.Module,
 			stack []uint64,
 		) {
-			arg0 := api.DecodeU32(stack[0])
-			arg1 := api.DecodeU32(stack[1])
-			buf0, ok0 := mod.Memory().Read(arg0, arg1)
+			arg0 := stack[0]
+			arg1 := stack[1]
+			ptr0 := api.DecodeU32(arg0)
+			len0 := api.DecodeU32(arg1)
+			buf0, ok0 := mod.Memory().Read(ptr0, len0)
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
 			}

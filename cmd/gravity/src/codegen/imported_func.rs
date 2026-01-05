@@ -8,7 +8,7 @@ use wit_bindgen_core::{
 
 use crate::{
     go::{
-        GoIdentifier, GoResult, GoType, Operand, comment,
+        GoIdentifier, GoType, Operand, comment,
         imports::{
             ERRORS_NEW, REFLECT_VALUE_OF, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
@@ -18,9 +18,8 @@ use crate::{
     resolve_type, resolve_wasm_type,
 };
 
-pub struct Func<'a> {
-    args: Vec<String>,
-    result: GoResult,
+pub struct ImportedFunc<'a> {
+    param_name: &'a GoIdentifier,
     tmp: usize,
     body: Tokens<Go>,
     block_storage: Vec<Tokens<Go>>,
@@ -28,12 +27,11 @@ pub struct Func<'a> {
     sizes: &'a SizeAlign,
 }
 
-impl<'a> Func<'a> {
-    /// Create a new exported function.
-    pub fn new(result: GoResult, sizes: &'a SizeAlign) -> Self {
+impl<'a> ImportedFunc<'a> {
+    /// Create a new imported function.
+    pub fn new(param_name: &'a GoIdentifier, sizes: &'a SizeAlign) -> Self {
         Self {
-            args: Vec::new(),
-            result,
+            param_name,
             tmp: 0,
             body: Tokens::new(),
             block_storage: Vec::new(),
@@ -48,20 +46,8 @@ impl<'a> Func<'a> {
         ret
     }
 
-    pub fn args(&self) -> &[String] {
-        &self.args
-    }
-
-    pub fn result(&self) -> &GoResult {
-        &self.result
-    }
-
     pub fn body(&self) -> &Tokens<Go> {
         &self.body
-    }
-
-    fn push_arg(&mut self, value: &str) {
-        self.args.push(value.into())
     }
 
     fn pop_block(&mut self) -> (Tokens<Go>, Vec<Operand>) {
@@ -69,7 +55,7 @@ impl<'a> Func<'a> {
     }
 }
 
-impl Bindgen for Func<'_> {
+impl Bindgen for ImportedFunc<'_> {
     type Operand = Operand;
 
     fn emit(
@@ -85,7 +71,11 @@ impl Bindgen for Func<'_> {
         match inst {
             Instruction::GetArg { nth } => {
                 let arg = &format!("arg{nth}");
-                self.push_arg(arg);
+                let idx = *nth;
+                quote_in! { self.body =>
+                    $['\r']
+                    $arg := stack[$idx]
+                };
                 results.push(Operand::SingleValue(arg.into()));
             }
             Instruction::ConstZero { tys } => {
@@ -101,109 +91,35 @@ impl Bindgen for Func<'_> {
                 let ptr = &format!("ptr{tmp}");
                 let len = &format!("len{tmp}");
                 let err = &format!("err{tmp}");
-                let default = &format!("default{tmp}");
                 let memory = &format!("memory{tmp}");
                 let realloc = &format!("realloc{tmp}");
                 let operand = &operands[0];
 
                 quote_in! { self.body =>
                     $['\r']
-                    $memory := i.module.Memory()
-                    $realloc := i.module.ExportedFunction($(quoted(*realloc_name)))
+                    $memory := mod.Memory()
+                    $realloc := mod.ExportedFunction($(quoted(*realloc_name)))
                     $ptr, $len, $err := writeString(ctx, $operand, $memory, $realloc)
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if $err != nil {
-                                var $default $(typ.as_ref())
-                                return $default, $err
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if $err != nil {
-                                return $err
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                    })
-                }
-
+                    if $err != nil {
+                        panic($err)
+                    }
+                };
                 results.push(Operand::SingleValue(ptr.into()));
                 results.push(Operand::SingleValue(len.into()));
             }
             Instruction::CallWasm { name, .. } => {
                 let tmp = self.tmp();
-                let raw = &format!("raw{tmp}");
-                let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
-                let default = &format!("default{tmp}");
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
                 quote_in! { self.body =>
                     $['\r']
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            $raw, $err := i.module.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            if $err != nil {
-                                var $default $(typ.as_ref())
-                                return $default, $err
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            $raw, $err := i.module.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            if $err != nil {
-                                return $err
-                            }
-                        }
-                        GoResult::Anon(_) => {
-                            $raw, $err := i.module.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                        GoResult::Empty => {
-                            _, $err := i.module.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                    })
-
-                    $(if self.result.needs_cleanup() {
-                        $(comment(&[
-                            "The cleanup via `cabi_post_*` cleans up the memory in the guest. By",
-                            "deferring this, we ensure that no memory is corrupted before the function",
-                            "is done accessing it."
-                        ]))
-                        defer func() {
-                            if postFn := i.module.ExportedFunction($(quoted(format!("cabi_post_{name}")))); postFn != nil {
-                                if _, err := postFn.Call(ctx, $raw...); err != nil {
-                                    $(comment(&[
-                                        "If we get an error during cleanup, something really bad is",
-                                        "going on, so we panic. Also, you can't return the error from",
-                                        "the `defer`"
-                                    ]))
-                                    panic($ERRORS_NEW("failed to cleanup"))
-                                }
-                            }
-                        }()
-                    })
-
-                    $(match &self.result {
-                        GoResult::Anon(_) => $ret := $raw[0],
-                        GoResult::Empty => (),
-                    })
+                    _, $err := i.module.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if $err != nil {
+                        panic($err)
+                    }
                 };
-                match self.result {
-                    GoResult::Empty => (),
-                    GoResult::Anon(_) => results.push(Operand::SingleValue(ret.into())),
-                }
             }
             Instruction::I32Load8U { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
@@ -211,30 +127,14 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
                 let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
                     $value, $ok := i.module.Memory().ReadByte(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read byte from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read byte from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read byte from memory"))
-                            }
-                        }
-                    })
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if !$ok {
+                        panic($ERRORS_NEW("failed to read byte from memory"))
+                    }
                 };
                 results.push(Operand::SingleValue(value.into()));
             }
@@ -289,30 +189,14 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let ptr = &format!("ptr{tmp}");
                 let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
                     $ptr, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read pointer from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read pointer from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read pointer from memory"))
-                            }
-                        }
-                    })
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if !$ok {
+                        panic($ERRORS_NEW("failed to read pointer from memory"))
+                    }
                 };
                 results.push(Operand::SingleValue(ptr.into()));
             }
@@ -322,30 +206,14 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let len = &format!("len{tmp}");
                 let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
                     $len, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read length from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read length from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read length from memory"))
-                            }
-                        }
-                    })
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if !$ok {
+                        panic($ERRORS_NEW("failed to read length from memory"))
+                    }
                 };
                 results.push(Operand::SingleValue(len.into()));
             }
@@ -355,30 +223,14 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
                 let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
                     $value, $ok := i.module.Memory().ReadUint32Le(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read i32 from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read i32 from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read i32 from memory"))
-                            }
-                        }
-                    })
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if !$ok {
+                        panic($ERRORS_NEW("failed to read i32 from memory"))
+                    }
                 };
                 results.push(Operand::SingleValue(value.into()));
             }
@@ -386,36 +238,22 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let buf = &format!("buf{tmp}");
                 let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
                 let str = &format!("str{tmp}");
-                let ptr = &operands[0];
-                let len = &operands[1];
+                let ptr = &format!("ptr{tmp}");
+                let len = &format!("len{tmp}");
+                let ptr_op = &operands[0];
+                let len_op = &operands[1];
 
                 quote_in! { self.body =>
                     $['\r']
-                    $buf, $ok := i.module.Memory().Read($ptr, $len)
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read bytes from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read bytes from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read bytes from memory"))
-                            }
-                        }
-                    })
+                    $ptr := $WAZERO_API_DECODE_U32($ptr_op)
+                    $len := $WAZERO_API_DECODE_U32($len_op)
+                    $buf, $ok := mod.Memory().Read($ptr, $len)
+                    if !$ok {
+                        panic($ERRORS_NEW("failed to read bytes from memory"))
+                    }
                     $str := string($buf)
                 };
-
                 results.push(Operand::SingleValue(str.into()));
             }
             Instruction::ResultLift {
@@ -493,16 +331,62 @@ impl Bindgen for Func<'_> {
             }
             Instruction::ResultLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Return { amt, .. } => {
-                if *amt != 0 {
-                    let operand = &operands[0];
+                for idx in 0..*amt {
+                    let operand = &operands[idx];
                     quote_in! { self.body =>
                         $['\r']
-                        return $operand
+                        stack[$idx] = $operand
                     };
                 }
             }
-            Instruction::CallInterface { .. } => {
-                todo!("TODO(#10): handle exported CallInterface")
+            Instruction::CallInterface { func, .. } => {
+                let ident = GoIdentifier::public(&func.name);
+                let tmp = self.tmp();
+                let args = quote!($(for op in operands.iter() join (, ) => $op));
+                let returns = match &func.result {
+                    None => GoType::Nothing,
+                    Some(typ) => resolve_type(typ, resolve),
+                };
+                let value = &format!("value{tmp}");
+                let err = &format!("err{tmp}");
+                let ok = &format!("ok{tmp}");
+                let param_name = self.param_name;
+
+                quote_in! { self.body =>
+                    $['\r']
+                    $(match returns {
+                        GoType::Nothing => $param_name.$ident(ctx, $args),
+                        GoType::Bool | GoType::Uint32 | GoType::Interface | GoType::String | GoType::UserDefined(_) => $value := $param_name.$ident(ctx, $args),
+                        GoType::Error => $err := $param_name.$ident(ctx, $args),
+                        GoType::ValueOrError(_) => {
+                            $value, $err := $param_name.$ident(ctx, $args)
+                        }
+                        GoType::ValueOrOk(_) => {
+                            $value, $ok := $param_name.$ident(ctx, $args)
+                        }
+                        _ => $(comment(&["TODO(#9): handle return type"]))
+                    })
+                }
+                match returns {
+                    GoType::Nothing => (),
+                    GoType::Bool
+                    | GoType::Uint32
+                    | GoType::Interface
+                    | GoType::UserDefined(_)
+                    | GoType::String => {
+                        results.push(Operand::SingleValue(value.into()));
+                    }
+                    GoType::Error => {
+                        results.push(Operand::SingleValue(err.into()));
+                    }
+                    GoType::ValueOrError(_) => {
+                        results.push(Operand::MultiValue((value.into(), err.into())));
+                    }
+                    GoType::ValueOrOk(_) => {
+                        results.push(Operand::MultiValue((value.into(), ok.into())))
+                    }
+                    _ => todo!("TODO(#9): handle return type - {returns:?}"),
+                }
             }
             Instruction::VariantPayloadName => {
                 results.push(Operand::SingleValue("variantPayload".into()));
@@ -516,11 +400,12 @@ impl Bindgen for Func<'_> {
                 if let Operand::Literal(byte) = tag {
                     quote_in! { self.body =>
                         $['\r']
-                        i.module.Memory().WriteByte($ptr+$offset, $byte)
+                        mod.Memory().WriteByte($ptr+$offset, $byte)
                     }
                 } else {
                     let tmp = self.tmp();
                     let byte = format!("byte{tmp}");
+
                     quote_in! { self.body =>
                         $['\r']
                         var $(&byte) uint8
@@ -530,10 +415,9 @@ impl Bindgen for Func<'_> {
                         case 1:
                             $(&byte) = 1
                         default:
-                            $(comment(["TODO(#8): Return an error if the return type allows it"]))
                             panic($ERRORS_NEW("invalid int8 value encountered"))
                         }
-                        i.module.Memory().WriteByte($ptr+$offset, $byte)
+                        mod.Memory().WriteByte($ptr+$offset, $byte)
                     }
                 }
             }
@@ -545,7 +429,7 @@ impl Bindgen for Func<'_> {
 
                 quote_in! { self.body =>
                     $['\r']
-                    i.module.Memory().WriteUint32Le($ptr+$offset, $tag)
+                    mod.Memory().WriteUint32Le($ptr+$offset, $tag)
                 }
             }
             Instruction::LengthStore { offset } => {
@@ -553,10 +437,9 @@ impl Bindgen for Func<'_> {
                 let offset = offset.size_wasm32();
                 let len = &operands[0];
                 let ptr = &operands[1];
-
                 quote_in! { self.body =>
                     $['\r']
-                    i.module.Memory().WriteUint32Le($ptr+$offset, uint32($len))
+                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($len))
                 }
             }
             Instruction::PointerStore { offset } => {
@@ -564,10 +447,9 @@ impl Bindgen for Func<'_> {
                 let offset = offset.size_wasm32();
                 let value = &operands[0];
                 let ptr = &operands[1];
-
                 quote_in! { self.body =>
                     $['\r']
-                    i.module.Memory().WriteUint32Le($ptr+$offset, uint32($value))
+                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($value))
                 }
             }
             Instruction::ResultLower {
@@ -760,7 +642,6 @@ impl Bindgen for Func<'_> {
                 let vec = &format!("vec{tmp}");
                 let result = &format!("result{tmp}");
                 let err = &format!("err{tmp}");
-                let default = &format!("default{tmp}");
                 let ptr = &format!("ptr{tmp}");
                 let len = &format!("len{tmp}");
                 let operand = &operands[0];
@@ -772,25 +653,10 @@ impl Bindgen for Func<'_> {
                     $vec := $operand
                     $len := uint64(len($vec))
                     $result, $err := i.module.ExportedFunction($(quoted(*realloc_name))).Call(ctx, 0, 0, $align, $len * $size)
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if $err != nil {
-                                var $default $(typ.as_ref())
-                                return $default, $err
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if $err != nil {
-                                return $err
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                    })
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if $err != nil {
+                        panic($err)
+                    }
                     $ptr := $result[0]
                     for idx := uint64(0); idx < $len; idx++ {
                         $iter_element := $vec[idx]
@@ -840,7 +706,6 @@ impl Bindgen for Func<'_> {
                     .collect::<Vec<_>>();
                 let tmp = self.tmp();
                 let value = &operands[0];
-                let default = &format!("default{tmp}");
 
                 for (i, typ) in result_types.iter().enumerate() {
                     let variant_item = &format!("variant{tmp}_{i}");
@@ -877,19 +742,8 @@ impl Bindgen for Func<'_> {
                     switch variantPayload := $value.(type) {
                         $cases
                         default:
-                            $(match &self.result {
-                                GoResult::Anon(GoType::ValueOrError(typ)) => {
-                                    var $default $(typ.as_ref())
-                                    return $default, $ERRORS_NEW("invalid variant type provided")
-                                }
-                                GoResult::Anon(GoType::Error) => {
-                                    return $ERRORS_NEW("invalid variant type provided")
-                                }
-                                GoResult::Anon(_) | GoResult::Empty => {
-                                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                                    panic($ERRORS_NEW("invalid variant type provided"))
-                                }
-                            })
+                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                            panic($ERRORS_NEW("invalid variant type provided"))
                     }
                 }
             }

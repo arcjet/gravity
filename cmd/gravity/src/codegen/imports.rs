@@ -10,7 +10,7 @@ use wit_bindgen_core::{
 
 use crate::{
     codegen::{
-        func::Func,
+        ImportedFunc,
         ir::{
             AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, InterfaceMethod,
             Parameter, TypeDefinition, WitReturn,
@@ -19,8 +19,8 @@ use crate::{
     go::{
         GoIdentifier, GoResult, GoType,
         imports::{
-            CONTEXT_CONTEXT, GoImport, WAZERO_API_DECODE_U32, WAZERO_API_GO_MODULE_FUNC,
-            WAZERO_API_MODULE, WAZERO_API_VALUE_TYPE,
+            CONTEXT_CONTEXT, GoImport, WAZERO_API_GO_MODULE_FUNC, WAZERO_API_MODULE,
+            WAZERO_API_VALUE_TYPE,
         },
     },
     resolve_type,
@@ -420,7 +420,7 @@ impl<'a> ImportCodeGenerator<'a> {
         let wasm_sig = self
             .resolve
             .wasm_signature(AbiVariant::GuestImport, &method.wit_function);
-        let mut f = Func::import(param_name, self.sizes);
+        let mut f = ImportedFunc::new(param_name, self.sizes);
 
         // Magic
         wit_bindgen_core::abi::call(
@@ -433,7 +433,6 @@ impl<'a> ImportCodeGenerator<'a> {
             false,
         );
 
-        let args = f.args().iter().enumerate();
         let wasm_params = wasm_sig.params.iter().map(GoImport::from);
         let wasm_results = wasm_sig.results.iter().map(GoImport::from);
 
@@ -445,7 +444,6 @@ impl<'a> ImportCodeGenerator<'a> {
                     mod $WAZERO_API_MODULE,
                     stack []uint64,
                 ) {
-                    $(for (idx, arg) in args join ($['\r']) => $arg := $WAZERO_API_DECODE_U32(stack[$idx]))
                     $(f.body())
                 }),
                 []$WAZERO_API_VALUE_TYPE{
