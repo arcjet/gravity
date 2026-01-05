@@ -32,6 +32,13 @@ type IBasicLogger interface {
 	)
 }
 
+type IBasicUtils interface {
+	Uppercase(
+		ctx context.Context,
+		val string,
+	) string
+}
+
 type Point struct {
 	X uint32
 	Y uint32
@@ -45,6 +52,7 @@ type BasicFactory struct {
 func NewBasicFactory(
 	ctx context.Context,
 	logger IBasicLogger,
+	utils IBasicUtils,
 ) (*BasicFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
 
@@ -112,6 +120,35 @@ func NewBasicFactory(
 	Instantiate(ctx)
 	if err0 != nil {
 		return nil, err0
+	}
+	_, err1 := wazeroRuntime.NewHostModuleBuilder("arcjet:basic/utils").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+		arg2 uint32,
+	) {
+		buf0, ok0 := mod.Memory().Read(arg0, arg1)
+		if !ok0 {
+			panic(errors.New("failed to read bytes from memory"))
+		}
+		str0 := string(buf0)
+		value1 := utils.Uppercase(ctx, str0)
+		memory2 := mod.Memory()
+		realloc2 := mod.ExportedFunction("cabi_realloc")
+		ptr2, len2, err2 := writeString(ctx, value1, memory2, realloc2)
+		if err2 != nil {
+			panic(err2)
+		}
+		mod.Memory().WriteUint32Le(arg2+4, uint32(len2))
+		mod.Memory().WriteUint32Le(arg2+0, uint32(ptr2))
+	}).
+	Export("uppercase").
+	Instantiate(ctx)
+	if err1 != nil {
+		return nil, err1
 	}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
