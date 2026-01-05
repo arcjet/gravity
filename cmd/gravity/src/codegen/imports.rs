@@ -356,7 +356,7 @@ impl<'a> ImportCodeGenerator<'a> {
                 quote_in! { *tokens =>
                     $['\n']
                     type $(&typ.go_type_name) struct {
-                        $(for (field_name, field_type) in fields join ($['\n']) =>
+                        $(for (field_name, field_type) in fields join ($['\r']) =>
                             $field_name $field_type
                         )
                     }
