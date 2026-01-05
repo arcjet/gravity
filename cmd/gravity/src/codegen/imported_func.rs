@@ -395,28 +395,32 @@ impl Bindgen for ImportedFunc<'_> {
             Instruction::I32Store8 { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
+                let tmp = self.tmp();
                 let tag = &operands[0];
-                let ptr = &operands[1];
+                let ptr = &format!("ptr{tmp}");
+                let ptr_op = &operands[1];
                 if let Operand::Literal(byte) = tag {
                     quote_in! { self.body =>
                         $['\r']
+                        $ptr := $WAZERO_API_DECODE_U32($ptr_op)
                         mod.Memory().WriteByte($ptr+$offset, $byte)
                     }
                 } else {
                     let tmp = self.tmp();
-                    let byte = format!("byte{tmp}");
+                    let byte = &format!("byte{tmp}");
 
                     quote_in! { self.body =>
                         $['\r']
-                        var $(&byte) uint8
+                        var $byte uint8
                         switch $tag {
                         case 0:
-                            $(&byte) = 0
+                            $byte = 0
                         case 1:
-                            $(&byte) = 1
+                            $byte = 1
                         default:
                             panic($ERRORS_NEW("invalid int8 value encountered"))
                         }
+                        $ptr := $WAZERO_API_DECODE_U32($ptr_op)
                         mod.Memory().WriteByte($ptr+$offset, $byte)
                     }
                 }
@@ -424,32 +428,41 @@ impl Bindgen for ImportedFunc<'_> {
             Instruction::I32Store { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
+                let tmp = self.tmp();
                 let tag = &operands[0];
-                let ptr = &operands[1];
+                let ptr = &format!("ptr{tmp}");
+                let ptr_op = &operands[1];
 
                 quote_in! { self.body =>
                     $['\r']
+                    $ptr := $WAZERO_API_DECODE_U32($ptr_op)
                     mod.Memory().WriteUint32Le($ptr+$offset, $tag)
                 }
             }
             Instruction::LengthStore { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
+                let tmp = self.tmp();
                 let len = &operands[0];
-                let ptr = &operands[1];
+                let ptr = &format!("ptr{tmp}");
+                let ptr_op = &operands[1];
                 quote_in! { self.body =>
                     $['\r']
-                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($len))
+                    $ptr := $WAZERO_API_DECODE_U32($ptr_op)
+                    mod.Memory().WriteUint32Le($ptr+$offset, $len)
                 }
             }
             Instruction::PointerStore { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
+                let tmp = self.tmp();
                 let value = &operands[0];
-                let ptr = &operands[1];
+                let ptr = &format!("ptr{tmp}");
+                let ptr_op = &operands[1];
                 quote_in! { self.body =>
                     $['\r']
-                    mod.Memory().WriteUint32Le($ptr+$offset, uint32($value))
+                    $ptr := $WAZERO_API_DECODE_U32($ptr_op)
+                    mod.Memory().WriteUint32Le($ptr+$offset, $value)
                 }
             }
             Instruction::ResultLower {
