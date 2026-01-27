@@ -25,7 +25,7 @@ path = "tests/cli.rs"
 test = false
 
 [dependencies]
-clap = "=4.5.53"
+clap = "=4.5.55"
 genco = "=0.19.0"
 wit-bindgen-core = "=0.46.0"
 wit-component = "=0.239.0"
