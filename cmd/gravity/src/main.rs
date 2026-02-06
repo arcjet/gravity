@@ -13,7 +13,18 @@ use arcjet_gravity::codegen::{Bindings, WasmData};
 pub const PRIMARY_WORLD_NAME: &str = "root";
 
 fn main() -> Result<ExitCode, ()> {
+    // Build the version string with git hash and leak it to get a 'static lifetime
+    let version: &'static str = Box::leak(
+        format!("{} ({})", env!("CARGO_PKG_VERSION"), env!("GIT_HASH")).into_boxed_str()
+    );
+
+    let about_text: &'static str = Box::leak(
+        format!("gravity {}\nGenerate host bindings for WebAssembly Components", version).into_boxed_str()
+    );
+
     let cmd = Command::new("gravity")
+        .version(version)
+        .about(about_text)
         .arg(
             Arg::new("world")
                 .short('w')
