@@ -1,7 +1,10 @@
 use genco::prelude::*;
 use wit_bindgen_core::wit_parser::{Function, Resolve, SizeAlign, World, WorldItem};
 
-use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
+use crate::{
+    Func,
+    go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT},
+};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
@@ -49,7 +52,7 @@ impl<'a> ExportGenerator<'a> {
             GoResult::Empty
         };
 
-        let mut f = crate::Func::export(result, self.config.sizes);
+        let mut f = Func::new(result, self.config.sizes);
         wit_bindgen_core::abi::call(
             self.config.resolve,
             wit_bindgen_core::abi::AbiVariant::GuestExport,

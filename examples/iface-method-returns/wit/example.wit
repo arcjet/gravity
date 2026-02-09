@@ -4,6 +4,8 @@ interface runtime {
   os: func() -> string;
   arch: func() -> string;
 
+  get-u32: func() -> u32;
+
   puts: func(msg: string);
 }
 
@@ -11,4 +13,5 @@ world example {
   import runtime;
 
   export hello: func() -> result<string, string>;
+  export call-get-u32: func() -> u32;
 }

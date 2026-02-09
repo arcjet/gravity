@@ -2,26 +2,10 @@ pub mod codegen;
 pub mod go;
 
 use crate::go::GoType;
-use wit_bindgen_core::{
-    abi::WasmType,
-    wit_parser::{Resolve, Result_, Type, TypeDef, TypeDefKind},
-};
+use wit_bindgen_core::wit_parser::{Resolve, Result_, Type, TypeDef, TypeDefKind};
 
 // Temporary re-export while we migrate.
 pub use codegen::Func;
-
-/// Resolves a Wasm type to a Go type.
-pub fn resolve_wasm_type(typ: &WasmType) -> GoType {
-    match typ {
-        WasmType::I32 => GoType::Uint32,
-        WasmType::I64 => GoType::Uint64,
-        WasmType::F32 => GoType::Float32,
-        WasmType::F64 => GoType::Float64,
-        WasmType::Pointer => GoType::Uint64,
-        WasmType::PointerOrI64 => GoType::Uint64,
-        WasmType::Length => GoType::Uint64,
-    }
-}
 
 /// Resolves a WIT type to a Go type.
 ///

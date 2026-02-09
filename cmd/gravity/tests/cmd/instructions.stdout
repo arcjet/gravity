@@ -237,7 +237,7 @@ func (i *InstructionsInstance) EnumInput(
 	val EnumValues,
 ) {
 	arg0 := val
-	var enum0 uint32
+	var enum0 uint64
 	switch arg0 {
 	case One:
 		enum0 = 0
