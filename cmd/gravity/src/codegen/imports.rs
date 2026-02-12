@@ -222,6 +222,7 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Tuple(_) => todo!("TODO(#4):generate tuple type definition"),
             TypeDefKind::Resource => todo!("TODO(#5): implement resources"),
             TypeDefKind::Handle(_) => todo!("TODO(#5): implement resources"),
+            TypeDefKind::Map(_, _) => todo!("TODO(#4): generate map type definition"),
             TypeDefKind::Unknown => panic!("cannot generate Unknown type"),
         })
     }
