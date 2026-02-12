@@ -1247,6 +1247,10 @@ impl Bindgen for Func<'_> {
             Instruction::ErrorContextLift => todo!("implement instruction: {inst:?}"),
             Instruction::AsyncTaskReturn { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::DropHandle { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FixedLengthListLift { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FixedLengthListLower { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FixedLengthListLowerToMemory { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FixedLengthListLiftFromMemory { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Flush { amt } => {
                 for op in operands.iter().take(*amt) {
                     results.push(op.clone());

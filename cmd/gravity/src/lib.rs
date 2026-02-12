@@ -114,6 +114,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::FixedSizeList(_, _) => {
                     todo!("TODO(#4): implement fixed size list conversion")
                 }
+                TypeDefKind::Map(_, _) => todo!("TODO(#4): implement map conversion"),
                 TypeDefKind::Unknown => todo!("TODO(#4): implement unknown conversion"),
             }
         }
