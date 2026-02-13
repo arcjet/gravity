@@ -111,8 +111,8 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::Type(_) => {
                     GoType::UserDefined(name.clone().expect("expected type alias to have a name"))
                 }
-                TypeDefKind::FixedSizeList(_, _) => {
-                    todo!("TODO(#4): implement fixed size list conversion")
+                TypeDefKind::FixedLengthList(_, _) => {
+                    todo!("TODO(#4): implement fixed length list conversion")
                 }
                 TypeDefKind::Map(_, _) => todo!("TODO(#4): implement map conversion"),
                 TypeDefKind::Unknown => todo!("TODO(#4): implement unknown conversion"),

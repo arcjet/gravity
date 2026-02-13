@@ -1,5 +1,5 @@
 use genco::prelude::*;
-use wit_bindgen_core::wit_parser::{Function, Resolve, SizeAlign, World, WorldItem};
+use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
 
 use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
 
@@ -36,7 +36,7 @@ impl<'a> ExportGenerator<'a> {
             .params
             .iter()
             .map(
-                |(name, wit_type)| match crate::resolve_type(wit_type, self.config.resolve) {
+                |Param { name, ty, .. }| match crate::resolve_type(&ty, self.config.resolve) {
                     GoType::ValueOrOk(t) => (GoIdentifier::local(name), *t),
                     t => (GoIdentifier::local(name), t),
                 },
@@ -87,7 +87,7 @@ impl FormatInto<Go> for ExportGenerator<'_> {
             match item {
                 WorldItem::Function(func) => self.generate_function(func, tokens),
                 WorldItem::Interface { .. } => todo!("generate interface exports"),
-                WorldItem::Type(_) => todo!("generate type exports"),
+                WorldItem::Type { .. } => todo!("generate type exports"),
             }
         }
     }
@@ -97,7 +97,7 @@ impl FormatInto<Go> for ExportGenerator<'_> {
 mod tests {
     use genco::prelude::*;
     use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Resolve, SizeAlign, Type, World, WorldItem, WorldKey,
+        Function, FunctionKind, Param, Resolve, SizeAlign, Type, World, WorldItem, WorldKey,
     };
 
     use crate::go::GoIdentifier;
@@ -109,10 +109,11 @@ mod tests {
         let func = Function {
             name: "add_number".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![("value".to_string(), Type::U32)],
+            params: vec![Param { name: "value".to_string(), ty: Type::U32, span: Default::default() }],
             result: Some(Type::U32),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
         };
 
         let world = World {
@@ -126,7 +127,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
             package: None,
         };
 

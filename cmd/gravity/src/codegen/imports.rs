@@ -4,7 +4,7 @@ use genco::prelude::*;
 use wit_bindgen_core::{
     abi::{AbiVariant, LiftLower},
     wit_parser::{
-        Function, InterfaceId, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World, WorldItem,
+        Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World, WorldItem,
     },
 };
 
@@ -45,7 +45,7 @@ impl<'a> ImportAnalyzer<'a> {
                 WorldItem::Interface { id, .. } => {
                     interfaces.push(self.analyze_interface(*id));
                 }
-                WorldItem::Type(type_id) => {
+                WorldItem::Type { id: type_id, .. } => {
                     if let Some(t) = self.analyze_type(*type_id) {
                         standalone_types.push(t);
                     }
@@ -117,10 +117,10 @@ impl<'a> ImportAnalyzer<'a> {
         let parameters = func
             .params
             .iter()
-            .map(|(name, wit_type)| Parameter {
+            .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(wit_type, self.resolve),
-                wit_type: *wit_type,
+                go_type: resolve_type(ty, self.resolve),
+                wit_type: *ty,
             })
             .collect();
 
@@ -210,8 +210,8 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Type(Type::ErrorContext) => {
                 todo!("TODO(#4): generate error context definition")
             }
-            TypeDefKind::FixedSizeList(_, _) => {
-                todo!("TODO(#4): generate fixed size list definition")
+            TypeDefKind::FixedLengthList(_, _) => {
+                todo!("TODO(#4): generate fixed length list definition")
             }
             TypeDefKind::Option(_) => todo!("TODO(#4): generate option type definition"),
             TypeDefKind::Result(_) => todo!("TODO(#4): generate result type definition"),
@@ -231,10 +231,10 @@ impl<'a> ImportAnalyzer<'a> {
         let parameters = func
             .params
             .iter()
-            .map(|(name, wit_type)| Parameter {
+            .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(wit_type, self.resolve),
-                wit_type: *wit_type,
+                go_type: resolve_type(ty, self.resolve),
+                wit_type: *ty,
             })
             .collect();
 
@@ -459,8 +459,8 @@ impl<'a> ImportCodeGenerator<'a> {
 mod tests {
     use genco::prelude::*;
     use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Interface, Package, PackageName, Resolve, SizeAlign, Type, World,
-        WorldId, WorldItem, WorldKey,
+        Function, FunctionKind, Interface, Package, PackageName, Param, Resolve, SizeAlign, Type,
+        World, WorldId, WorldItem, WorldKey,
     };
 
     use crate::{
@@ -477,10 +477,11 @@ mod tests {
         let func = Function {
             name: "test_function".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![("input".to_string(), Type::String)],
+            params: vec![Param { name: "input".to_string(), ty: Type::String, span: Default::default() }],
             result: Some(Type::String),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
         };
 
         let resolve = Resolve::new();
@@ -553,10 +554,11 @@ mod tests {
             wit_function: Function {
                 name: "test_u32".to_string(),
                 kind: FunctionKind::Freestanding,
-                params: vec![("value".to_string(), Type::U32)],
+                params: vec![Param { name: "value".to_string(), ty: Type::U32, span: Default::default() }],
                 result: None,
                 docs: Default::default(),
                 stability: Default::default(),
+                span: Default::default(),
             },
         };
 
@@ -596,17 +598,20 @@ mod tests {
                 "log".to_string(),
                 Function {
                     name: "log".to_string(),
-                    params: vec![("message".to_string(), Type::String)],
+                    params: vec![Param { name: "message".to_string(), ty: Type::String, span: Default::default() }],
                     result: None,
                     kind: FunctionKind::Freestanding,
                     docs: Default::default(),
                     stability: Default::default(),
+                    span: Default::default(),
                 },
             )]
             .into(),
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Create a world with the interface as import
@@ -617,6 +622,7 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
                 },
             )]
             .into(),
@@ -625,7 +631,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);
@@ -702,26 +708,31 @@ mod tests {
                     name: "float32".to_string(),
                     ty: Type::F32,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "float64".to_string(),
                     ty: Type::F64,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "uint32".to_string(),
                     ty: Type::U32,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "uint64".to_string(),
                     ty: Type::U64,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "s".to_string(),
                     ty: Type::String,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
             ],
         };
@@ -734,6 +745,8 @@ mod tests {
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Create the TypeDef for the record with proper owner
@@ -743,6 +756,7 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
         };
 
         let type_id = resolve.types.alloc(type_def);
@@ -760,6 +774,7 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
                 },
             )]
             .into(),
@@ -768,7 +783,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);
@@ -945,6 +960,8 @@ mod tests {
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Test 1: Create a proper record type
@@ -953,6 +970,7 @@ mod tests {
                 name: "x".to_string(),
                 ty: Type::U32,
                 docs: Default::default(),
+                span: Default::default(),
             }],
         };
 
@@ -962,6 +980,7 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
         };
 
         // Test 2: Create a type alias
@@ -971,6 +990,7 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
         };
 
         let record_type_id = resolve.types.alloc(record_type_def);
@@ -983,6 +1003,7 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
                 },
             )]
             .into(),
@@ -991,7 +1012,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);

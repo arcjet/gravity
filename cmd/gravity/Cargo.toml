@@ -27,10 +27,10 @@ test = false
 [dependencies]
 clap = "=4.5.58"
 genco = "=0.19.0"
-wit-bindgen-core = "=0.52.0"
-wit-component = "=0.244.0"
+wit-bindgen-core = "=0.53.0"
+wit-component = "=0.245.0"
 
 [dev-dependencies]
 # Cutting out `filesystem` feature
 trycmd = { version = "=1.0.0", default-features = false, features = ["color-auto", "diff"] }
-wit-bindgen = "=0.52.0"
+wit-bindgen = "=0.53.0"
