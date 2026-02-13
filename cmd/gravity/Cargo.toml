@@ -3,7 +3,7 @@ authors = ["The Arcjet team"]
 categories = ["wasm"]
 default-run = "gravity"
 name = "arcjet-gravity"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/arcjet/gravity"
@@ -32,5 +32,8 @@ wit-component = "=0.245.0"
 
 [dev-dependencies]
 # Cutting out `filesystem` feature
-trycmd = { version = "=1.0.0", default-features = false, features = ["color-auto", "diff"] }
+trycmd = { version = "=1.0.0", default-features = false, features = [
+  "color-auto",
+  "diff",
+] }
 wit-bindgen = "=0.53.0"
