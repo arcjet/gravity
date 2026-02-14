@@ -36,7 +36,7 @@ impl<'a> ExportGenerator<'a> {
             .params
             .iter()
             .map(
-                |Param { name, ty, .. }| match crate::resolve_type(&ty, self.config.resolve) {
+                |Param { name, ty, .. }| match crate::resolve_type(ty, self.config.resolve) {
                     GoType::ValueOrOk(t) => (GoIdentifier::local(name), *t),
                     t => (GoIdentifier::local(name), t),
                 },
