@@ -1,0 +1,11 @@
+[package]
+name = "example-regressions"
+version = "0.0.2"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "=0.53.1"
+wit-component = "=0.245.1"

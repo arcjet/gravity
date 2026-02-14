@@ -415,12 +415,6 @@ impl<'a> ImportCodeGenerator<'a> {
     ) -> Tokens<Go> {
         let func_name = &method.name;
 
-        // Generate Wasm function parameters based on WIT types.
-        let wasm_params = vec![
-            quote! { ctx $CONTEXT_CONTEXT },
-            quote! { mod $WAZERO_API_MODULE },
-        ];
-
         let wasm_sig = self
             .resolve
             .wasm_signature(AbiVariant::GuestImport, &method.wit_function);
@@ -444,11 +438,21 @@ impl<'a> ImportCodeGenerator<'a> {
             false,
         );
 
+        // Collect all host function parameters into a single list so
+        // that the join produces correct commas even when there are no
+        // WIT-level parameters (only ctx and mod).
+        let mut all_params: Vec<Tokens<Go>> = vec![
+            quote! { ctx $CONTEXT_CONTEXT },
+            quote! { mod $WAZERO_API_MODULE },
+        ];
+        for arg in f.args() {
+            all_params.push(quote! { $arg uint32 });
+        }
+
         quote! {
             NewFunctionBuilder().
             WithFunc(func(
-                $(for param in wasm_params join (,$['\r']) => $param),
-                $(for param in f.args() join (,$['\r']) => $param uint32),
+                $(for param in all_params join (,$['\r']) => $param),
             ) $(f.result()){
                 $(f.body())
             }).
@@ -722,6 +726,203 @@ mod tests {
         assert!(
             code_str.contains("return"),
             "Expected a return statement in the generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Regression test: import functions with u32 parameters must generate
+    /// simple `uint32()` casts, not `api.DecodeU32()` / `api.EncodeU32()`.
+    /// Those wazero API functions convert between uint32 and uint64 and are
+    /// only appropriate for the api.Function.Call() pathway (exports). In
+    /// the import (host function) pathway, params are already uint32.
+    #[test]
+    fn test_import_u32_params_use_identity_cast() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function that takes multiple u32 params — the same pattern as
+        // rate-limit's token-bucket import.
+        let method = InterfaceMethod {
+            name: "compute".to_string(),
+            go_method_name: GoIdentifier::public("Compute"),
+            parameters: vec![
+                Parameter {
+                    name: GoIdentifier::private("a"),
+                    go_type: GoType::Uint32,
+                    wit_type: Type::U32,
+                },
+                Parameter {
+                    name: GoIdentifier::private("b"),
+                    go_type: GoType::Uint32,
+                    wit_type: Type::U32,
+                },
+            ],
+            return_type: None,
+            wit_function: Function {
+                name: "compute".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![
+                    Param {
+                        name: "a".to_string(),
+                        ty: Type::U32,
+                        span: Default::default(),
+                    },
+                    Param {
+                        name: "b".to_string(),
+                        ty: Type::U32,
+                        span: Default::default(),
+                    },
+                ],
+                result: None,
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must use simple uint32() casts, NOT api.DecodeU32() which expects uint64
+        assert!(
+            !code_str.contains("api.DecodeU32"),
+            "Import must not use api.DecodeU32 (expects uint64 but params are uint32), got:\n{code_str}"
+        );
+        assert!(
+            !code_str.contains("api.EncodeU32"),
+            "Import must not use api.EncodeU32 (returns uint64 but context expects uint32), got:\n{code_str}"
+        );
+        // Should use uint32() identity casts instead
+        assert!(
+            code_str.contains("uint32("),
+            "Expected uint32() identity cast in generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Regression test: import functions with zero WIT parameters must not
+    /// produce a trailing comma after `mod api.Module` in the host function
+    /// signature. Previously, the template unconditionally emitted a comma
+    /// separator between the fixed params (ctx, mod) and the WIT params,
+    /// resulting in `func(ctx context.Context, mod api.Module, ,)` which
+    /// is a Go syntax error.
+    #[test]
+    fn test_import_zero_params_no_trailing_comma() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function with no WIT parameters — only ctx and mod should appear
+        // in the generated Go host function signature.
+        let method = InterfaceMethod {
+            name: "ping".to_string(),
+            go_method_name: GoIdentifier::public("Ping"),
+            parameters: vec![],
+            return_type: None,
+            wit_function: Function {
+                name: "ping".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![],
+                result: None,
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must NOT contain a bare comma on its own line (the symptom of the bug)
+        assert!(
+            !code_str.contains(",\n\t\t,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // Must NOT contain ", ," which is another form of the double comma
+        assert!(
+            !code_str.contains(", ,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // The signature should close cleanly after mod api.Module
+        assert!(
+            code_str.contains("mod api.Module,\n)") || code_str.contains("mod api.Module,\n\t)"),
+            "Expected host function params to end with 'mod api.Module,' followed by closing paren, got:\n{code_str}"
+        );
+    }
+
+    /// Same as above but with a return type — zero params + bool return
+    /// exercises both the zero-param fix and the result-type fix together.
+    #[test]
+    fn test_import_zero_params_with_return_type() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        let method = InterfaceMethod {
+            name: "is_ready".to_string(),
+            go_method_name: GoIdentifier::public("IsReady"),
+            parameters: vec![],
+            return_type: Some(WitReturn {
+                go_type: GoType::Bool,
+                wit_type: Type::Bool,
+            }),
+            wit_function: Function {
+                name: "is_ready".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![],
+                result: Some(Type::Bool),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must not have consecutive commas
+        assert!(
+            !code_str.contains(",\n\t\t,") && !code_str.contains(", ,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // Must have uint32 return type
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected uint32 return type, got:\n{code_str}"
+        );
+        // Must have a return statement
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement, got:\n{code_str}"
         );
     }
 

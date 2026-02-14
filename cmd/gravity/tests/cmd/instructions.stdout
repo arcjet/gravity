@@ -186,7 +186,7 @@ func (i *InstructionsInstance) U32Roundtrip(
 	val uint32,
 ) uint32 {
 	arg0 := val
-	result0 := api.EncodeU32(arg0)
+	result0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("u32-roundtrip").Call(ctx, uint64(result0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -194,7 +194,7 @@ func (i *InstructionsInstance) U32Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := api.DecodeU32(results1)
+	result2 := uint32(results1)
 	return result2
 }
 

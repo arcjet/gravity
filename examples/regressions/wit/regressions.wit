@@ -1,0 +1,41 @@
+package gravity:regressions;
+
+// Regression 1: Import functions returning bool and enum types.
+// Previously caused: todo!("implement handling of wasm signatures with results")
+interface checker {
+  is-enabled: func(key: string) -> bool;
+
+  enum status {
+    active,
+    inactive,
+    unknown,
+  }
+  get-status: func(key: string) -> status;
+}
+
+// Regression 2: Import functions with u32 parameters.
+// Previously caused: uint32/uint64 type mismatch in generated Go code
+// due to api.EncodeU32/api.DecodeU32 being used instead of uint32() casts.
+interface processor {
+  double: func(value: u32) -> u32;
+}
+
+// Regression 3: Import functions with zero WIT parameters.
+// Previously caused: Go syntax error from trailing comma in host function
+// signature — func(ctx context.Context, mod api.Module, ,) — because the
+// template unconditionally emitted a comma separator between the fixed
+// params and the (empty) WIT params.
+interface pinger {
+  ping: func() -> bool;
+}
+
+world regressions {
+  import checker;
+  import processor;
+  import pinger;
+
+  export check-enabled: func(key: string) -> bool;
+  export check-status: func(key: string) -> u32;
+  export double-value: func(value: u32) -> u32;
+  export run-ping: func() -> bool;
+}
