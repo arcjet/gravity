@@ -70,7 +70,11 @@ func newInstance(t *testing.T) *RegressionsInstance {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { ins.Close(t.Context()) })
+	t.Cleanup(func() {
+		if err := ins.Close(t.Context()); err != nil {
+			t.Error(err)
+		}
+	})
 
 	return ins
 }

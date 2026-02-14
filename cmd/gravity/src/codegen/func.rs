@@ -8,12 +8,13 @@ use wit_bindgen_core::{
 
 use crate::{
     go::{
-        GoIdentifier, GoResult, GoType, Operand, comment,
+        comment,
         imports::{
             ERRORS_NEW, REFLECT_VALUE_OF, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
             WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32,
         },
+        GoIdentifier, GoResult, GoType, Operand,
     },
     resolve_type, resolve_wasm_type,
 };

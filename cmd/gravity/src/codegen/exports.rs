@@ -1,7 +1,7 @@
 use genco::prelude::*;
 use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
 
-use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
+use crate::go::{imports::CONTEXT_CONTEXT, GoIdentifier, GoResult, GoType};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
@@ -164,10 +164,8 @@ mod tests {
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
-        assert!(
-            generated
-                .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))")
-        );
+        assert!(generated
+            .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));

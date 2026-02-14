@@ -18,8 +18,8 @@ use crate::{
         },
     },
     go::{
-        GoIdentifier, GoResult, GoType,
         imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
+        GoIdentifier, GoResult, GoType,
     },
     resolve_type, resolve_wasm_type,
 };
