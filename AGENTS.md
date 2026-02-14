@@ -64,7 +64,7 @@ Snapshot files live in `cmd/gravity/tests/cmd/` (`.toml` for config, `.stdout`
 and `.stderr` for expected output).
 
 **Important**: The `trycmd` dependency has the `filesystem` feature disabled.
-This means `TRYCMD=overwrite` can only update *existing* `.stdout`/`.stderr`
+This means `TRYCMD=overwrite` can only update _existing_ `.stdout`/`.stderr`
 files — it cannot create new ones. When adding a new snapshot test, you must
 manually create the `.stdout` and `.stderr` files first (e.g. by redirecting
 gravity's output), then `TRYCMD=overwrite` can keep them in sync afterward.
@@ -86,7 +86,7 @@ Or use `go generate` from the repo root (the `examples/generate.go` file has
 
 ## Project Structure
 
-```
+```text
 cmd/gravity/
   src/
     main.rs              # CLI entry point (clap argument parsing)
@@ -172,13 +172,13 @@ the `examples/` directory before the Go tests will compile.
 
 ## Key Dependencies
 
-| Crate             | Version | Purpose                                  |
-| ----------------- | ------- | ---------------------------------------- |
-| wit-bindgen-core  | 0.53.1  | Canonical ABI instruction generation     |
-| wit-component     | 0.245.1 | Wasm component model processing          |
-| genco             | 0.19.0  | Code generation with Go language support |
-| clap              | 4.5.58  | CLI argument parsing                     |
-| trycmd            | 1.0.0   | CLI snapshot testing (dev)               |
+| Crate            | Version | Purpose                                  |
+| ---------------- | ------- | ---------------------------------------- |
+| wit-bindgen-core | 0.53.1  | Canonical ABI instruction generation     |
+| wit-component    | 0.245.1 | Wasm component model processing          |
+| genco            | 0.19.0  | Code generation with Go language support |
+| clap             | 4.5.58  | CLI argument parsing                     |
+| trycmd           | 1.0.0   | CLI snapshot testing (dev)               |
 
 ## Style & Conventions
 
