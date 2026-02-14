@@ -20,7 +20,7 @@ use crate::{
         GoIdentifier, GoResult, GoType,
         imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
     },
-    resolve_type,
+    resolve_type, resolve_wasm_type,
 };
 
 /// Analyzer for imports - only does analysis, no code generation
@@ -426,8 +426,10 @@ impl<'a> ImportCodeGenerator<'a> {
             .wasm_signature(AbiVariant::GuestImport, &method.wit_function);
         let result = if wasm_sig.results.is_empty() {
             GoResult::Empty
+        } else if wasm_sig.results.len() == 1 {
+            GoResult::Anon(resolve_wasm_type(&wasm_sig.results[0]))
         } else {
-            todo!("implement handling of wasm signatures with results");
+            todo!("implement handling of wasm signatures with multiple results");
         };
         let mut f = Func::import(param_name, result, self.sizes);
 
@@ -459,8 +461,8 @@ impl<'a> ImportCodeGenerator<'a> {
 mod tests {
     use genco::prelude::*;
     use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Interface, Package, PackageName, Param, Resolve, SizeAlign, Type,
-        World, WorldId, WorldItem, WorldKey,
+        Enum, EnumCase, Function, FunctionKind, Interface, Package, PackageName, Param, Resolve,
+        SizeAlign, Type, TypeDef, TypeDefKind, TypeOwner, World, WorldId, WorldItem, WorldKey,
     };
 
     use crate::{
@@ -572,6 +574,155 @@ mod tests {
         assert!(!code_str.contains("mod.Memory().Read")); // No string reading
 
         println!("U32 generated code:\n{}", code_str);
+    }
+
+    /// Regression test: import functions whose WIT return type maps to a Wasm
+    /// result (e.g. `bool`, `enum`) must produce a non-empty Go return type
+    /// in the host function signature. A refactoring replaced the handling
+    /// with `todo!()`, which caused a panic at build time.
+    #[test]
+    fn test_import_with_bool_return_type() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function returning bool has a single i32 Wasm result
+        let method = InterfaceMethod {
+            name: "is_valid".to_string(),
+            go_method_name: GoIdentifier::public("IsValid"),
+            parameters: vec![Parameter {
+                name: GoIdentifier::private("input"),
+                go_type: GoType::String,
+                wit_type: Type::String,
+            }],
+            return_type: Some(WitReturn {
+                go_type: GoType::Bool,
+                wit_type: Type::Bool,
+            }),
+            wit_function: Function {
+                name: "is_valid".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![Param {
+                    name: "input".to_string(),
+                    ty: Type::String,
+                    span: Default::default(),
+                }],
+                result: Some(Type::Bool),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // The host function must declare a uint32 return (Wasm i32 representation of bool)
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected host function to return uint32, got:\n{code_str}"
+        );
+        // The body must contain a return statement
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement in the generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Same regression test but for enum return types, which is the exact
+    /// case that was failing in Arcjet's rule code.
+    /// (`verify: func(bot-id: string, ip: string) -> validator-response`).
+    #[test]
+    fn test_import_with_enum_return_type() {
+        let mut resolve = Resolve::default();
+
+        // Create an enum type in the resolve so Type::Id works
+        let type_id = resolve.types.alloc(TypeDef {
+            name: Some("status".to_string()),
+            kind: TypeDefKind::Enum(Enum {
+                cases: vec![
+                    EnumCase {
+                        name: "ok".to_string(),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    EnumCase {
+                        name: "error".to_string(),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        });
+
+        let sizes = SizeAlign::default();
+
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function returning an enum has a single i32 Wasm result
+        let method = InterfaceMethod {
+            name: "get_status".to_string(),
+            go_method_name: GoIdentifier::public("GetStatus"),
+            parameters: vec![Parameter {
+                name: GoIdentifier::private("id"),
+                go_type: GoType::String,
+                wit_type: Type::String,
+            }],
+            return_type: Some(WitReturn {
+                go_type: GoType::Uint32,
+                wit_type: Type::Id(type_id),
+            }),
+            wit_function: Function {
+                name: "get_status".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![Param {
+                    name: "id".to_string(),
+                    ty: Type::String,
+                    span: Default::default(),
+                }],
+                result: Some(Type::Id(type_id)),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // The host function must declare a uint32 return (Wasm i32 representation of enum)
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected host function to return uint32, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement in the generated code, got:\n{code_str}"
+        );
     }
 
     fn create_test_world_with_interface() -> (Resolve, WorldId) {
