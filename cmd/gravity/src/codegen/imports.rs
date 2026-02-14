@@ -4,7 +4,8 @@ use genco::prelude::*;
 use wit_bindgen_core::{
     abi::{AbiVariant, LiftLower},
     wit_parser::{
-        Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World, WorldItem,
+        Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World,
+        WorldItem,
     },
 };
 
@@ -483,7 +484,11 @@ mod tests {
         let func = Function {
             name: "test_function".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![Param { name: "input".to_string(), ty: Type::String, span: Default::default() }],
+            params: vec![Param {
+                name: "input".to_string(),
+                ty: Type::String,
+                span: Default::default(),
+            }],
             result: Some(Type::String),
             docs: Default::default(),
             stability: Default::default(),
@@ -560,7 +565,11 @@ mod tests {
             wit_function: Function {
                 name: "test_u32".to_string(),
                 kind: FunctionKind::Freestanding,
-                params: vec![Param { name: "value".to_string(), ty: Type::U32, span: Default::default() }],
+                params: vec![Param {
+                    name: "value".to_string(),
+                    ty: Type::U32,
+                    span: Default::default(),
+                }],
                 result: None,
                 docs: Default::default(),
                 stability: Default::default(),
@@ -950,7 +959,11 @@ mod tests {
                 "log".to_string(),
                 Function {
                     name: "log".to_string(),
-                    params: vec![Param { name: "message".to_string(), ty: Type::String, span: Default::default() }],
+                    params: vec![Param {
+                        name: "message".to_string(),
+                        ty: Type::String,
+                        span: Default::default(),
+                    }],
                     result: None,
                     kind: FunctionKind::Freestanding,
                     docs: Default::default(),

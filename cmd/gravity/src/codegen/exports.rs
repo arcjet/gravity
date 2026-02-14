@@ -109,7 +109,11 @@ mod tests {
         let func = Function {
             name: "add_number".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![Param { name: "value".to_string(), ty: Type::U32, span: Default::default() }],
+            params: vec![Param {
+                name: "value".to_string(),
+                ty: Type::U32,
+                span: Default::default(),
+            }],
             result: Some(Type::U32),
             docs: Default::default(),
             stability: Default::default(),
