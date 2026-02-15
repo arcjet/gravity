@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world records ../../target/wasm32-unknown-unknown/release/example_records.wasm"
