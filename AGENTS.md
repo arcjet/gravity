@@ -8,7 +8,7 @@ Wasm file (with embedded WIT custom section) and generates Go bindings targeting
 
 ### Prerequisites
 
-- Rust toolchain (pinned in `rust-toolchain.toml`, currently 1.90.0)
+- Rust toolchain (version pinned to what's in in `rust-toolchain.toml`)
 - `wasm32-unknown-unknown` and `wasm32-wasip1` targets (configured in
   `rust-toolchain.toml`)
 - Go (for running example tests)
@@ -172,18 +172,18 @@ the `examples/` directory before the Go tests will compile.
 
 ## Key Dependencies
 
-| Crate            | Version | Purpose                                  |
-| ---------------- | ------- | ---------------------------------------- |
-| wit-bindgen-core | 0.53.1  | Canonical ABI instruction generation     |
-| wit-component    | 0.245.1 | Wasm component model processing          |
-| genco            | 0.19.0  | Code generation with Go language support |
-| clap             | 4.5.58  | CLI argument parsing                     |
-| trycmd           | 1.0.0   | CLI snapshot testing (dev)               |
+| Crate            | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| wit-bindgen-core | Canonical ABI instruction generation     |
+| wit-component    | Wasm component model processing          |
+| genco            | Code generation with Go language support |
+| clap             | CLI argument parsing                     |
+| trycmd           | CLI snapshot testing (dev)               |
 
 ## Style & Conventions
 
 - Use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, etc.
-- Format code with `cargo fmt`
+- Format code before committing with `cargo fmt`
 - Lint with `cargo clippy`
 - When adding new instruction handlers in `func.rs`, add corresponding entries
   in the `instructions` example and update snapshot tests
