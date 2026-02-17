@@ -8,12 +8,13 @@ use wit_bindgen_core::{
 
 use crate::{
     go::{
-        GoIdentifier, GoResult, GoType, Operand, comment,
+        comment,
         imports::{
             ERRORS_NEW, REFLECT_VALUE_OF, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
-            WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32, WAZERO_API_ENCODE_U32,
+            WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32,
         },
+        GoIdentifier, GoResult, GoType, Operand,
     },
     resolve_type, resolve_wasm_type,
 };
@@ -309,13 +310,20 @@ impl Bindgen for Func<'_> {
                 }
                 results.push(Operand::SingleValue(value))
             }
+            // I32FromU32 and U32FromI32 are identity operations at the Wasm
+            // level (both are 32-bit integers). We use a simple uint32 cast
+            // rather than api.EncodeU32/api.DecodeU32 because those functions
+            // convert between uint32 and uint64, but operands here are always
+            // uint32 — whether from host function params (imports), memory
+            // reads (exports), or Go variables. The uint64 conversion for
+            // api.Function.Call() is handled separately by CallWasm.
             Instruction::I32FromU32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := $WAZERO_API_ENCODE_U32($operand)
+                    $result := uint32($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -325,7 +333,7 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := $WAZERO_API_DECODE_U32($operand)
+                    $result := uint32($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1249,8 +1257,12 @@ impl Bindgen for Func<'_> {
             Instruction::DropHandle { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::FixedLengthListLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::FixedLengthListLower { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::FixedLengthListLowerToMemory { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::FixedLengthListLiftFromMemory { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::FixedLengthListLowerToMemory { .. } => {
+                todo!("implement instruction: {inst:?}")
+            }
+            Instruction::FixedLengthListLiftFromMemory { .. } => {
+                todo!("implement instruction: {inst:?}")
+            }
             Instruction::Flush { amt } => {
                 for op in operands.iter().take(*amt) {
                     results.push(op.clone());

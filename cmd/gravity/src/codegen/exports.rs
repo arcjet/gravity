@@ -1,7 +1,7 @@
 use genco::prelude::*;
 use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
 
-use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
+use crate::go::{imports::CONTEXT_CONTEXT, GoIdentifier, GoResult, GoType};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
@@ -36,7 +36,7 @@ impl<'a> ExportGenerator<'a> {
             .params
             .iter()
             .map(
-                |Param { name, ty, .. }| match crate::resolve_type(&ty, self.config.resolve) {
+                |Param { name, ty, .. }| match crate::resolve_type(ty, self.config.resolve) {
                     GoType::ValueOrOk(t) => (GoIdentifier::local(name), *t),
                     t => (GoIdentifier::local(name), t),
                 },
@@ -109,7 +109,11 @@ mod tests {
         let func = Function {
             name: "add_number".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![Param { name: "value".to_string(), ty: Type::U32, span: Default::default() }],
+            params: vec![Param {
+                name: "value".to_string(),
+                ty: Type::U32,
+                span: Default::default(),
+            }],
             result: Some(Type::U32),
             docs: Default::default(),
             stability: Default::default(),
@@ -160,14 +164,12 @@ mod tests {
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
-        assert!(
-            generated
-                .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))")
-        );
+        assert!(generated
+            .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
-        assert!(generated.contains("result2 := api.DecodeU32(results1)"));
+        assert!(generated.contains("result2 := uint32(results1)"));
         assert!(generated.contains("return result2"));
     }
 }
