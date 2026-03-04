@@ -314,20 +314,40 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_ENCODE_U32($operand)
-                };
+                match &self.direction {
+                    Direction::Export => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            $result := $WAZERO_API_ENCODE_U32($operand)
+                        };
+                    }
+                    Direction::Import { .. } => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            $result := uint32($operand)
+                        };
+                    }
+                }
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::U32FromI32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_DECODE_U32(uint64($operand))
-                };
+                match &self.direction {
+                    Direction::Export => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            $result := $WAZERO_API_DECODE_U32(uint64($operand))
+                        };
+                    }
+                    Direction::Import { .. } => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            $result := uint32($operand)
+                        };
+                    }
+                }
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::PointerLoad { offset } => {
