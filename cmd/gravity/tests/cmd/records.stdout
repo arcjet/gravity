@@ -14,17 +14,11 @@ var wasmFileRecords []byte
 
 type Foo struct {
 	Float32 float32
-
 	Float64 float64
-
 	Uint32 uint32
-
 	Uint64 uint64
-
 	S string
-
 	Vf32 []float32
-
 	Vf64 []float64
 }
 
@@ -159,11 +153,13 @@ func (i *RecordsInstance) ModifyFoo(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if _, err := i.module.ExportedFunction("cabi_post_modify-foo").Call(ctx, raw10...); err != nil {
-			// If we get an error during cleanup, something really bad is
-			// going on, so we panic. Also, you can't return the error from
-			// the `defer`
-			panic(errors.New("failed to cleanup"))
+		if postFn := i.module.ExportedFunction("cabi_post_modify-foo"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw10...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
 		}
 	}()
 
@@ -327,11 +323,13 @@ func (i *RecordsInstance) ModifyFooFallible(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if _, err := i.module.ExportedFunction("cabi_post_modify-foo-fallible").Call(ctx, raw10...); err != nil {
-			// If we get an error during cleanup, something really bad is
-			// going on, so we panic. Also, you can't return the error from
-			// the `defer`
-			panic(errors.New("failed to cleanup"))
+		if postFn := i.module.ExportedFunction("cabi_post_modify-foo-fallible"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw10...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
 		}
 	}()
 
