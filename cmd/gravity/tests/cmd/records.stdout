@@ -106,8 +106,8 @@ func (i *RecordsInstance) ModifyFoo(
 	vf640 := arg0.Vf64
 	result1 := api.EncodeF32(float320)
 	result2 := api.EncodeF64(float640)
-	result3 := api.EncodeU32(uint320)
-	value4 := int64(uint640)
+	result3 := uint32(uint320)
+	value4 := uint64(uint640)
 	memory5 := i.module.Memory()
 	realloc5 := i.module.ExportedFunction("cabi_realloc")
 	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
@@ -181,7 +181,7 @@ func (i *RecordsInstance) ModifyFoo(
 	if !ok15 {
 		panic(errors.New("failed to read i32 from memory"))
 	}
-	result16 := api.DecodeU32(uint64(value15))
+	result16 := uint32(value15)
 	value17, ok17 := i.module.Memory().ReadUint64Le(uint32(results10 + 24))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok17 {
@@ -276,8 +276,8 @@ func (i *RecordsInstance) ModifyFooFallible(
 	vf640 := arg0.Vf64
 	result1 := api.EncodeF32(float320)
 	result2 := api.EncodeF64(float640)
-	result3 := api.EncodeU32(uint320)
-	value4 := int64(uint640)
+	result3 := uint32(uint320)
+	value4 := uint64(uint640)
 	memory5 := i.module.Memory()
 	realloc5 := i.module.ExportedFunction("cabi_realloc")
 	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
@@ -360,7 +360,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 			var default16 Foo
 			return default16, errors.New("failed to read i32 from memory")
 		}
-		result17 := api.DecodeU32(uint64(value16))
+		result17 := uint32(value16)
 		value18, ok18 := i.module.Memory().ReadUint64Le(uint32(results10 + 32))
 		if !ok18 {
 			var default18 Foo

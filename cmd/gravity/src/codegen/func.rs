@@ -12,7 +12,7 @@ use crate::{
         imports::{
             ERRORS_NEW, REFLECT_VALUE_OF, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
-            WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32, WAZERO_API_ENCODE_U32,
+            WAZERO_API_ENCODE_F64, WAZERO_API_ENCODE_I32,
         },
         GoIdentifier, GoResult, GoType, Operand,
     },
@@ -314,40 +314,28 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                match &self.direction {
-                    Direction::Export => {
-                        quote_in! { self.body =>
-                            $['\r']
-                            $result := $WAZERO_API_ENCODE_U32($operand)
-                        };
-                    }
-                    Direction::Import { .. } => {
-                        quote_in! { self.body =>
-                            $['\r']
-                            $result := uint32($operand)
-                        };
-                    }
-                }
+                // I32FromU32 is a no-op reinterpretation (same 32-bit value,
+                // different signedness). Use uint32() identity cast in both
+                // directions — api.EncodeU32 returns uint64 which causes type
+                // mismatches when assigned to uint32 variables (e.g. VariantLower).
+                quote_in! { self.body =>
+                    $['\r']
+                    $result := uint32($operand)
+                };
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::U32FromI32 => {
+                // U32FromI32 is a no-op reinterpretation (same 32-bit value,
+                // different signedness). Use uint32() identity cast —
+                // api.DecodeU32(uint64(...)) is a needless round-trip through
+                // uint64 when the operand is already uint32.
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                match &self.direction {
-                    Direction::Export => {
-                        quote_in! { self.body =>
-                            $['\r']
-                            $result := $WAZERO_API_DECODE_U32(uint64($operand))
-                        };
-                    }
-                    Direction::Import { .. } => {
-                        quote_in! { self.body =>
-                            $['\r']
-                            $result := uint32($operand)
-                        };
-                    }
-                }
+                quote_in! { self.body =>
+                    $['\r']
+                    $result := uint32($operand)
+                };
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::PointerLoad { offset } => {
@@ -1251,12 +1239,16 @@ impl Bindgen for Func<'_> {
             }
             Instruction::I32FromChar => todo!("implement instruction: {inst:?}"),
             Instruction::I64FromU64 => {
+                // I64FromU64 is a no-op reinterpretation (same 64-bit value,
+                // different signedness). Use uint64() identity cast — int64()
+                // returns int64 which causes type mismatches when assigned to
+                // uint64 variables (e.g. VariantLower).
                 let tmp = self.tmp();
                 let value = format!("value{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $(&value) := int64($operand)
+                    $(&value) := uint64($operand)
                 }
                 results.push(Operand::SingleValue(value.into()));
             }
