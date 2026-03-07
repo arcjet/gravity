@@ -158,3 +158,8 @@ func TestRunPing(t *testing.T) {
 		t.Errorf("RunPing() = %v, want true", got)
 	}
 }
+
+// TODO: When gravity supports generating Go variant type definitions, add E2E
+// tests for export functions that accept variant parameters (e.g. a variant
+// with a u32 or u64 payload). These would exercise the VariantLower codepath
+// end-to-end through wazero.

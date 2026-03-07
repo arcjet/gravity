@@ -310,17 +310,14 @@ impl Bindgen for Func<'_> {
                 }
                 results.push(Operand::SingleValue(value))
             }
-            // I32FromU32 and U32FromI32 are identity operations at the Wasm
-            // level (both are 32-bit integers). We use a simple uint32 cast
-            // rather than api.EncodeU32/api.DecodeU32 because those functions
-            // convert between uint32 and uint64, but operands here are always
-            // uint32 — whether from host function params (imports), memory
-            // reads (exports), or Go variables. The uint64 conversion for
-            // api.Function.Call() is handled separately by CallWasm.
             Instruction::I32FromU32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
+                // I32FromU32 is a no-op reinterpretation (same 32-bit value,
+                // different signedness). Use uint32() identity cast in both
+                // directions — api.EncodeU32 returns uint64 which causes type
+                // mismatches when assigned to uint32 variables (e.g. VariantLower).
                 quote_in! { self.body =>
                     $['\r']
                     $result := uint32($operand)
@@ -328,6 +325,10 @@ impl Bindgen for Func<'_> {
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::U32FromI32 => {
+                // U32FromI32 is a no-op reinterpretation (same 32-bit value,
+                // different signedness). Use uint32() identity cast —
+                // api.DecodeU32(uint64(...)) is a needless round-trip through
+                // uint64 when the operand is already uint32.
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
@@ -1095,16 +1096,172 @@ impl Bindgen for Func<'_> {
             Instruction::I32Load8S { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::I32Load16U { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::I32Load16S { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::I64Load { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::F32Load { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::F64Load { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::I64Load { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tmp = self.tmp();
+                let value = &format!("value{tmp}");
+                let ok = &format!("ok{tmp}");
+                let default = &format!("default{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $value, $ok := i.module.Memory().ReadUint64Le(uint32($operand + $offset))
+                    $(match &self.result {
+                        GoResult::Anon(GoType::ValueOrError(typ)) => {
+                            if !$ok {
+                                var $default $(typ.as_ref())
+                                return $default, $ERRORS_NEW("failed to read i64 from memory")
+                            }
+                        }
+                        GoResult::Anon(GoType::Error) => {
+                            if !$ok {
+                                return $ERRORS_NEW("failed to read i64 from memory")
+                            }
+                        }
+                        GoResult::Anon(_) | GoResult::Empty => {
+                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                            if !$ok {
+                                panic($ERRORS_NEW("failed to read i64 from memory"))
+                            }
+                        }
+                    })
+                };
+                results.push(Operand::SingleValue(value.into()));
+            }
+            Instruction::F32Load { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tmp = self.tmp();
+                let value = &format!("value{tmp}");
+                let ok = &format!("ok{tmp}");
+                let default = &format!("default{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $value, $ok := i.module.Memory().ReadUint64Le(uint32($operand + $offset))
+                    $(match &self.result {
+                        GoResult::Anon(GoType::ValueOrError(typ)) => {
+                            if !$ok {
+                                var $default $(typ.as_ref())
+                                return $default, $ERRORS_NEW("failed to read f32 from memory")
+                            }
+                        }
+                        GoResult::Anon(GoType::Error) => {
+                            if !$ok {
+                                return $ERRORS_NEW("failed to read f32 from memory")
+                            }
+                        }
+                        GoResult::Anon(_) | GoResult::Empty => {
+                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                            if !$ok {
+                                panic($ERRORS_NEW("failed to read f32 from memory"))
+                            }
+                        }
+                    })
+                };
+                results.push(Operand::SingleValue(value.into()));
+            }
+            Instruction::F64Load { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tmp = self.tmp();
+                let value = &format!("value{tmp}");
+                let ok = &format!("ok{tmp}");
+                let default = &format!("default{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $value, $ok := i.module.Memory().ReadUint64Le(uint32($operand + $offset))
+                    $(match &self.result {
+                        GoResult::Anon(GoType::ValueOrError(typ)) => {
+                            if !$ok {
+                                var $default $(typ.as_ref())
+                                return $default, $ERRORS_NEW("failed to read f64 from memory")
+                            }
+                        }
+                        GoResult::Anon(GoType::Error) => {
+                            if !$ok {
+                                return $ERRORS_NEW("failed to read f64 from memory")
+                            }
+                        }
+                        GoResult::Anon(_) | GoResult::Empty => {
+                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                            if !$ok {
+                                panic($ERRORS_NEW("failed to read f64 from memory"))
+                            }
+                        }
+                    })
+                };
+                results.push(Operand::SingleValue(value.into()));
+            }
             Instruction::I32Store16 { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::I64Store { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::F32Store { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::F64Store { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::F32Store { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tag = &operands[0];
+                let ptr = &operands[1];
+                match &self.direction {
+                    Direction::Export => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            i.module.Memory().WriteUint64Le($ptr+$offset, $tag)
+                        }
+                    }
+                    Direction::Import { .. } => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            mod.Memory().WriteUint64Le($ptr+$offset, $tag)
+                        }
+                    }
+                }
+            }
+            Instruction::F64Store { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tag = &operands[0];
+                let ptr = &operands[1];
+                match &self.direction {
+                    Direction::Export => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            i.module.Memory().WriteUint64Le($ptr+$offset, $tag)
+                        }
+                    }
+                    Direction::Import { .. } => {
+                        quote_in! { self.body =>
+                            $['\r']
+                            mod.Memory().WriteUint64Le($ptr+$offset, $tag)
+                        }
+                    }
+                }
+            }
             Instruction::I32FromChar => todo!("implement instruction: {inst:?}"),
-            Instruction::I64FromU64 => todo!("implement instruction: {inst:?}"),
-            Instruction::I64FromS64 => todo!("implement instruction: {inst:?}"),
+            Instruction::I64FromU64 => {
+                // I64FromU64 is a no-op reinterpretation (same 64-bit value,
+                // different signedness). Use uint64() identity cast — int64()
+                // returns int64 which causes type mismatches when assigned to
+                // uint64 variables (e.g. VariantLower).
+                let tmp = self.tmp();
+                let value = format!("value{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $(&value) := uint64($operand)
+                }
+                results.push(Operand::SingleValue(value.into()));
+            }
+            Instruction::I64FromS64 => {
+                let tmp = self.tmp();
+                let value = format!("value{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $(&value) := $operand
+                }
+                results.push(Operand::SingleValue(value.into()));
+            }
             Instruction::I32FromS32 => {
                 let tmp = self.tmp();
                 let value = format!("value{tmp}");
@@ -1204,7 +1361,16 @@ impl Bindgen for Func<'_> {
                 results.push(Operand::SingleValue(result.into()));
             }
             Instruction::S64FromI64 => todo!("implement instruction: {inst:?}"),
-            Instruction::U64FromI64 => todo!("implement instruction: {inst:?}"),
+            Instruction::U64FromI64 => {
+                let tmp = self.tmp();
+                let value = format!("value{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $(&value) := uint64($operand)
+                }
+                results.push(Operand::SingleValue(value.into()));
+            }
             Instruction::CharFromI32 => todo!("implement instruction: {inst:?}"),
             Instruction::F32FromCoreF32 => {
                 let tmp = self.tmp();
