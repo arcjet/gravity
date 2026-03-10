@@ -491,9 +491,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "snapbox"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72f78b4289d8cf6ba326f76a6ec65d13f353a7e9ad3d2c497b086b0b8a7266a7"
+checksum = "b0eaa1b75a65c88a2ac1b68359122eb911877d854e3ccab89cf7b1d52a6fb1fe"
 dependencies = [
  "anstream 1.0.0",
  "anstyle",
@@ -573,9 +573,9 @@ checksum = "d163a63c116ce562a22cda521fcc4d79152e7aba014456fb5eb442f6d6a10109"
 
 [[package]]
 name = "trycmd"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd9e82c21f778ad3f9cd7d5729ef739caabacca790df693578da9df113a79abd"
+checksum = "b540f821f2e33b85807ad6307849edd96e6b09bf8b687b3c52adeaa1a340be1f"
 dependencies = [
  "anstream 1.0.0",
  "automod",
