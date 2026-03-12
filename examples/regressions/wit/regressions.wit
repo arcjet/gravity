@@ -38,4 +38,8 @@ world regressions {
   export check-status: func(key: string) -> u32;
   export double-value: func(value: u32) -> u32;
   export run-ping: func() -> bool;
+
+  // TODO: When variant type definition generation is supported, add variant
+  // exports here (e.g. variant with u32/u64 payloads) and corresponding E2E
+  // tests in regressions_test.go.
 }

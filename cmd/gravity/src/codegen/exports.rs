@@ -171,5 +171,207 @@ mod tests {
         assert!(generated.contains("results1 := raw1[0]"));
         assert!(generated.contains("result2 := uint32(results1)"));
         assert!(generated.contains("return result2"));
+
+        // I32FromU32 / U32FromI32 are no-op reinterpretations — they must not
+        // use api.EncodeU32 or api.DecodeU32 (which round-trip through uint64,
+        // causing type mismatches in VariantLower and needless widening elsewhere).
+        assert!(
+            !generated.contains("api.EncodeU32"),
+            "Export must not use api.EncodeU32 (returns uint64 but downstream expects uint32), got:\n{generated}"
+        );
+        assert!(
+            !generated.contains("api.DecodeU32"),
+            "Export must not use api.DecodeU32 (needless uint32→uint64→uint32 round-trip), got:\n{generated}"
+        );
+    }
+
+    /// Regression test: export function with a variant parameter containing
+    /// a u32 payload must generate Go code where I32FromU32 produces a
+    /// uint32 value matching the VariantLower variable declaration.
+    /// Previously I32FromU32 used api.EncodeU32() which returns uint64,
+    /// causing a Go compile error: cannot use uint64 as uint32.
+    #[test]
+    fn test_export_variant_u32_no_encode_u32() {
+        use wit_bindgen_core::wit_parser::{
+            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
+        };
+
+        let mut resolve = Resolve::new();
+
+        // variant u32-option { some-val(u32), none-val }
+        let variant_def = TypeDef {
+            name: Some("u32-option".to_string()),
+            kind: TypeDefKind::Variant(Variant {
+                cases: vec![
+                    Case {
+                        name: "some-val".to_string(),
+                        ty: Some(Type::U32),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    Case {
+                        name: "none-val".to_string(),
+                        ty: None,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+        let variant_id = resolve.types.alloc(variant_def);
+
+        let func = Function {
+            name: "process_u32_option".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "opt".to_string(),
+                ty: Type::Id(variant_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U32),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("process-u32-option".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve);
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated u32-option function:\n{}", generated);
+
+        // VariantLower declares `var variant_1 uint32` for the I32 payload slot.
+        // I32FromU32 must NOT use api.EncodeU32 (returns uint64 → type mismatch)
+        assert!(
+            !generated.contains("api.EncodeU32"),
+            "I32FromU32 must not use api.EncodeU32 in exports (returns uint64, \
+             but VariantLower variable is uint32), got:\n{generated}"
+        );
+    }
+
+    /// Regression test: export function with a variant parameter containing
+    /// a u64 payload must generate Go code where I64FromU64 produces a
+    /// uint64 value matching the VariantLower variable declaration.
+    /// Previously I64FromU64 used int64() which returns int64, causing a
+    /// Go compile error: cannot use int64 as uint64.
+    #[test]
+    fn test_export_variant_u64_no_int64_cast() {
+        use wit_bindgen_core::wit_parser::{
+            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
+        };
+
+        let mut resolve = Resolve::new();
+
+        // variant u64-option { some-val(u64), none-val }
+        let variant_def = TypeDef {
+            name: Some("u64-option".to_string()),
+            kind: TypeDefKind::Variant(Variant {
+                cases: vec![
+                    Case {
+                        name: "some-val".to_string(),
+                        ty: Some(Type::U64),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    Case {
+                        name: "none-val".to_string(),
+                        ty: None,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+        let variant_id = resolve.types.alloc(variant_def);
+
+        let func = Function {
+            name: "process_u64_option".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "opt".to_string(),
+                ty: Type::Id(variant_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U64),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("process-u64-option".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve);
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated u64-option function:\n{}", generated);
+
+        // VariantLower declares `var variant_1 uint64` for the I64 payload slot.
+        // I64FromU64 must NOT use int64() (returns int64 → type mismatch)
+        assert!(
+            !generated.contains(":= int64("),
+            "I64FromU64 must not use int64() cast in exports (returns int64, \
+             but VariantLower variable is uint64), got:\n{generated}"
+        );
     }
 }
