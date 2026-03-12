@@ -32,7 +32,7 @@ wit-component = "=0.245.1"
 
 [dev-dependencies]
 # Cutting out `filesystem` feature
-trycmd = { version = "=1.0.1", default-features = false, features = [
+trycmd = { version = "=1.1.0", default-features = false, features = [
   "color-auto",
   "diff",
 ] }
