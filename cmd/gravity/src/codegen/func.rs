@@ -1410,8 +1410,15 @@ impl Bindgen for Func<'_> {
             Instruction::GuestDeallocateString
             | Instruction::GuestDeallocate { .. }
             | Instruction::GuestDeallocateList { .. }
+            | Instruction::GuestDeallocateMap { .. }
             | Instruction::GuestDeallocateVariant { .. } => {
                 unimplemented!("gravity doesn't generate the Guest code")
+            }
+            Instruction::MapLower { .. }
+            | Instruction::MapLift { .. }
+            | Instruction::IterMapKey { .. }
+            | Instruction::IterMapValue { .. } => {
+                todo!("implement instruction: {inst:?}")
             }
             Instruction::FutureLower { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::FutureLift { .. } => todo!("implement instruction: {inst:?}"),
