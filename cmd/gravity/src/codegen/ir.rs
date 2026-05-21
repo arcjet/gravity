@@ -113,16 +113,37 @@ pub struct AnalyzedType {
 pub enum TypeDefinition {
     /// A struct-like type with named fields
     Record { fields: Vec<(GoIdentifier, GoType)> },
-    /// A union-like type with multiple cases, each optionally carrying data
-    Variant {
-        cases: Vec<(String, Option<GoType>)>,
-    },
+    /// A union-like type with multiple cases, each optionally carrying data.
+    Variant { cases: Vec<VariantCase> },
     /// A simple enumeration with named constants
     Enum { cases: Vec<String> },
     /// A type alias that wraps another type
     Alias { target: GoType },
     /// A primitive type that doesn't need special handling
     Primitive,
+}
+
+#[derive(Debug, Clone)]
+pub struct VariantCase {
+    pub name: String,
+    /// `None` for unit cases.
+    pub payload: Option<GoType>,
+    pub dispatch: CaseDispatch,
+}
+
+/// How a variant case is represented in Go. See `crate::CaseDispatchKind`
+/// for the underlying decision; this enum carries the resolved Go names so
+/// they aren't re-derived at emission time.
+#[derive(Debug, Clone)]
+pub enum CaseDispatch {
+    /// WIT shorthand `case(case)`: the payload record itself implements
+    /// the variant's marker interface, so callers construct
+    /// `MyRecord{...}` directly.
+    DirectRecord { record_type: GoType },
+    /// Dedicated `{VariantName}{CaseName}` wrapper struct with an optional
+    /// `Value` field. Callers construct `Wrapper{Value: payload}` (or
+    /// `Wrapper{}` for unit cases) and read the payload via `.Value`.
+    Wrapped { wrapper_name: GoIdentifier },
 }
 
 /// An analyzed WIT function.

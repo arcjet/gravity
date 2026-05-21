@@ -1,7 +1,6 @@
 package gravity:regressions;
 
-// Regression 1: Import functions returning bool and enum types.
-// Previously caused: todo!("implement handling of wasm signatures with results")
+// Regression 1: import functions returning bool and enum types.
 interface checker {
   is-enabled: func(key: string) -> bool;
 
@@ -13,33 +12,68 @@ interface checker {
   get-status: func(key: string) -> status;
 }
 
-// Regression 2: Import functions with u32 parameters.
-// Previously caused: uint32/uint64 type mismatch in generated Go code
-// due to api.EncodeU32/api.DecodeU32 being used instead of uint32() casts.
+// Regression 2: import functions with u32 parameters.
 interface processor {
   double: func(value: u32) -> u32;
 }
 
-// Regression 3: Import functions with zero WIT parameters.
-// Previously caused: Go syntax error from trailing comma in host function
-// signature — func(ctx context.Context, mod api.Module, ,) — because the
-// template unconditionally emitted a comma separator between the fixed
-// params and the (empty) WIT params.
+// Regression 3: import functions with zero WIT parameters.
 interface pinger {
   ping: func() -> bool;
+}
+
+// Regression 4: two interfaces in the same world both define an enum named
+// `validator-response`. Without interface-scoped name qualification, the
+// generated Go redeclares the same type twice.
+interface email-checker {
+  // Case names overlap intentionally with the bot-verifier enum below, but
+  // `maybe` is used in place of `unknown` so the case CONSTANTS don't
+  // collide with `checker.status.unknown` (constant qualification is out
+  // of scope for this regression).
+  enum validator-response {
+    yes,
+    no,
+    maybe,
+  }
+  is-allowed: func(email: string) -> validator-response;
+}
+
+interface bot-verifier {
+  enum validator-response {
+    verified,
+    spoofed,
+    unverifiable,
+  }
+  verify: func(bot-id: string) -> validator-response;
+}
+
+// Regression 5: import callback returning `option<string>`. Exercises
+// import-side lowering of an option (the option payload must be written
+// through the host-side `mod.Memory()` / `mod.ExportedFunction(...)`).
+interface ip-source {
+  lookup: func(ip: string) -> option<string>;
 }
 
 world regressions {
   import checker;
   import processor;
   import pinger;
+  import email-checker;
+  import bot-verifier;
+  import ip-source;
 
   export check-enabled: func(key: string) -> bool;
   export check-status: func(key: string) -> u32;
   export double-value: func(value: u32) -> u32;
   export run-ping: func() -> bool;
 
-  // TODO: When variant type definition generation is supported, add variant
-  // exports here (e.g. variant with u32/u64 payloads) and corresponding E2E
-  // tests in regressions_test.go.
+  // Both calls funnel back into u32 discriminants so the test can assert
+  // against the host implementations without depending on the generated
+  // Go enum type names.
+  export check-email-allowed: func(email: string) -> u32;
+  export check-bot-verified: func(bot-id: string) -> u32;
+
+  // Round-trip the option<string> callback. Returns "absent" when the
+  // host returned `none`.
+  export run-ip-lookup: func(ip: string) -> string;
 }

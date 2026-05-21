@@ -50,6 +50,55 @@ type IRegressionsPinger interface {
 	) bool
 }
 
+type IRegressionsEmailChecker interface {
+	IsAllowed(
+		ctx context.Context,
+		email string,
+	) EmailCheckerValidatorResponse
+}
+
+type EmailCheckerValidatorResponse interface {
+	isEmailCheckerValidatorResponse()
+}
+
+type emailCheckerValidatorResponse int
+
+func (emailCheckerValidatorResponse) isEmailCheckerValidatorResponse() {}
+
+const (
+	Yes emailCheckerValidatorResponse = iota
+	No emailCheckerValidatorResponse = iota
+	Maybe emailCheckerValidatorResponse = iota
+)
+
+type IRegressionsBotVerifier interface {
+	Verify(
+		ctx context.Context,
+		botId string,
+	) BotVerifierValidatorResponse
+}
+
+type BotVerifierValidatorResponse interface {
+	isBotVerifierValidatorResponse()
+}
+
+type botVerifierValidatorResponse int
+
+func (botVerifierValidatorResponse) isBotVerifierValidatorResponse() {}
+
+const (
+	Verified botVerifierValidatorResponse = iota
+	Spoofed botVerifierValidatorResponse = iota
+	Unverifiable botVerifierValidatorResponse = iota
+)
+
+type IRegressionsIpSource interface {
+	Lookup(
+		ctx context.Context,
+		ip string,
+	) *string
+}
+
 type RegressionsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
@@ -60,9 +109,44 @@ func NewRegressionsFactory(
 	checker IRegressionsChecker,
 	processor IRegressionsProcessor,
 	pinger IRegressionsPinger,
+	emailChecker IRegressionsEmailChecker,
+	botVerifier IRegressionsBotVerifier,
+	ipSource IRegressionsIpSource,
 ) (*RegressionsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
 
+	_, err4 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/bot-verifier").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+	) uint32{
+		buf0, ok0 := mod.Memory().Read(arg0, arg1)
+		if !ok0 {
+			panic(errors.New("failed to read bytes from memory"))
+		}
+		str0 := string(buf0)
+		value1 := botVerifier.Verify(ctx, str0)
+		var enum2 uint32
+		switch value1 {
+		case Verified:
+			enum2 = 0
+		case Spoofed:
+			enum2 = 1
+		case Unverifiable:
+			enum2 = 2
+		default:
+			panic(errors.New("invalid enum type provided"))
+		}
+		return enum2
+	}).
+	Export("verify").
+	Instantiate(ctx)
+	if err4 != nil {
+		return nil, err4
+	}
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/checker").
 	NewFunctionBuilder().
 	WithFunc(func(
@@ -116,6 +200,73 @@ func NewRegressionsFactory(
 	Instantiate(ctx)
 	if err0 != nil {
 		return nil, err0
+	}
+	_, err3 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/email-checker").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+	) uint32{
+		buf0, ok0 := mod.Memory().Read(arg0, arg1)
+		if !ok0 {
+			panic(errors.New("failed to read bytes from memory"))
+		}
+		str0 := string(buf0)
+		value1 := emailChecker.IsAllowed(ctx, str0)
+		var enum2 uint32
+		switch value1 {
+		case Yes:
+			enum2 = 0
+		case No:
+			enum2 = 1
+		case Maybe:
+			enum2 = 2
+		default:
+			panic(errors.New("invalid enum type provided"))
+		}
+		return enum2
+	}).
+	Export("is-allowed").
+	Instantiate(ctx)
+	if err3 != nil {
+		return nil, err3
+	}
+	_, err5 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/ip-source").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+		arg2 uint32,
+	) {
+		buf0, ok0 := mod.Memory().Read(arg0, arg1)
+		if !ok0 {
+			panic(errors.New("failed to read bytes from memory"))
+		}
+		str0 := string(buf0)
+		value1 := ipSource.Lookup(ctx, str0)
+		if value1 == nil {
+			mod.Memory().WriteByte(arg2+0, 0)
+		} else {
+			variantPayload := *value1
+			mod.Memory().WriteByte(arg2+0, 1)
+			memory2 := mod.Memory()
+			realloc2 := mod.ExportedFunction("cabi_realloc")
+			ptr2, len2, err2 := writeString(ctx, variantPayload, memory2, realloc2)
+			if err2 != nil {
+				panic(err2)
+			}
+			mod.Memory().WriteUint32Le(arg2+8, uint32(len2))
+			mod.Memory().WriteUint32Le(arg2+4, uint32(ptr2))
+		}
+	}).
+	Export("lookup").
+	Instantiate(ctx)
+	if err5 != nil {
+		return nil, err5
 	}
 	_, err2 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/pinger").
 	NewFunctionBuilder().
@@ -290,5 +441,103 @@ func (i *RegressionsInstance) RunPing(
 	results0 := raw0[0]
 	value1 := results0 != 0
 	return value1
+}
+
+func (i *RegressionsInstance) CheckEmailAllowed(
+	ctx context.Context,
+	email string,
+) uint32 {
+	arg0 := email
+	memory0 := i.module.Memory()
+	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+	raw1, err1 := i.module.ExportedFunction("check-email-allowed").Call(ctx, uint64(ptr0), uint64(len0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
+
+	results1 := raw1[0]
+	result2 := uint32(results1)
+	return result2
+}
+
+func (i *RegressionsInstance) CheckBotVerified(
+	ctx context.Context,
+	botId string,
+) uint32 {
+	arg0 := botId
+	memory0 := i.module.Memory()
+	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+	raw1, err1 := i.module.ExportedFunction("check-bot-verified").Call(ctx, uint64(ptr0), uint64(len0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
+
+	results1 := raw1[0]
+	result2 := uint32(results1)
+	return result2
+}
+
+func (i *RegressionsInstance) RunIpLookup(
+	ctx context.Context,
+	ip string,
+) string {
+	arg0 := ip
+	memory0 := i.module.Memory()
+	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+	raw1, err1 := i.module.ExportedFunction("run-ip-lookup").Call(ctx, uint64(ptr0), uint64(len0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
+
+	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
+	// deferring this, we ensure that no memory is corrupted before the function
+	// is done accessing it.
+	defer func() {
+		if postFn := i.module.ExportedFunction("cabi_post_run-ip-lookup"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw1...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
+		}
+	}()
+
+	results1 := raw1[0]
+	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok2 {
+		panic(errors.New("failed to read pointer from memory"))
+	}
+	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok3 {
+		panic(errors.New("failed to read length from memory"))
+	}
+	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok4 {
+		panic(errors.New("failed to read bytes from memory"))
+	}
+	str4 := string(buf4)
+	return str4
 }
 
