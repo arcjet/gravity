@@ -1,0 +1,11 @@
+[package]
+name = "example-variants"
+version = "0.0.2"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "=0.56.0"
+wit-component = "=0.246.2"

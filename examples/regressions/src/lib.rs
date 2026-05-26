@@ -1,4 +1,6 @@
-use gravity::regressions::{checker, pinger, processor};
+use gravity::regressions::{
+    bot_verifier, checker, email_checker, ip_source, pinger, processor,
+};
 
 wit_bindgen::generate!({
     world: "regressions",
@@ -27,5 +29,25 @@ impl Guest for RegressionsWorld {
 
     fn run_ping() -> bool {
         pinger::ping()
+    }
+
+    fn check_email_allowed(email: String) -> u32 {
+        match email_checker::is_allowed(&email) {
+            email_checker::ValidatorResponse::Yes => 0,
+            email_checker::ValidatorResponse::No => 1,
+            email_checker::ValidatorResponse::Maybe => 2,
+        }
+    }
+
+    fn check_bot_verified(bot_id: String) -> u32 {
+        match bot_verifier::verify(&bot_id) {
+            bot_verifier::ValidatorResponse::Verified => 0,
+            bot_verifier::ValidatorResponse::Spoofed => 1,
+            bot_verifier::ValidatorResponse::Unverifiable => 2,
+        }
+    }
+
+    fn run_ip_lookup(ip: String) -> String {
+        ip_source::lookup(&ip).unwrap_or_else(|| "absent".to_string())
     }
 }

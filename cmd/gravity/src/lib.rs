@@ -4,11 +4,92 @@ pub mod go;
 use crate::go::GoType;
 use wit_bindgen_core::{
     abi::WasmType,
-    wit_parser::{Resolve, Result_, Type, TypeDef, TypeDefKind},
+    dealias,
+    wit_parser::{Case, Resolve, Result_, Type, TypeDef, TypeDefKind, TypeId, TypeOwner},
 };
 
 // Temporary re-export while we migrate.
 pub use codegen::Func;
+
+/// How a single variant case is represented in Go.
+pub enum CaseDispatchKind {
+    /// The case payload's named record IS the dispatch type — the record
+    /// implements the variant's marker interface directly. Constructed as
+    /// `MyRecord{...}`.
+    DirectRecord,
+    /// A dedicated `{variant_name}-{case_name}` wrapper struct holds the
+    /// optional payload in a `Value` field. Constructed as
+    /// `Wrapper{Value: payload}` or `Wrapper{}` for unit cases.
+    Wrapped,
+}
+
+/// Detect the WIT shorthand `case-name(case-name)` where the payload is a
+/// named record sharing the case's name — the historical arcjet shape
+/// (`allow-email-validation-config(allow-email-validation-config)`). We let
+/// the record implement the marker interface directly so existing call
+/// sites that construct the record value as the variant keep working.
+pub fn case_dispatch_kind(case: &Case, resolve: &Resolve) -> CaseDispatchKind {
+    if let Some(Type::Id(payload_id)) = &case.ty {
+        let payload_def = &resolve.types[*payload_id];
+        if matches!(payload_def.kind, TypeDefKind::Record(_))
+            && payload_def.name.as_deref() == Some(case.name.as_str())
+        {
+            return CaseDispatchKind::DirectRecord;
+        }
+    }
+    CaseDispatchKind::Wrapped
+}
+
+/// Kebab-case Go name for the type a variant case dispatches against in a
+/// type-switch.
+pub fn case_dispatch_name(variant_name: &str, case: &Case, resolve: &Resolve) -> String {
+    match case_dispatch_kind(case, resolve) {
+        CaseDispatchKind::DirectRecord => match case.ty {
+            Some(Type::Id(payload_id)) => qualified_type_name(payload_id, resolve),
+            _ => unreachable!("DirectRecord requires a Type::Id payload"),
+        },
+        CaseDispatchKind::Wrapped => format!("{variant_name}-{}", case.name),
+    }
+}
+
+/// Returns a globally-unique kebab-case name suitable for deriving a Go
+/// identifier from a WIT type. WIT lets two interfaces declare types of
+/// the same name (e.g. both `email-validator-overrides` and `verify-bot`
+/// declare an `enum validator-response`); we qualify only the colliding
+/// names with their owning interface so stable single-instance names like
+/// `algorithm-result` stay flat. The result is fed to
+/// `GoIdentifier::public`, so it must remain in kebab-case.
+pub fn qualified_type_name(type_id: TypeId, resolve: &Resolve) -> String {
+    let canonical = dealias(resolve, type_id);
+    let type_def = &resolve.types[canonical];
+    let name = type_def
+        .name
+        .as_ref()
+        .expect("expected named type for qualified_type_name");
+
+    // Skip `Type` aliases when looking for collisions: they re-export an
+    // existing type rather than introducing a new one.
+    let collides = resolve.types.iter().any(|(other_id, other_def)| {
+        other_id != canonical
+            && other_def.name.as_deref() == Some(name.as_str())
+            && !matches!(other_def.kind, TypeDefKind::Type(_))
+    });
+
+    if !collides {
+        return name.clone();
+    }
+
+    match type_def.owner {
+        TypeOwner::Interface(id) => {
+            let interface_name = resolve.interfaces[id]
+                .name
+                .as_ref()
+                .expect("interface missing name");
+            format!("{interface_name}-{name}")
+        }
+        TypeOwner::World(_) | TypeOwner::None => name.clone(),
+    }
+}
 
 /// Resolves a Wasm type to a Go type.
 pub fn resolve_wasm_type(typ: &WasmType) -> GoType {
@@ -55,26 +136,24 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
 
         // Complex types.
         Type::Id(id) => {
-            let TypeDef { name, kind, .. } = resolve
+            let TypeDef { kind, .. } = resolve
                 .types
                 .get(*id)
                 .expect("failed to find type definition");
             match kind {
-                TypeDefKind::Record(_) => {
-                    GoType::UserDefined(name.clone().expect("expected record to have a name"))
-                }
+                TypeDefKind::Record(_) => GoType::UserDefined(qualified_type_name(*id, resolve)),
                 TypeDefKind::Resource => todo!("TODO(#5): implement resources"),
                 TypeDefKind::Handle(_) => todo!("TODO(#5): implement resources"),
                 TypeDefKind::Flags(_) => todo!("TODO(#4): implement flag conversion"),
                 TypeDefKind::Tuple(_) => todo!("TODO(#4): implement tuple conversion"),
-                // Variants are handled as an empty interfaces in type signatures; however, that
-                // means they require runtime type reflection
-                TypeDefKind::Variant(_) => GoType::Interface,
-                TypeDefKind::Enum(_) => {
-                    GoType::UserDefined(name.clone().expect("expected enum to have a name"))
-                }
+                TypeDefKind::Variant(_) => GoType::UserDefined(qualified_type_name(*id, resolve)),
+                TypeDefKind::Enum(_) => GoType::UserDefined(qualified_type_name(*id, resolve)),
+                // `option<T>` is `*T`: `nil` is `none`, `&v` is `some`. A
+                // single pointer composes in every position (param, return,
+                // record field, list element); the prior `(T, bool)`
+                // comma-ok shape didn't.
                 TypeDefKind::Option(value) => {
-                    GoType::ValueOrOk(Box::new(resolve_type(value, resolve)))
+                    GoType::Pointer(Box::new(resolve_type(value, resolve)))
                 }
 
                 // Various results, including specialised ones.
@@ -108,9 +187,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::List(inner) => GoType::Slice(Box::new(resolve_type(inner, resolve))),
                 TypeDefKind::Future(_) => todo!("TODO(#4): implement future conversion"),
                 TypeDefKind::Stream(_) => todo!("TODO(#4): implement stream conversion"),
-                TypeDefKind::Type(_) => {
-                    GoType::UserDefined(name.clone().expect("expected type alias to have a name"))
-                }
+                TypeDefKind::Type(_) => GoType::UserDefined(qualified_type_name(*id, resolve)),
                 TypeDefKind::FixedLengthList(_, _) => {
                     todo!("TODO(#4): implement fixed length list conversion")
                 }
@@ -119,4 +196,24 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
             }
         }
     }
+}
+
+/// Like [`resolve_type`], but downgrades a top-level Variant to
+/// `interface{}` so existing call sites can keep passing the variant
+/// payload through `any`-typed plumbing (rule config returns, generic
+/// dispatch layers). The marker interface and per-case structs are still
+/// generated, and the type-switch in `VariantLower` still dispatches on
+/// the concrete case types — callers who want compile-time exhaustiveness
+/// just declare their value as the marker interface explicitly.
+///
+/// Variants nested inside records, lists, or returns stay typed so
+/// generated record fields remain strongly typed.
+pub fn resolve_param_type(typ: &Type, resolve: &Resolve) -> GoType {
+    if let Type::Id(id) = typ {
+        let def = &resolve.types[dealias(resolve, *id)];
+        if matches!(def.kind, TypeDefKind::Variant(_)) {
+            return GoType::Interface;
+        }
+    }
+    resolve_type(typ, resolve)
 }

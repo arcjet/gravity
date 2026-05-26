@@ -58,9 +58,55 @@ func (Pinger) Ping(_ context.Context) bool {
 	return true
 }
 
+// EmailChecker, BotVerifier, IpSource — regression 4 (cross-interface
+// enum collision) and regression 5 (callback returning option<string>).
+type EmailChecker struct{}
+
+func (EmailChecker) IsAllowed(_ context.Context, email string) EmailCheckerValidatorResponse {
+	switch email {
+	case "allow@example.com":
+		return Yes
+	case "block@example.com":
+		return No
+	default:
+		return Maybe
+	}
+}
+
+type BotVerifier struct{}
+
+func (BotVerifier) Verify(_ context.Context, botID string) BotVerifierValidatorResponse {
+	switch botID {
+	case "verified-bot":
+		return Verified
+	case "spoofed-bot":
+		return Spoofed
+	default:
+		return Unverifiable
+	}
+}
+
+type IpSource struct{}
+
+func (IpSource) Lookup(_ context.Context, ip string) *string {
+	if ip == "127.0.0.1" {
+		s := "localhost"
+		return &s
+	}
+	return nil
+}
+
 func newInstance(t *testing.T) *RegressionsInstance {
 	t.Helper()
-	fac, err := NewRegressionsFactory(t.Context(), Checker{}, Processor{}, Pinger{})
+	fac, err := NewRegressionsFactory(
+		t.Context(),
+		Checker{},
+		Processor{},
+		Pinger{},
+		EmailChecker{},
+		BotVerifier{},
+		IpSource{},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +205,58 @@ func TestRunPing(t *testing.T) {
 	}
 }
 
-// TODO: When gravity supports generating Go variant type definitions, add E2E
-// tests for export functions that accept variant parameters (e.g. a variant
-// with a u32 or u64 payload). These would exercise the VariantLower codepath
-// end-to-end through wazero.
+// TestCrossInterfaceEnumCollision covers regression 4. Both
+// `email-checker` and `bot-verifier` define `enum validator-response`
+// inside the same world; without interface-scoped qualification the
+// generated Go contained two `type ValidatorResponse interface { ... }`
+// declarations and refused to compile. We verify (a) both host method
+// signatures use qualified Go type names that exist alongside each other
+// and (b) the wasm guest can dispatch on each independently.
+func TestCrossInterfaceEnumCollision(t *testing.T) {
+	ins := newInstance(t)
+
+	emailTests := []struct {
+		input string
+		want  uint32
+	}{
+		{"allow@example.com", 0},
+		{"block@example.com", 1},
+		{"other", 2},
+	}
+	for _, tt := range emailTests {
+		if got := ins.CheckEmailAllowed(t.Context(), tt.input); got != tt.want {
+			t.Errorf("CheckEmailAllowed(%q) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+
+	botTests := []struct {
+		input string
+		want  uint32
+	}{
+		{"verified-bot", 0},
+		{"spoofed-bot", 1},
+		{"other", 2},
+	}
+	for _, tt := range botTests {
+		if got := ins.CheckBotVerified(t.Context(), tt.input); got != tt.want {
+			t.Errorf("CheckBotVerified(%q) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+// TestImportCallbackOptionString covers regression 5. The `ip-source`
+// import returns `option<string>`. Lowering it into wasm memory must run
+// against the IMPORT-side module handle (`mod.Memory()` /
+// `mod.ExportedFunction("cabi_realloc")`) — gravity previously
+// hard-coded the export-side `i.module.*` handle in list and option
+// lowering, producing `undefined: i` from the generated host wrapper.
+func TestImportCallbackOptionString(t *testing.T) {
+	ins := newInstance(t)
+
+	if got := ins.RunIpLookup(t.Context(), "127.0.0.1"); got != "localhost" {
+		t.Errorf("RunIpLookup(\"127.0.0.1\") = %q, want \"localhost\"", got)
+	}
+	if got := ins.RunIpLookup(t.Context(), "0.0.0.0"); got != "absent" {
+		t.Errorf("RunIpLookup(\"0.0.0.0\") = %q, want \"absent\"", got)
+	}
+}

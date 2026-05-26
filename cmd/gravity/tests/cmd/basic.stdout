@@ -6,7 +6,6 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
-import "reflect"
 
 import _ "embed"
 
@@ -301,16 +300,16 @@ func (i *BasicInstance) Primitive(
 
 func (i *BasicInstance) OptionalPrimitive(
 	ctx context.Context,
-	b bool,
-) (bool, bool) {
+	b *bool,
+) *bool {
 	arg0 := b
 	var variant1_0 uint32
 	var variant1_1 uint32
-	if reflect.ValueOf(arg0).IsZero() {
+	if arg0 == nil {
 		variant1_0 = 0
 		variant1_1 = 0
 	} else {
-		variantPayload := arg0
+		variantPayload := *arg0
 		var value0 uint32
 		if variantPayload {
 			value0 = 1
@@ -332,21 +331,18 @@ func (i *BasicInstance) OptionalPrimitive(
 	if !ok3 {
 		panic(errors.New("failed to read byte from memory"))
 	}
-	var result6 bool
-	var ok6 bool
-	if value3 == 0 {
-		ok6 = false
-	} else {
+	var result6 *bool
+	if value3 != 0 {
 		value4, ok4 := i.module.Memory().ReadByte(uint32(results2 + 1))
 		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
 			panic(errors.New("failed to read byte from memory"))
 		}
 		value5 := value4 != 0
-		ok6 = true
-		result6 = value5
+		someValue6 := value5
+		result6 = &someValue6
 	}
-	return result6, ok6
+	return result6
 }
 
 func (i *BasicInstance) ResultPrimitive(
@@ -415,18 +411,18 @@ func (i *BasicInstance) ResultPrimitive(
 
 func (i *BasicInstance) OptionalString(
 	ctx context.Context,
-	s string,
-) (string, bool) {
+	s *string,
+) *string {
 	arg0 := s
 	var variant1_0 uint32
 	var variant1_1 uint64
 	var variant1_2 uint64
-	if reflect.ValueOf(arg0).IsZero() {
+	if arg0 == nil {
 		variant1_0 = 0
 		variant1_1 = 0
 		variant1_2 = 0
 	} else {
-		variantPayload := arg0
+		variantPayload := *arg0
 		memory0 := i.module.Memory()
 		realloc0 := i.module.ExportedFunction("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
@@ -464,11 +460,8 @@ func (i *BasicInstance) OptionalString(
 	if !ok3 {
 		panic(errors.New("failed to read byte from memory"))
 	}
-	var result7 string
-	var ok7 bool
-	if value3 == 0 {
-		ok7 = false
-	} else {
+	var result7 *string
+	if value3 != 0 {
 		ptr4, ok4 := i.module.Memory().ReadUint32Le(uint32(results2 + 4))
 		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
@@ -485,9 +478,9 @@ func (i *BasicInstance) OptionalString(
 			panic(errors.New("failed to read bytes from memory"))
 		}
 		str6 := string(buf6)
-		ok7 = true
-		result7 = str6
+		someValue7 := str6
+		result7 = &someValue7
 	}
-	return result7, ok7
+	return result7
 }
 

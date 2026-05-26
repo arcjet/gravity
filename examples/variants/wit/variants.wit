@@ -1,0 +1,73 @@
+package gravity:variants;
+
+/// Regression coverage for variant codegen.
+///
+/// The two variants below are intentionally shaped after the patterns that
+/// initially blew up gravity when generating bindings for arcjet's
+/// `bindings_js_req` world:
+///
+///   * `entity` mixes unit cases with a payload-carrying case (`custom`),
+///     and the payload is a primitive (`string`) rather than a named
+///     record. Each case needs its own `{Variant}{Case}` wrapper struct.
+///     This is the `sensitive-info-entity` shape.
+///
+///   * `config` has two payload-only cases whose names equal the records
+///     they carry (`allow(allow)`, `deny(deny)`). We rely on the WIT
+///     shorthand to let the record satisfy the marker interface directly,
+///     so existing arcjet callers that pass `Allow{...}` (instead of
+///     `ConfigAllow{Value: Allow{...}}`) keep working.
+///
+///   * `entities` wraps a list of variants inside a variant, exercising
+///     variant lift/lower on the list element side.
+///
+/// We also nest `entity` inside `detected` to exercise variant-in-record
+/// codegen and `list<detected>` exercises list-of-record lifting.
+world variants {
+  variant entity {
+    email,
+    phone-number,
+    ip-address,
+    credit-card-number,
+    custom(string),
+  }
+
+  record allow {
+    entities: list<entity>,
+    /// `option<u32>` field — exercises option-in-record codegen.
+    context-window-size: option<u32>,
+  }
+
+  record deny {
+    entities: list<entity>,
+  }
+
+  /// Shorthand `case(case)` — should map to direct-record dispatch so
+  /// callers can pass `Allow{...}` / `Deny{...}` directly without
+  /// wrapping in `ConfigAllow{Value: ...}`.
+  variant config {
+    allow(allow),
+    deny(deny),
+  }
+
+  /// Variant containing a `list<variant>` payload.
+  variant entities {
+    allow-all(list<entity>),
+    deny-all(list<entity>),
+  }
+
+  record detected {
+    /// Variant field nested in a record (exercises Lift through record
+    /// fields).
+    kind: entity,
+    start: u32,
+    end: u32,
+  }
+
+  /// Exports both lift (constructing a variant inside the guest and
+  /// returning it via a record) and lower (accepting a variant from the
+  /// host, dispatching on it, mutating, returning).
+  export classify: func(input: string) -> entity;
+  export tag-all: func(inputs: list<string>) -> list<detected>;
+  export choose: func(input: config) -> string;
+  export choose-many: func(input: entities) -> string;
+}

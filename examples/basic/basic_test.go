@@ -78,14 +78,15 @@ func TestNoOptionalPrimitiveCleanup(t *testing.T) {
 	}
 	defer ins.Close(t.Context())
 
-	actual, ok := ins.OptionalPrimitive(t.Context(), true)
-	if !ok {
-		t.Fatal(err)
+	in := true
+	actual := ins.OptionalPrimitive(t.Context(), &in)
+	if actual == nil {
+		t.Fatal("expected non-nil option result")
 	}
 
 	const expected = true
-	if actual != expected {
-		t.Errorf("expected: %t, but got: %t", expected, actual)
+	if *actual != expected {
+		t.Errorf("expected: %t, but got: %t", expected, *actual)
 	}
 }
 

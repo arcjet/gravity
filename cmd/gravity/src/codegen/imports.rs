@@ -4,7 +4,7 @@ use genco::prelude::*;
 use wit_bindgen_core::{
     abi::{AbiVariant, LiftLower},
     wit_parser::{
-        Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World,
+        Case, Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World,
         WorldItem,
     },
 };
@@ -13,15 +13,15 @@ use crate::{
     codegen::{
         func::Func,
         ir::{
-            AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, InterfaceMethod,
-            Parameter, TypeDefinition, WitReturn,
+            AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, CaseDispatch,
+            InterfaceMethod, Parameter, TypeDefinition, VariantCase, WitReturn,
         },
     },
     go::{
         imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
         GoIdentifier, GoResult, GoType,
     },
-    resolve_type, resolve_wasm_type,
+    resolve_param_type, resolve_type, resolve_wasm_type,
 };
 
 /// Analyzer for imports - only does analysis, no code generation
@@ -120,7 +120,7 @@ impl<'a> ImportAnalyzer<'a> {
             .iter()
             .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(ty, self.resolve),
+                go_type: resolve_param_type(ty, self.resolve),
                 wit_type: *ty,
             })
             .collect();
@@ -141,25 +141,49 @@ impl<'a> ImportAnalyzer<'a> {
 
     fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
         let type_def = &self.resolve.types[type_id];
-        let type_name = type_def.name.as_ref().expect("type missing name");
-
-        let go_type_name = GoIdentifier::public(type_name);
-        let definition = self.analyze_type_definition(&type_def.kind);
+        let qualified = crate::qualified_type_name(type_id, self.resolve);
+        let go_type_name = GoIdentifier::public(&qualified);
+        // Variants live here (not in `analyze_type_definition`) because
+        // their case wrapper names need the qualified variant name.
+        let definition = match &type_def.kind {
+            TypeDefKind::Variant(variant) => Some(TypeDefinition::Variant {
+                cases: variant
+                    .cases
+                    .iter()
+                    .map(|case| self.analyze_variant_case(&qualified, case))
+                    .collect(),
+            }),
+            kind => self.analyze_type_definition(kind),
+        };
 
         definition.map(|definition| AnalyzedType {
-            name: type_name.clone(),
+            name: qualified,
             go_type_name,
             definition,
         })
     }
 
-    /// Analyze a type definition and return an intermediate representation ready for
-    /// codegen.
-    ///
-    /// Returns `None` if the kind is just a `TypeDefKind::Type(Type::Id)`, because this
-    /// is probably a reference to an imported type that we have already analyzed.
-    ///
-    /// TODO: we should probably instead resolve and return type and dedup elsewhere.
+    fn analyze_variant_case(&self, variant_name: &str, case: &Case) -> VariantCase {
+        let payload = case.ty.as_ref().map(|t| resolve_type(t, self.resolve));
+        let dispatch = match crate::case_dispatch_kind(case, self.resolve) {
+            crate::CaseDispatchKind::DirectRecord => CaseDispatch::DirectRecord {
+                record_type: payload
+                    .clone()
+                    .expect("DirectRecord case has a payload"),
+            },
+            crate::CaseDispatchKind::Wrapped => CaseDispatch::Wrapped {
+                wrapper_name: GoIdentifier::public(format!("{variant_name}-{}", case.name)),
+            },
+        };
+        VariantCase {
+            name: case.name.clone(),
+            payload,
+            dispatch,
+        }
+    }
+
+    /// Analyze a type definition. Returns `None` for `Type::Id` aliases
+    /// that just re-export an already-analyzed type.
     fn analyze_type_definition(&self, kind: &TypeDefKind) -> Option<TypeDefinition> {
         Some(match kind {
             TypeDefKind::Record(record) => TypeDefinition::Record {
@@ -177,18 +201,9 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Enum(enum_def) => TypeDefinition::Enum {
                 cases: enum_def.cases.iter().map(|c| c.name.clone()).collect(),
             },
-            TypeDefKind::Variant(variant) => TypeDefinition::Variant {
-                cases: variant
-                    .cases
-                    .iter()
-                    .map(|case| {
-                        (
-                            case.name.clone(),
-                            case.ty.as_ref().map(|t| resolve_type(t, self.resolve)),
-                        )
-                    })
-                    .collect(),
-            },
+            TypeDefKind::Variant(_) => unreachable!(
+                "Variant analysis is handled in `analyze_type` where the qualified name is in scope"
+            ),
             TypeDefKind::Type(Type::Id(_)) => {
                 // TODO(#4):  Only skip this if we have already generated the type
                 return None;
@@ -234,7 +249,7 @@ impl<'a> ImportAnalyzer<'a> {
             .iter()
             .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(ty, self.resolve),
+                go_type: resolve_param_type(ty, self.resolve),
                 wit_type: *ty,
             })
             .collect();
@@ -398,10 +413,33 @@ impl<'a> ImportCodeGenerator<'a> {
                     // Primitive type: $(typ.name)
                 }
             }
-            TypeDefinition::Variant { .. } => {
+            TypeDefinition::Variant { cases } => {
+                let variant_interface = &typ.go_type_name;
+                let marker_method =
+                    &GoIdentifier::private(format!("is-{}", &typ.name));
+                let case_definitions = cases.iter().map(|case| match &case.dispatch {
+                    CaseDispatch::DirectRecord { record_type } => quote! {
+                        $['\n']
+                        func ($record_type) $marker_method() {}
+                    },
+                    CaseDispatch::Wrapped { wrapper_name } => {
+                        let payload_field = case.payload.as_ref().map(|p| quote!(Value $p));
+                        quote! {
+                            $['\n']
+                            type $wrapper_name struct {
+                                $(if let Some(field) = payload_field => $field)
+                            }
+                            $['\n']
+                            func ($wrapper_name) $marker_method() {}
+                        }
+                    }
+                });
                 quote_in! { *tokens =>
                     $['\n']
-                    // Variant type: $(typ.name) (TODO: implement)
+                    type $variant_interface interface {
+                        $marker_method()
+                    }
+                    $(for def in case_definitions => $def)
                 }
             }
         }
@@ -1199,6 +1237,9 @@ mod tests {
         assert_eq!(interface.types.len(), 1);
 
         let analyzed_type = &interface.types[0];
+        // Interface-scoped types are qualified only when their bare name
+        // would collide with another concrete type in the same world. The
+        // test world's `foo` is unique, so it stays flat.
         assert_eq!(analyzed_type.name, "foo");
         println!("Analyzed type definition: {:?}", analyzed_type.definition);
 

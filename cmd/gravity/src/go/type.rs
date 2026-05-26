@@ -46,6 +46,11 @@ pub enum GoType {
     Slice(Box<GoType>),
     /// Multi-return type (for functions returning arbitrary multiple values)
     // MultiReturn(Vec<GoType>),
+    /// Pointer to another type. Used as the canonical Go representation of
+    /// `option<T>` so the same lowering composes in every position (params,
+    /// return values, record fields, list elements). `nil` is `none`,
+    /// `&value` is `some`.
+    Pointer(Box<GoType>),
     /// User-defined type (records, enums, type aliases)
     UserDefined(String),
     /// Represents no value/void
@@ -92,6 +97,11 @@ impl GoType {
 
             // Complex types need cleanup if their inner types do
             GoType::ValueOrOk(inner) => inner.needs_cleanup(),
+
+            // Pointer (representing option<T>) needs cleanup only when its
+            // inner type does. Strings and slices behind a pointer still own
+            // memory the guest allocated.
+            GoType::Pointer(inner) => inner.needs_cleanup(),
 
             // The inner type of `Err` is always a String so it requires cleanup
             // TODO(#91): Store the error type to check both inner types.
@@ -162,10 +172,10 @@ impl FormatInto<Go> for &GoType {
             // GoType::MultiReturn(typs) => {
             //     tokens.append(quote!($(for typ in typs join (, ) => $typ)))
             // }
-            // GoType::Pointer(typ) => {
-            //     tokens.append(static_literal("*"));
-            //     typ.as_ref().format_into(tokens);
-            // }
+            GoType::Pointer(typ) => {
+                tokens.append(static_literal("*"));
+                typ.as_ref().format_into(tokens);
+            }
             GoType::UserDefined(name) => {
                 let id = GoIdentifier::public(name);
                 id.format_into(tokens)
