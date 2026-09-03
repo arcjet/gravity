@@ -44,7 +44,7 @@ jobs:
           go-version: stable
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+        uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0
         with:
           # We start by installing the stable toolchain but the
           # `rust-toolchain.toml` file takes precendence
