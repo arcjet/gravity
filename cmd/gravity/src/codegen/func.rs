@@ -1444,7 +1444,53 @@ impl Bindgen for Func<'_> {
 
                 results.push(Operand::SingleValue(enum_value.to_string()));
             }
-            Instruction::Malloc { .. } => todo!("implement instruction: {inst:?}"),
+            Instruction::Malloc {
+                realloc,
+                size,
+                align,
+            } => {
+                // Emitted when a function's parameters flatten to more than the
+                // canonical ABI's limit of 16 flat params. The caller allocates
+                // an area in the guest's memory with `cabi_realloc`, stores each
+                // param into it and passes the pointer as the only argument.
+                //
+                // TODO(#58): Support additional ArchitectureSize
+                let size = size.size_wasm32();
+                let align = align.align_wasm32();
+                let tmp = self.tmp();
+                let result = &format!("result{tmp}");
+                let err = &format!("err{tmp}");
+                let default = &format!("default{tmp}");
+                let ptr = &format!("ptr{tmp}");
+
+                quote_in! { self.body =>
+                    $['\r']
+                    $(comment(&["Allocate the area holding the indirectly passed parameters"]))
+                    $result, $err := $module_handle.ExportedFunction($(quoted(*realloc))).Call(ctx, 0, 0, $align, $size)
+                    $(match &self.result {
+                        GoResult::Anon(GoType::ValueOrError(typ)) => {
+                            if $err != nil {
+                                var $default $(typ.as_ref())
+                                return $default, $err
+                            }
+                        }
+                        GoResult::Anon(GoType::Error) => {
+                            if $err != nil {
+                                return $err
+                            }
+                        }
+                        GoResult::Anon(_) | GoResult::Empty => {
+                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                            if $err != nil {
+                                panic($err)
+                            }
+                        }
+                    })
+                    $ptr := uint32($result[0])
+                };
+
+                results.push(Operand::SingleValue(ptr.into()));
+            }
             Instruction::HandleLower { .. } | Instruction::HandleLift { .. } => {
                 todo!("implement resources: {inst:?}")
             }

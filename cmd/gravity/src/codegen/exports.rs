@@ -374,4 +374,100 @@ mod tests {
              but VariantLower variable is uint64), got:\n{generated}"
         );
     }
+
+    /// Regression test: an export whose parameters flatten to more than the
+    /// canonical ABI's 16 flat params is lowered *indirectly* - the host must
+    /// `cabi_realloc` an area, store each field into it and pass a single
+    /// pointer. That path emits `Instruction::Malloc`, which used to `todo!()`.
+    #[test]
+    fn test_export_indirect_params_allocates_with_realloc() {
+        use wit_bindgen_core::wit_parser::{Field, Record, TypeDef, TypeDefKind, TypeOwner};
+
+        let mut resolve = Resolve::new();
+
+        // A record with 17 u32 fields flattens to 17 core params, one over the
+        // limit of 16, which forces indirect parameter lowering.
+        let record_def = TypeDef {
+            name: Some("wide".to_string()),
+            kind: TypeDefKind::Record(Record {
+                fields: (0..17)
+                    .map(|i| Field {
+                        name: format!("field{i}"),
+                        ty: Type::U32,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    })
+                    .collect(),
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+        let record_id = resolve.types.alloc(record_def);
+
+        let func = Function {
+            name: "take_wide".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "wide".to_string(),
+                ty: Type::Id(record_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U32),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("take-wide".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve);
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated wide-record function:\n{}", generated);
+
+        // The param area is allocated through the guest's `cabi_realloc` with
+        // the record's alignment (4) and size (17 * 4 = 68 bytes).
+        assert!(
+            generated.contains("ExportedFunction(\"cabi_realloc\").Call(ctx, 0, 0, 4, 68)"),
+            "indirect params must allocate the param area via cabi_realloc, got:\n{generated}"
+        );
+        // Each field is stored into that area, and the pointer is the only
+        // argument passed to the exported wasm function.
+        assert!(
+            generated.contains("Memory().WriteUint32Le"),
+            "indirect params must be stored into the allocated area, got:\n{generated}"
+        );
+        assert!(
+            generated.contains("ExportedFunction(\"take_wide\").Call(ctx, uint64(ptr"),
+            "the wasm export must be called with the param area pointer, got:\n{generated}"
+        );
+    }
 }

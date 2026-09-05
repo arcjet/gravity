@@ -240,3 +240,46 @@ func Test_EnumInput(t *testing.T) {
 	ins.EnumInput(t.Context(), Two)
 	ins.EnumInput(t.Context(), Three)
 }
+
+// Test_IndirectParams covers the indirect parameter path of the canonical ABI.
+// WideParams flattens to 17 core params, one over the limit of 16, so the host
+// must allocate an area with cabi_realloc (Instruction::Malloc), store every
+// field into it and pass a single pointer. The guest echoes every field back so
+// a wrong size, alignment or store offset shows up as a mismatched string.
+func Test_IndirectParams(t *testing.T) {
+	fac, err := NewInstructionsFactory(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fac.Close(t.Context())
+
+	ins, err := fac.Instantiate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ins.Close(t.Context())
+
+	val := WideParams{
+		A: 1,
+		B: 2,
+		C: 3,
+		D: 4,
+		E: 5,
+		F: 6,
+		G: 7,
+		H: 8,
+		I: 9,
+		J: 10,
+		K: 11,
+		L: 12,
+		M: 13,
+		N: 14,
+		O: math.MaxUint32,
+		P: "wide",
+	}
+
+	want := "wide:1,2,3,4,5,6,7,8,9,10,11,12,13,14,4294967295"
+	if got := ins.IndirectParams(t.Context(), val); got != want {
+		t.Errorf("expected: %q, but got: %q", want, got)
+	}
+}
