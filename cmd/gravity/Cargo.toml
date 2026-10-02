@@ -36,4 +36,4 @@ trycmd = { version = "=1.2.0", default-features = false, features = [
   "color-auto",
   "diff",
 ] }
-wit-bindgen = "=0.57.1"
+wit-bindgen = "=0.61.1"
