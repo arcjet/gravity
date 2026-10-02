@@ -118,6 +118,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let world = World {
@@ -221,6 +222,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
         let variant_id = resolve.types.alloc(variant_def);
 
@@ -236,6 +238,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let world = World {
@@ -316,6 +319,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
         let variant_id = resolve.types.alloc(variant_def);
 
@@ -331,6 +335,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let world = World {
@@ -403,6 +408,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
         let record_id = resolve.types.alloc(record_def);
 
@@ -418,6 +424,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let world = World {

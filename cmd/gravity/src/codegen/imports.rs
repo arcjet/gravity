@@ -531,6 +531,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let resolve = Resolve::new();
@@ -612,6 +613,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -671,6 +673,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -718,6 +721,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         });
 
         let sizes = SizeAlign::default();
@@ -758,6 +762,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -833,6 +838,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -892,6 +898,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -949,6 +956,7 @@ mod tests {
                 docs: Default::default(),
                 stability: Default::default(),
                 span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -1007,6 +1015,7 @@ mod tests {
                     docs: Default::default(),
                     stability: Default::default(),
                     span: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -1026,6 +1035,8 @@ mod tests {
                     id: interface_id,
                     stability: Default::default(),
                     span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -1160,6 +1171,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let type_id = resolve.types.alloc(type_def);
@@ -1178,6 +1190,8 @@ mod tests {
                     id: interface_id,
                     stability: Default::default(),
                     span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -1387,6 +1401,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         // Test 2: Create a type alias
@@ -1397,6 +1412,7 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             span: Default::default(),
+            external_id: None,
         };
 
         let record_type_id = resolve.types.alloc(record_type_def);
@@ -1410,6 +1426,8 @@ mod tests {
                     id: interface_id,
                     stability: Default::default(),
                     span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
