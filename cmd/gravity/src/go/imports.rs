@@ -19,6 +19,9 @@ pub static WAZERO_NEW_MODULE_CONFIG: GoImport =
 pub static WAZERO_COMPILED_MODULE: GoImport =
     GoImport("github.com/tetratelabs/wazero", "CompiledModule");
 pub static WAZERO_API_MODULE: GoImport = GoImport("github.com/tetratelabs/wazero/api", "Module");
+pub static WAZERO_API_FUNCTION: GoImport =
+    GoImport("github.com/tetratelabs/wazero/api", "Function");
+pub static SYNC_MAP: GoImport = GoImport("sync", "Map");
 pub static WAZERO_API_MEMORY: GoImport = GoImport("github.com/tetratelabs/wazero/api", "Memory");
 pub static WAZERO_API_ENCODE_U32: GoImport =
     GoImport("github.com/tetratelabs/wazero/api", "EncodeU32");

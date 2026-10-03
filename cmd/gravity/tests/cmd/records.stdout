@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 
 import _ "embed"
 
@@ -21,16 +22,50 @@ type Foo struct {
 	Vf32 []float32
 	Vf64 []float64
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type RecordsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewRecordsFactory(
 	ctx context.Context,
 ) (*RecordsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
 	// onto it with the Runtime
@@ -41,26 +76,34 @@ func NewRecordsFactory(
 	return &RecordsFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *RecordsFactory) Instantiate(ctx context.Context) (*RecordsInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &RecordsInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &RecordsInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *RecordsFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type RecordsInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *RecordsInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -109,7 +152,7 @@ func (i *RecordsInstance) ModifyFoo(
 	result3 := uint32(uint320)
 	value4 := uint64(uint640)
 	memory5 := i.module.Memory()
-	realloc5 := i.module.ExportedFunction("cabi_realloc")
+	realloc5 := i.exports.get("cabi_realloc")
 	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err5 != nil {
@@ -117,7 +160,7 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	vec7 := vf320
 	len7 := uint64(len(vec7))
-	result7, err7 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
+	result7, err7 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
 		panic(err7)
@@ -131,7 +174,7 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
-	result9, err9 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
+	result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err9 != nil {
 		panic(err9)
@@ -143,7 +186,7 @@ func (i *RecordsInstance) ModifyFoo(
 		result8 := api.EncodeF64(e)
 		i.module.Memory().WriteUint64Le(base+0, result8)
 	}
-	raw10, err10 := i.module.ExportedFunction("modify-foo").Call(ctx, uint64(result1), uint64(result2), uint64(result3), uint64(value4), uint64(ptr5), uint64(len5), uint64(ptr7), uint64(len7), uint64(ptr9), uint64(len9))
+	raw10, err10 := i.exports.get("modify-foo").Call(ctx, uint64(result1), uint64(result2), uint64(result3), uint64(value4), uint64(ptr5), uint64(len5), uint64(ptr7), uint64(len7), uint64(ptr9), uint64(len9))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err10 != nil {
 		panic(err10)
@@ -153,7 +196,7 @@ func (i *RecordsInstance) ModifyFoo(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_modify-foo"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_modify-foo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw10...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -281,7 +324,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 	result3 := uint32(uint320)
 	value4 := uint64(uint640)
 	memory5 := i.module.Memory()
-	realloc5 := i.module.ExportedFunction("cabi_realloc")
+	realloc5 := i.exports.get("cabi_realloc")
 	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
 	if err5 != nil {
 		var default5 Foo
@@ -289,7 +332,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 	}
 	vec7 := vf320
 	len7 := uint64(len(vec7))
-	result7, err7 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
+	result7, err7 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
 	if err7 != nil {
 		var default7 Foo
 		return default7, err7
@@ -303,7 +346,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
-	result9, err9 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
+	result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
 	if err9 != nil {
 		var default9 Foo
 		return default9, err9
@@ -315,7 +358,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 		result8 := api.EncodeF64(e)
 		i.module.Memory().WriteUint64Le(base+0, result8)
 	}
-	raw10, err10 := i.module.ExportedFunction("modify-foo-fallible").Call(ctx, uint64(result1), uint64(result2), uint64(result3), uint64(value4), uint64(ptr5), uint64(len5), uint64(ptr7), uint64(len7), uint64(ptr9), uint64(len9))
+	raw10, err10 := i.exports.get("modify-foo-fallible").Call(ctx, uint64(result1), uint64(result2), uint64(result3), uint64(value4), uint64(ptr5), uint64(len5), uint64(ptr7), uint64(len7), uint64(ptr9), uint64(len9))
 	if err10 != nil {
 		var default10 Foo
 		return default10, err10
@@ -325,7 +368,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_modify-foo-fallible"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_modify-foo-fallible"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw10...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from

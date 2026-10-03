@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 
 import _ "embed"
 
@@ -42,10 +43,43 @@ type Point struct {
 	X uint32
 	Y uint32
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type BasicFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewBasicFactory(
@@ -54,6 +88,7 @@ func NewBasicFactory(
 	utils IBasicUtils,
 ) (*BasicFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("arcjet:basic/logger").
 	NewFunctionBuilder().
@@ -136,7 +171,7 @@ func NewBasicFactory(
 		str0 := string(buf0)
 		value1 := utils.Uppercase(ctx, str0)
 		memory2 := mod.Memory()
-		realloc2 := mod.ExportedFunction("cabi_realloc")
+		realloc2 := gravityExportCache.lookup(mod, "cabi_realloc")
 		ptr2, len2, err2 := writeString(ctx, value1, memory2, realloc2)
 		if err2 != nil {
 			panic(err2)
@@ -159,26 +194,34 @@ func NewBasicFactory(
 	return &BasicFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *BasicFactory) Instantiate(ctx context.Context) (*BasicInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &BasicInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &BasicInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *BasicFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type BasicInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *BasicInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -213,7 +256,7 @@ func writeString(
 func (i *BasicInstance) Hello(
 	ctx context.Context,
 ) (string, error) {
-	raw0, err0 := i.module.ExportedFunction("hello").Call(ctx, )
+	raw0, err0 := i.exports.get("hello").Call(ctx, )
 	if err0 != nil {
 		var default0 string
 		return default0, err0
@@ -223,7 +266,7 @@ func (i *BasicInstance) Hello(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_hello"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_hello"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -287,7 +330,7 @@ func (i *BasicInstance) Hello(
 func (i *BasicInstance) Primitive(
 	ctx context.Context,
 ) bool {
-	raw0, err0 := i.module.ExportedFunction("primitive").Call(ctx, )
+	raw0, err0 := i.exports.get("primitive").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -319,7 +362,7 @@ func (i *BasicInstance) OptionalPrimitive(
 		variant1_0 = 1
 		variant1_1 = value0
 	}
-	raw2, err2 := i.module.ExportedFunction("optional-primitive").Call(ctx, uint64(variant1_0), uint64(variant1_1))
+	raw2, err2 := i.exports.get("optional-primitive").Call(ctx, uint64(variant1_0), uint64(variant1_1))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
 		panic(err2)
@@ -348,7 +391,7 @@ func (i *BasicInstance) OptionalPrimitive(
 func (i *BasicInstance) ResultPrimitive(
 	ctx context.Context,
 ) (bool, error) {
-	raw0, err0 := i.module.ExportedFunction("result-primitive").Call(ctx, )
+	raw0, err0 := i.exports.get("result-primitive").Call(ctx, )
 	if err0 != nil {
 		var default0 bool
 		return default0, err0
@@ -358,7 +401,7 @@ func (i *BasicInstance) ResultPrimitive(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_result-primitive"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_result-primitive"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -424,7 +467,7 @@ func (i *BasicInstance) OptionalString(
 	} else {
 		variantPayload := *arg0
 		memory0 := i.module.Memory()
-		realloc0 := i.module.ExportedFunction("cabi_realloc")
+		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
 		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
@@ -434,7 +477,7 @@ func (i *BasicInstance) OptionalString(
 		variant1_1 = ptr0
 		variant1_2 = len0
 	}
-	raw2, err2 := i.module.ExportedFunction("optional-string").Call(ctx, uint64(variant1_0), uint64(variant1_1), uint64(variant1_2))
+	raw2, err2 := i.exports.get("optional-string").Call(ctx, uint64(variant1_0), uint64(variant1_1), uint64(variant1_2))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
 		panic(err2)
@@ -444,7 +487,7 @@ func (i *BasicInstance) OptionalString(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_optional-string"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_optional-string"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from

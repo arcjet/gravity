@@ -135,10 +135,7 @@ mod tests {
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
-        assert!(
-            generated
-                .contains("i.module.ExportedFunction(\"add-number\").Call(ctx, uint64(result0))")
-        );
+        assert!(generated.contains("i.exports.get(\"add-number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
@@ -232,7 +229,7 @@ mod tests {
         // The param area is allocated through the guest's `cabi_realloc` with
         // the record's alignment (4) and size (17 * 4 = 68 bytes).
         assert!(
-            generated.contains("ExportedFunction(\"cabi_realloc\").Call(ctx, 0, 0, 4, 68)"),
+            generated.contains("i.exports.get(\"cabi_realloc\").Call(ctx, 0, 0, 4, 68)"),
             "indirect params must allocate the param area via cabi_realloc, got:\n{generated}"
         );
         // Each field is stored into that area, and the pointer is the only
@@ -242,8 +239,39 @@ mod tests {
             "indirect params must be stored into the allocated area, got:\n{generated}"
         );
         assert!(
-            generated.contains("ExportedFunction(\"take-wide\").Call(ctx, uint64(ptr"),
+            generated.contains("i.exports.get(\"take-wide\").Call(ctx, uint64(ptr"),
             "the wasm export must be called with the param area pointer, got:\n{generated}"
         );
+    }
+
+    /// Regression test: every guest export an exported function reaches —
+    /// the function itself, its `cabi_post_*` and the `cabi_realloc` each
+    /// string or list lowering asks for — goes through the instance's memo.
+    /// `api.Module.ExportedFunction` builds a new function per call, so
+    /// asking it per string made a call taking 32 strings allocate 427 KB.
+    #[test]
+    fn test_export_lookups_go_through_the_instance_memo() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                export join: func(parts: list<string>, sep: string) -> string;
+            }",
+        );
+        let generated = generate(&fixture, "join");
+
+        assert!(
+            !generated.contains("ExportedFunction("),
+            "export lookups must not call api.Module.ExportedFunction directly, got:\n{generated}"
+        );
+        for lookup in [
+            "i.exports.get(\"join\")",
+            "i.exports.get(\"cabi_post_join\")",
+            "i.exports.get(\"cabi_realloc\")",
+        ] {
+            assert!(
+                generated.contains(lookup),
+                "expected `{lookup}`, got:\n{generated}"
+            );
+        }
     }
 }
