@@ -55,7 +55,7 @@ func (Host) Explain(_ context.Context, n uint32) (string, error) {
 
 func newInstance(t *testing.T) *ResultErrorsInstance {
 	t.Helper()
-	fac, err := NewResultErrorsFactory(t.Context(), nil, Host{})
+	fac, err := NewResultErrorsFactory(t.Context(), Host{})
 	if err != nil {
 		t.Fatal(err)
 	}

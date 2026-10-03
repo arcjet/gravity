@@ -58,6 +58,16 @@ pub struct AnalyzedInterface {
     pub wazero_module_name: String,
 }
 
+impl AnalyzedInterface {
+    /// Whether the host must implement this interface. A world that imports
+    /// an interface only for its types (`use types.{...}`, or an exported
+    /// interface's dependencies) imports no function from it, so it needs
+    /// no Go interface, no factory argument and no host module.
+    pub fn needs_host(&self) -> bool {
+        !self.methods.is_empty()
+    }
+}
+
 /// Method signature for an interface
 #[derive(Debug, Clone)]
 pub struct InterfaceMethod {
