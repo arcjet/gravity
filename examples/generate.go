@@ -8,6 +8,7 @@ package examples
 //go:generate cargo build -p example-regressions --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-variants --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-option-float-params --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-import-param-widths --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -17,3 +18,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world regressions --output ./regressions/regressions.go ../target/wasm32-unknown-unknown/release/example_regressions.wasm
 //go:generate cargo run --bin gravity -- --world variants --output ./variants/variants.go ../target/wasm32-unknown-unknown/release/example_variants.wasm
 //go:generate cargo run --bin gravity -- --world option-float-params --output ./option-float-params/option_float_params.go ../target/wasm32-unknown-unknown/release/example_option_float_params.wasm
+//go:generate cargo run --bin gravity -- --world import-param-widths --output ./import-param-widths/import_param_widths.go ../target/wasm32-unknown-unknown/release/example_import_param_widths.wasm
