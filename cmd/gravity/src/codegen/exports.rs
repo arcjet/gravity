@@ -135,8 +135,10 @@ mod tests {
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
-        assert!(generated
-            .contains("i.module.ExportedFunction(\"add-number\").Call(ctx, uint64(result0))"));
+        assert!(
+            generated
+                .contains("i.module.ExportedFunction(\"add-number\").Call(ctx, uint64(result0))")
+        );
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
