@@ -11,6 +11,8 @@ impl FormatInto<Go> for GoImport {
 
 pub static CONTEXT_CONTEXT: GoImport = GoImport("context", "Context");
 pub static ERRORS_NEW: GoImport = GoImport("errors", "New");
+pub static ERRORS_AS: GoImport = GoImport("errors", "As");
+pub static FMT_SPRINTF: GoImport = GoImport("fmt", "Sprintf");
 pub static FMT_PRINTF: GoImport = GoImport("fmt", "Printf");
 pub static WAZERO_RUNTIME: GoImport = GoImport("github.com/tetratelabs/wazero", "Runtime");
 pub static WAZERO_NEW_RUNTIME: GoImport = GoImport("github.com/tetratelabs/wazero", "NewRuntime");

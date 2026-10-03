@@ -171,12 +171,11 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     ok: Some(ok),
                     err: Some(Type::String),
                 }) => GoType::ValueOrError(Box::new(resolve_type(ok, resolve))),
+                // Any other err type comes back as a `*ResultError[E]`.
                 TypeDefKind::Result(Result_ {
-                    ok: Some(_),
+                    ok: Some(ok),
                     err: Some(_),
-                }) => {
-                    todo!("TODO(#4): implement remaining result conversion")
-                }
+                }) => GoType::ValueOrError(Box::new(resolve_type(ok, resolve))),
                 TypeDefKind::Result(Result_ {
                     ok: Some(ok),
                     err: None,
@@ -188,7 +187,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: Some(_),
-                }) => todo!("TODO(#4): implement remaining result conversion"),
+                }) => GoType::Error,
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: None,
