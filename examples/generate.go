@@ -8,6 +8,7 @@ package examples
 //go:generate cargo build -p example-regressions --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-variants --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-enum-collisions --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-result-errors --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -17,3 +18,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world regressions --output ./regressions/regressions.go ../target/wasm32-unknown-unknown/release/example_regressions.wasm
 //go:generate cargo run --bin gravity -- --world variants --output ./variants/variants.go ../target/wasm32-unknown-unknown/release/example_variants.wasm
 //go:generate cargo run --bin gravity -- --world enum-collisions --output ./enum-collisions/enum_collisions.go ../target/wasm32-unknown-unknown/release/example_enum_collisions.wasm
+//go:generate cargo run --bin gravity -- --world result-errors --output ./result-errors/result_errors.go ../target/wasm32-unknown-unknown/release/example_result_errors.wasm

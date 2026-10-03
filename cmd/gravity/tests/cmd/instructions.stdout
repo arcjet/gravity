@@ -4,6 +4,7 @@ package instructions
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 
@@ -25,6 +26,18 @@ const (
 	EnumValuesTwo enumValues = iota
 	EnumValuesThree enumValues = iota
 )
+
+func (e enumValues) String() string {
+	switch e {
+	case EnumValuesOne:
+		return "one"
+	case EnumValuesTwo:
+		return "two"
+	case EnumValuesThree:
+		return "three"
+	}
+	return fmt.Sprintf("enum-values(%d)", int(e))
+}
 
 type WideParams struct {
 	A uint32

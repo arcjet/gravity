@@ -4,6 +4,7 @@ package memory
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "unicode/utf8"
@@ -33,6 +34,18 @@ const (
 	ColorGreen color = iota
 	ColorBlue color = iota
 )
+
+func (e color) String() string {
+	switch e {
+	case ColorRed:
+		return "red"
+	case ColorGreen:
+		return "green"
+	case ColorBlue:
+		return "blue"
+	}
+	return fmt.Sprintf("color(%d)", int(e))
+}
 
 type Everything struct {
 	AU8 uint8

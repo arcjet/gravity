@@ -213,6 +213,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-result-errors"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-variants"
 version = "0.0.2"
 dependencies = [
