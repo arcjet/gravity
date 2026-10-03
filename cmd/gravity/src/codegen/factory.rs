@@ -7,8 +7,9 @@ use crate::{
     go::{
         GoIdentifier, comment,
         imports::{
-            CONTEXT_CONTEXT, ERRORS_NEW, WAZERO_API_MEMORY, WAZERO_API_MODULE,
-            WAZERO_COMPILED_MODULE, WAZERO_NEW_MODULE_CONFIG, WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
+            CONTEXT_CONTEXT, ERRORS_NEW, SYNC_MAP, WAZERO_API_FUNCTION, WAZERO_API_MEMORY,
+            WAZERO_API_MODULE, WAZERO_COMPILED_MODULE, WAZERO_NEW_MODULE_CONFIG,
+            WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
         },
     },
 };
@@ -69,6 +70,62 @@ impl<'a> FactoryGenerator<'a> {
         };
     }
 
+    /// Generate the per-module memo of `api.Module.ExportedFunction`.
+    ///
+    /// wazero builds a new function, with its own call engine, on every
+    /// `ExportedFunction` call, and the canonical ABI asks for `cabi_realloc`
+    /// once per string or list it lowers: unmemoized, an export taking 32
+    /// strings allocated 427 KB per call (the export-memo example).
+    ///
+    /// An instance owns the memo for its own module. A host function only
+    /// receives the calling module, so the factory keeps a registry from
+    /// module to memo that `Instantiate` fills and `Close` empties; a module
+    /// the registry does not know (one instantiated outside the factory) is
+    /// answered without the memo. An `api.Function` is not safe for
+    /// concurrent calls, and neither is a guest instance: each memo is only
+    /// touched by the goroutine driving its module.
+    fn generate_export_cache(&self, tokens: &mut Tokens<Go>) {
+        quote_in! { *tokens =>
+            $(comment(&[
+                "exportedFunctions memoizes api.Module.ExportedFunction for one module",
+                "instance. Like the instance, it is not safe for concurrent use.",
+            ]))
+            type exportedFunctions struct {
+                module $WAZERO_API_MODULE
+                byName map[string]$WAZERO_API_FUNCTION
+            }
+            $['\n']
+            func newExportedFunctions(module $WAZERO_API_MODULE) *exportedFunctions {
+                return &exportedFunctions{module: module, byName: map[string]$WAZERO_API_FUNCTION{}}
+            }
+            $['\n']
+            func (e *exportedFunctions) get(name string) $WAZERO_API_FUNCTION {
+                if f, ok := e.byName[name]; ok {
+                    return f
+                }
+                f := e.module.ExportedFunction(name)
+                e.byName[name] = f
+                return f
+            }
+            $['\n']
+            $(comment(&[
+                "exportedFunctionCache finds the memo of the module a host function was",
+                "called from.",
+            ]))
+            type exportedFunctionCache struct {
+                byModule $SYNC_MAP
+            }
+            $['\n']
+            func (c *exportedFunctionCache) lookup(module $WAZERO_API_MODULE, name string) $WAZERO_API_FUNCTION {
+                if e, ok := c.byModule.Load(module); ok {
+                    return e.(*exportedFunctions).get(name)
+                }
+                return module.ExportedFunction(name)
+            }
+            $['\n']
+        };
+    }
+
     /// Generate the Factory struct, constructor, and methods.
     fn generate_factory(&self, tokens: &mut Tokens<Go>) {
         let AnalyzedImports {
@@ -95,6 +152,7 @@ impl<'a> FactoryGenerator<'a> {
             type $factory_name struct {
                 runtime $WAZERO_RUNTIME
                 module  $WAZERO_COMPILED_MODULE
+                exports *exportedFunctionCache
             }
             $['\n']
             $(if has_host_interfaces => $(comment(&constructor_doc)))
@@ -104,6 +162,7 @@ impl<'a> FactoryGenerator<'a> {
                 $['\r']
             ) (*$factory_name, error) {
                 wazeroRuntime := $WAZERO_NEW_RUNTIME(ctx)
+                gravityExportCache := &exportedFunctionCache{}
 
                 $(for chain in self.config.import_chains.values() =>
                     $chain
@@ -121,6 +180,7 @@ impl<'a> FactoryGenerator<'a> {
                 return &$factory_name{
                     runtime: wazeroRuntime,
                     module:  module,
+                    exports: gravityExportCache,
                 }, nil
             }
             $['\n']
@@ -129,11 +189,13 @@ impl<'a> FactoryGenerator<'a> {
                     "An anonymous module: wazero refuses a second module of the same name",
                     "in one runtime, and every instance of this factory is the same module.",
                 ]))
-                if module, err := f.runtime.InstantiateModule(ctx, f.module, $WAZERO_NEW_MODULE_CONFIG().WithName("")); err != nil {
+                module, err := f.runtime.InstantiateModule(ctx, f.module, $WAZERO_NEW_MODULE_CONFIG().WithName(""))
+                if err != nil {
                     return nil, err
-                } else {
-                    return &$instance_name{module}, nil
                 }
+                exports := newExportedFunctions(module)
+                f.exports.byModule.Store(module, exports)
+                return &$instance_name{module: module, exports: exports, cache: f.exports}, nil
             }
             $['\n']
             func (f *$factory_name) Close(ctx $CONTEXT_CONTEXT) {
@@ -147,11 +209,18 @@ impl<'a> FactoryGenerator<'a> {
     fn generate_instance(&self, tokens: &mut Tokens<Go>) {
         let instance_name = &self.config.analyzed_imports.instance_name;
         quote_in! { *tokens =>
+            $(comment(&[
+                "An instance is one guest module. It is not safe for concurrent use:",
+                "instantiate one per goroutine.",
+            ]))
             type $instance_name struct {
-                module $WAZERO_API_MODULE
+                module  $WAZERO_API_MODULE
+                exports *exportedFunctions
+                cache   *exportedFunctionCache
             }
             $['\n']
             func (i *$instance_name) Close(ctx $CONTEXT_CONTEXT) error {
+                i.cache.byModule.Delete(i.module)
                 if err := i.module.Close(ctx); err != nil {
                     return err
                 }
@@ -177,6 +246,8 @@ impl<'a> FactoryGenerator<'a> {
 
 impl<'a> FormatInto<Go> for &FactoryGenerator<'a> {
     fn format_into(self, tokens: &mut Tokens<Go>) {
+        self.generate_export_cache(tokens);
+        tokens.push();
         self.generate_factory(tokens);
         tokens.push();
         self.generate_instance(tokens);
@@ -188,7 +259,7 @@ impl<'a> FormatInto<Go> for &FactoryGenerator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use genco::lang::go::Tokens;
+    use genco::{lang::go::Tokens, tokens::FormatInto};
 
     use crate::{
         codegen::{FactoryGenerator, factory::FactoryConfig, ir::AnalyzedImports},
@@ -241,5 +312,42 @@ mod tests {
             generated.contains("wazero.NewModuleConfig().WithName(\"\")"),
             "got:\n{generated}"
         );
+    }
+
+    /// The factory owns the registry of per-module memos: `Instantiate`
+    /// registers the new module's memo, the instance holds it, and `Close`
+    /// removes it, so a closed module is not kept alive by the registry.
+    #[test]
+    fn test_factory_registers_and_forgets_each_instance_memo() {
+        let analyzed_imports = &AnalyzedImports {
+            interfaces: vec![],
+            standalone_types: vec![],
+            standalone_functions: vec![],
+            factory_name: GoIdentifier::public("test-factory"),
+            instance_name: GoIdentifier::public("test-instance"),
+            constructor_name: GoIdentifier::public("test-constructor"),
+        };
+        let config = FactoryConfig {
+            analyzed_imports,
+            import_chains: Default::default(),
+            wasm_var_name: &GoIdentifier::public("test-wasm"),
+        };
+        let generator = FactoryGenerator::new(config);
+        let mut tokens = Tokens::new();
+        (&generator).format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        for expected in [
+            "type exportedFunctionCache struct",
+            "gravityExportCache := &exportedFunctionCache{}",
+            "exports: gravityExportCache,",
+            "f.exports.byModule.Store(module, exports)",
+            "i.cache.byModule.Delete(i.module)",
+        ] {
+            assert!(
+                generated.contains(expected),
+                "expected `{expected}`, got:\n{generated}"
+            );
+        }
     }
 }

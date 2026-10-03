@@ -6,21 +6,56 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 
 import _ "embed"
 
 //go:embed concurrent_instances.wasm
 var wasmFileConcurrentInstances []byte
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type ConcurrentInstancesFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewConcurrentInstancesFactory(
 	ctx context.Context,
 ) (*ConcurrentInstancesFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
 	// onto it with the Runtime
@@ -31,28 +66,36 @@ func NewConcurrentInstancesFactory(
 	return &ConcurrentInstancesFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *ConcurrentInstancesFactory) Instantiate(ctx context.Context) (*ConcurrentInstancesInstance, error) {
 	// An anonymous module: wazero refuses a second module of the same name
 	// in one runtime, and every instance of this factory is the same module.
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig().WithName("")); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig().WithName(""))
+	if err != nil {
 		return nil, err
-	} else {
-		return &ConcurrentInstancesInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &ConcurrentInstancesInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *ConcurrentInstancesFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type ConcurrentInstancesInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *ConcurrentInstancesInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -93,7 +136,7 @@ func (i *ConcurrentInstancesInstance) Join(
 	arg1 := sep
 	vec1 := arg0
 	len1 := uint64(len(vec1))
-	result1, err1 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
+	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -103,7 +146,7 @@ func (i *ConcurrentInstancesInstance) Join(
 		e := vec1[idx]
 		base := uint32(ptr1 + uint64(idx) * uint64(8))
 		memory0 := i.module.Memory()
-		realloc0 := i.module.ExportedFunction("cabi_realloc")
+		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, e, memory0, realloc0)
 		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
@@ -113,13 +156,13 @@ func (i *ConcurrentInstancesInstance) Join(
 		i.module.Memory().WriteUint32Le(base+0, uint32(ptr0))
 	}
 	memory2 := i.module.Memory()
-	realloc2 := i.module.ExportedFunction("cabi_realloc")
+	realloc2 := i.exports.get("cabi_realloc")
 	ptr2, len2, err2 := writeString(ctx, arg1, memory2, realloc2)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
 		panic(err2)
 	}
-	raw3, err3 := i.module.ExportedFunction("join").Call(ctx, uint64(ptr1), uint64(len1), uint64(ptr2), uint64(len2))
+	raw3, err3 := i.exports.get("join").Call(ctx, uint64(ptr1), uint64(len1), uint64(ptr2), uint64(len2))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
 		panic(err3)
@@ -129,7 +172,7 @@ func (i *ConcurrentInstancesInstance) Join(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_join"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_join"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
