@@ -56,13 +56,45 @@ impl Fixture {
             .unwrap_or_else(|| panic!("interface {interface} should declare function {name}"))
     }
 
-    /// The type named `name`, wherever it is declared.
+    /// The type named `name`. Panics unless exactly one type in the fixture
+    /// has that name, so a fixture that declares it in two interfaces fails
+    /// instead of returning whichever comes first.
     pub fn type_id(&self, name: &str) -> TypeId {
-        self.resolve
+        let matches: Vec<TypeId> = self
+            .resolve
             .types
             .iter()
-            .find(|(_, typ)| typ.name.as_deref() == Some(name))
+            .filter(|(_, typ)| typ.name.as_deref() == Some(name))
             .map(|(id, _)| id)
-            .unwrap_or_else(|| panic!("fixture should declare type {name}"))
+            .collect();
+        match matches.as_slice() {
+            [id] => *id,
+            [] => panic!("fixture should declare type {name}"),
+            _ => panic!("fixture declares {} types named {name}", matches.len()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Fixture;
+
+    #[test]
+    #[should_panic(expected = "fixture declares 2 types named point")]
+    fn test_type_id_rejects_ambiguous_name() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface a {
+                record point { x: u32 }
+            }
+            interface b {
+                record point { y: u32 }
+            }
+            world test-world {
+                import a;
+                import b;
+            }",
+        );
+        fixture.type_id("point");
     }
 }
