@@ -4,6 +4,7 @@ package enum_collisions
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 
@@ -28,6 +29,18 @@ const (
 	ViaAnonymous via = iota
 )
 
+func (e via) String() string {
+	switch e {
+	case ViaPeerSvid:
+		return "peer-svid"
+	case ViaSignedToken:
+		return "signed-token"
+	case ViaAnonymous:
+		return "anonymous"
+	}
+	return fmt.Sprintf("via(%d)", int(e))
+}
+
 type CredentialKind interface {
 	isCredentialKind()
 }
@@ -41,6 +54,18 @@ const (
 	CredentialKindSignedToken credentialKind = iota
 	CredentialKindBearer credentialKind = iota
 )
+
+func (e credentialKind) String() string {
+	switch e {
+	case CredentialKindPeerSvid:
+		return "peer-svid"
+	case CredentialKindSignedToken:
+		return "signed-token"
+	case CredentialKindBearer:
+		return "bearer"
+	}
+	return fmt.Sprintf("credential-kind(%d)", int(e))
+}
 
 type Point struct {
 	X int32
@@ -59,6 +84,16 @@ const (
 	ShapePoint shape = iota
 	ShapeLine shape = iota
 )
+
+func (e shape) String() string {
+	switch e {
+	case ShapePoint:
+		return "point"
+	case ShapeLine:
+		return "line"
+	}
+	return fmt.Sprintf("shape(%d)", int(e))
+}
 
 type EnumCollisionsFactory struct {
 	runtime wazero.Runtime

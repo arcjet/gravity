@@ -177,12 +177,15 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     resolve,
                     "a result's ok type",
                 ))),
+                // Any other err type comes back as a `*ResultError[E]`.
                 TypeDefKind::Result(Result_ {
-                    ok: Some(_),
+                    ok: Some(ok),
                     err: Some(_),
-                }) => {
-                    todo!("TODO(#4): implement remaining result conversion")
-                }
+                }) => GoType::ValueOrError(Box::new(resolve_nested_type(
+                    ok,
+                    resolve,
+                    "a result's ok type",
+                ))),
                 TypeDefKind::Result(Result_ {
                     ok: Some(ok),
                     err: None,
@@ -194,7 +197,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: Some(_),
-                }) => todo!("TODO(#4): implement remaining result conversion"),
+                }) => GoType::Error,
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: None,
