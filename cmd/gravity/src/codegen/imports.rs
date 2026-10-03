@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use genco::prelude::*;
 use wit_bindgen_core::{
-    abi::{AbiVariant, LiftLower},
+    abi::{AbiVariant, LiftLower, WasmType},
     wit_parser::{
         Case, Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World,
         WorldItem,
@@ -481,8 +481,19 @@ impl<'a> ImportCodeGenerator<'a> {
             quote! { ctx $CONTEXT_CONTEXT },
             quote! { mod $WAZERO_API_MODULE },
         ];
-        for arg in f.args() {
-            all_params.push(quote! { $arg uint32 });
+        // Each parameter takes the Go type wazero maps to its core wasm type.
+        // wazero reflects on the Go signature to build the host function's
+        // wasm signature, so a parameter declared uint32 for an i64 or a float
+        // either fails to compile or links a signature the guest did not
+        // import.
+        assert_eq!(
+            f.args().len(),
+            wasm_sig.params.len(),
+            "a lifted import has one Go parameter per core wasm parameter"
+        );
+        for (arg, typ) in f.args().iter().zip(&wasm_sig.params) {
+            let typ = host_param_type(typ);
+            all_params.push(quote! { $arg $typ });
         }
 
         quote! {
@@ -494,6 +505,20 @@ impl<'a> ImportCodeGenerator<'a> {
             }).
             Export($(quoted(func_name))).
         }
+    }
+}
+
+/// The Go type of a host function parameter, from its core wasm type.
+///
+/// Gravity targets wasm32, so pointers and lengths are `i32` (`uint32`);
+/// `PointerOrI64` is the join of a pointer and an `i64` in a flattened
+/// variant and is always 64 bits wide.
+fn host_param_type(typ: &WasmType) -> GoType {
+    match typ {
+        WasmType::I32 | WasmType::Pointer | WasmType::Length => GoType::Uint32,
+        WasmType::I64 | WasmType::PointerOrI64 => GoType::Uint64,
+        WasmType::F32 => GoType::Float32,
+        WasmType::F64 => GoType::Float64,
     }
 }
 
@@ -938,6 +963,37 @@ mod tests {
         match analyzer.analyze_type_definition(&alias_def.kind).unwrap() {
             TypeDefinition::Alias { .. } => {}
             other => panic!("alias analyzed as: {other:?}"),
+        }
+    }
+
+    /// Regression test: every host function parameter used to be declared
+    /// `uint32`, whatever its core wasm type. wazero builds the host
+    /// function's wasm signature from the Go one, so a u64, s64, f32 or f64
+    /// parameter either failed to compile or linked the wrong signature.
+    #[test]
+    fn test_import_params_take_their_core_wasm_width() {
+        let fixture = host_fixture("wide: func(a: u64, b: s64, c: f32, d: f64, e: u32, f: s8);");
+        let method = InterfaceMethod {
+            name: "wide".to_string(),
+            go_method_name: GoIdentifier::public("Wide"),
+            parameters: vec![],
+            return_type: None,
+            wit_function: fixture.function("host", "wide").clone(),
+        };
+
+        let code_str = host_function(&fixture, &method);
+        for param in [
+            "arg0 uint64",
+            "arg1 uint64",
+            "arg2 float32",
+            "arg3 float64",
+            "arg4 uint32",
+            "arg5 uint32",
+        ] {
+            assert!(
+                code_str.contains(param),
+                "expected host parameter `{param}`, got:\n{code_str}"
+            );
         }
     }
 }
