@@ -30,6 +30,8 @@ pub enum GoType {
     Float32,
     /// 64-bit floating point
     Float64,
+    /// Unicode code point (`rune`, an alias of `int32`)
+    Rune,
     /// String type
     String,
     /// Error type (represents Result<None, String>)
@@ -90,7 +92,8 @@ impl GoType {
             | GoType::Int32
             | GoType::Int64
             | GoType::Float32
-            | GoType::Float64 => false,
+            | GoType::Float64
+            | GoType::Rune => false,
 
             // String and slices allocate memory and need cleanup
             GoType::String | GoType::Slice(_) => true,
@@ -150,6 +153,7 @@ impl FormatInto<Go> for &GoType {
             GoType::Int64 => tokens.append(static_literal("int64")),
             GoType::Float32 => tokens.append(static_literal("float32")),
             GoType::Float64 => tokens.append(static_literal("float64")),
+            GoType::Rune => tokens.append(static_literal("rune")),
             GoType::String => tokens.append(static_literal("string")),
             GoType::Error => tokens.append(static_literal("error")),
             GoType::Interface => tokens.append(static_literal("interface{}")),
@@ -211,6 +215,7 @@ mod tests {
             (GoType::Int64, "int64"),
             (GoType::Float32, "float32"),
             (GoType::Float64, "float64"),
+            (GoType::Rune, "rune"),
             (GoType::String, "string"),
             (GoType::Error, "error"),
             (GoType::Interface, "interface{}"),

@@ -127,10 +127,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
         Type::S64 => GoType::Int64,
         Type::F32 => GoType::Float32,
         Type::F64 => GoType::Float64,
-        Type::Char => {
-            // Is this a Go "rune"?
-            todo!("TODO(#6): resolve char type")
-        }
+        Type::Char => GoType::Rune,
         Type::String => GoType::String,
         Type::ErrorContext => todo!("TODO(#4): implement error context conversion"),
 

@@ -10,9 +10,9 @@ use crate::{
     go::{
         comment,
         imports::{
-            ERRORS_NEW, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64, WAZERO_API_DECODE_I32,
-            WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32, WAZERO_API_ENCODE_F64,
-            WAZERO_API_ENCODE_I32,
+            ERRORS_NEW, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
+            WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
+            WAZERO_API_ENCODE_F64,
         },
         GoIdentifier, GoResult, GoType, Operand,
     },
@@ -1183,7 +1183,16 @@ impl Bindgen for Func<'_> {
                     $module_handle.Memory().WriteUint64Le($ptr+$offset, $tag)
                 }
             }
-            Instruction::I32FromChar => todo!("implement instruction: {inst:?}"),
+            Instruction::I32FromChar => {
+                let tmp = self.tmp();
+                let value = format!("value{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $(&value) := uint32($operand)
+                }
+                results.push(Operand::SingleValue(value))
+            }
             Instruction::I64FromU64 => {
                 // I64FromU64 is a no-op reinterpretation (same 64-bit value,
                 // different signedness). Use uint64() identity cast — int64()
@@ -1199,27 +1208,24 @@ impl Bindgen for Func<'_> {
                 results.push(Operand::SingleValue(value.into()));
             }
             Instruction::I64FromS64 => {
+                // Go's int64 -> uint64 conversion keeps the two's-complement
+                // bits, which is the i64 the canonical ABI expects.
                 let tmp = self.tmp();
                 let value = format!("value{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $(&value) := $operand
+                    $(&value) := uint64($operand)
                 }
                 results.push(Operand::SingleValue(value.into()));
             }
-            Instruction::I32FromS32 => {
-                let tmp = self.tmp();
-                let value = format!("value{tmp}");
-                let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $(&value) := $WAZERO_API_ENCODE_I32($operand)
-                }
-                results.push(Operand::SingleValue(value))
-            }
-            // All of these values should fit in Go's `int32` type which allows a safe cast
-            Instruction::I32FromU16
+            // Go's integer conversion to uint32 sign-extends the signed types
+            // and zero-extends the unsigned ones, which is how the canonical
+            // ABI widens them to an i32. The result is the uint32 a host
+            // function returns, and uint64(result) equals api.EncodeI32 when
+            // CallWasm passes it to an export.
+            Instruction::I32FromS32
+            | Instruction::I32FromU16
             | Instruction::I32FromS16
             | Instruction::I32FromU8
             | Instruction::I32FromS8 => {
@@ -1228,17 +1234,25 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $(&value) := $WAZERO_API_ENCODE_I32(int32($operand))
+                    $(&value) := uint32($operand)
                 }
                 results.push(Operand::SingleValue(value))
             }
+            // A host function returns float32 and float64 directly, while
+            // CallWasm needs the IEEE bits in a uint64.
             Instruction::CoreF32FromF32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_ENCODE_F32($operand)
+                match self.direction {
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $result := $WAZERO_API_ENCODE_F32($operand)
+                    },
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $result := $operand
+                    },
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1246,9 +1260,15 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_ENCODE_F64($operand)
+                match self.direction {
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $result := $WAZERO_API_ENCODE_F64($operand)
+                    },
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $result := $operand
+                    },
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1306,7 +1326,16 @@ impl Bindgen for Func<'_> {
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
-            Instruction::S64FromI64 => todo!("implement instruction: {inst:?}"),
+            Instruction::S64FromI64 => {
+                let tmp = self.tmp();
+                let result = &format!("result{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $result := int64($operand)
+                };
+                results.push(Operand::SingleValue(result.into()));
+            }
             Instruction::U64FromI64 => {
                 let tmp = self.tmp();
                 let value = format!("value{tmp}");
@@ -1317,7 +1346,22 @@ impl Bindgen for Func<'_> {
                 }
                 results.push(Operand::SingleValue(value.into()));
             }
-            Instruction::CharFromI32 => todo!("implement instruction: {inst:?}"),
+            Instruction::CharFromI32 => {
+                // The canonical ABI rejects surrogates and values above
+                // U+10FFFF when lifting a char.
+                let tmp = self.tmp();
+                let result = &format!("result{tmp}");
+                let operand = &operands[0];
+                quote_in! { self.body =>
+                    $['\r']
+                    $result := rune($operand)
+                    if !$UTF8_VALID_RUNE($result) {
+                        $(comment(["TODO(#8): Return an error if the return type allows it"]))
+                        panic($ERRORS_NEW("invalid char value encountered"))
+                    }
+                };
+                results.push(Operand::SingleValue(result.into()));
+            }
             Instruction::F32FromCoreF32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");

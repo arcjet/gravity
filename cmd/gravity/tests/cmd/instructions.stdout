@@ -120,7 +120,7 @@ func (i *InstructionsInstance) S8Roundtrip(
 	val int8,
 ) int8 {
 	arg0 := val
-	value0 := api.EncodeI32(int32(arg0))
+	value0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("s8-roundtrip").Call(ctx, uint64(value0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -137,7 +137,7 @@ func (i *InstructionsInstance) U8Roundtrip(
 	val uint8,
 ) uint8 {
 	arg0 := val
-	value0 := api.EncodeI32(int32(arg0))
+	value0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("u8-roundtrip").Call(ctx, uint64(value0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -154,7 +154,7 @@ func (i *InstructionsInstance) S16Roundtrip(
 	val int16,
 ) int16 {
 	arg0 := val
-	value0 := api.EncodeI32(int32(arg0))
+	value0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("s16-roundtrip").Call(ctx, uint64(value0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -171,7 +171,7 @@ func (i *InstructionsInstance) U16Roundtrip(
 	val uint16,
 ) uint16 {
 	arg0 := val
-	value0 := api.EncodeI32(int32(arg0))
+	value0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("u16-roundtrip").Call(ctx, uint64(value0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -188,7 +188,7 @@ func (i *InstructionsInstance) S32Roundtrip(
 	val int32,
 ) int32 {
 	arg0 := val
-	value0 := api.EncodeI32(arg0)
+	value0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("s32-roundtrip").Call(ctx, uint64(value0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {

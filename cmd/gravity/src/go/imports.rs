@@ -37,3 +37,4 @@ pub static WAZERO_API_ENCODE_F64: GoImport =
 pub static WAZERO_API_DECODE_F64: GoImport =
     GoImport("github.com/tetratelabs/wazero/api", "DecodeF64");
 pub static REFLECT_VALUE_OF: GoImport = GoImport("reflect", "ValueOf");
+pub static UTF8_VALID_RUNE: GoImport = GoImport("unicode/utf8", "ValidRune");

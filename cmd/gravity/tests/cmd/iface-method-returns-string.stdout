@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -19,6 +20,39 @@ type IExampleRuntime interface {
 	Arch(
 		ctx context.Context,
 	) string
+	GetU32(
+		ctx context.Context,
+	) uint32
+	GetU8(
+		ctx context.Context,
+	) uint8
+	GetS8(
+		ctx context.Context,
+	) int8
+	GetU16(
+		ctx context.Context,
+	) uint16
+	GetS16(
+		ctx context.Context,
+	) int16
+	GetS32(
+		ctx context.Context,
+	) int32
+	GetU64(
+		ctx context.Context,
+	) uint64
+	GetS64(
+		ctx context.Context,
+	) int64
+	GetF32(
+		ctx context.Context,
+	) float32
+	GetF64(
+		ctx context.Context,
+	) float64
+	GetChar(
+		ctx context.Context,
+	) rune
 	Puts(
 		ctx context.Context,
 		msg string,
@@ -71,6 +105,116 @@ func NewExampleFactory(
 		mod.Memory().WriteUint32Le(arg0+0, uint32(ptr1))
 	}).
 	Export("arch").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetU32(ctx, )
+		result1 := uint32(value0)
+		return result1
+	}).
+	Export("get-u32").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetU8(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-u8").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetS8(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-s8").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetU16(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-u16").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetS16(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-s16").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetS32(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-s32").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint64{
+		value0 := runtime.GetU64(ctx, )
+		value1 := uint64(value0)
+		return value1
+	}).
+	Export("get-u64").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint64{
+		value0 := runtime.GetS64(ctx, )
+		value1 := uint64(value0)
+		return value1
+	}).
+	Export("get-s64").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) float32{
+		value0 := runtime.GetF32(ctx, )
+		result1 := value0
+		return result1
+	}).
+	Export("get-f32").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) float64{
+		value0 := runtime.GetF64(ctx, )
+		result1 := value0
+		return result1
+	}).
+	Export("get-f64").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+	) uint32{
+		value0 := runtime.GetChar(ctx, )
+		value1 := uint32(value0)
+		return value1
+	}).
+	Export("get-char").
 	NewFunctionBuilder().
 	WithFunc(func(
 		ctx context.Context,
@@ -223,5 +367,163 @@ func (i *ExampleInstance) Hello(
 		err8 = errors.New("invalid variant discriminant for expected")
 	}
 	return value8, err8
+}
+
+func (i *ExampleInstance) CallGetU32(
+	ctx context.Context,
+) uint32 {
+	raw0, err0 := i.module.ExportedFunction("call-get-u32").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := uint32(results0)
+	return result1
+}
+
+func (i *ExampleInstance) CallGetU8(
+	ctx context.Context,
+) uint8 {
+	raw0, err0 := i.module.ExportedFunction("call-get-u8").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := uint8(api.DecodeU32(results0))
+	return result1
+}
+
+func (i *ExampleInstance) CallGetS8(
+	ctx context.Context,
+) int8 {
+	raw0, err0 := i.module.ExportedFunction("call-get-s8").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := int8(api.DecodeI32(results0))
+	return result1
+}
+
+func (i *ExampleInstance) CallGetU16(
+	ctx context.Context,
+) uint16 {
+	raw0, err0 := i.module.ExportedFunction("call-get-u16").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := uint16(api.DecodeU32(results0))
+	return result1
+}
+
+func (i *ExampleInstance) CallGetS16(
+	ctx context.Context,
+) int16 {
+	raw0, err0 := i.module.ExportedFunction("call-get-s16").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := int16(api.DecodeI32(results0))
+	return result1
+}
+
+func (i *ExampleInstance) CallGetS32(
+	ctx context.Context,
+) int32 {
+	raw0, err0 := i.module.ExportedFunction("call-get-s32").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := api.DecodeI32(results0)
+	return result1
+}
+
+func (i *ExampleInstance) CallGetU64(
+	ctx context.Context,
+) uint64 {
+	raw0, err0 := i.module.ExportedFunction("call-get-u64").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	value1 := uint64(results0)
+	return value1
+}
+
+func (i *ExampleInstance) CallGetS64(
+	ctx context.Context,
+) int64 {
+	raw0, err0 := i.module.ExportedFunction("call-get-s64").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := int64(results0)
+	return result1
+}
+
+func (i *ExampleInstance) CallGetF32(
+	ctx context.Context,
+) float32 {
+	raw0, err0 := i.module.ExportedFunction("call-get-f32").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := api.DecodeF32(results0)
+	return result1
+}
+
+func (i *ExampleInstance) CallGetF64(
+	ctx context.Context,
+) float64 {
+	raw0, err0 := i.module.ExportedFunction("call-get-f64").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := api.DecodeF64(results0)
+	return result1
+}
+
+func (i *ExampleInstance) CallGetChar(
+	ctx context.Context,
+) rune {
+	raw0, err0 := i.module.ExportedFunction("call-get-char").Call(ctx, )
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+
+	results0 := raw0[0]
+	result1 := rune(results0)
+	if !utf8.ValidRune(result1) {
+		// TODO(#8): Return an error if the return type allows it
+		panic(errors.New("invalid char value encountered"))
+	}
+	return result1
 }
 

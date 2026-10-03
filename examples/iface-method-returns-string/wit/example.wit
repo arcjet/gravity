@@ -4,6 +4,18 @@ interface runtime {
   os: func() -> string;
   arch: func() -> string;
 
+  get-u32: func() -> u32;
+  get-u8: func() -> u8;
+  get-s8: func() -> s8;
+  get-u16: func() -> u16;
+  get-s16: func() -> s16;
+  get-s32: func() -> s32;
+  get-u64: func() -> u64;
+  get-s64: func() -> s64;
+  get-f32: func() -> f32;
+  get-f64: func() -> f64;
+  get-char: func() -> char;
+
   puts: func(msg: string);
 }
 
@@ -11,4 +23,15 @@ world example {
   import runtime;
 
   export hello: func() -> result<string, string>;
+  export call-get-u32: func() -> u32;
+  export call-get-u8: func() -> u8;
+  export call-get-s8: func() -> s8;
+  export call-get-u16: func() -> u16;
+  export call-get-s16: func() -> s16;
+  export call-get-s32: func() -> s32;
+  export call-get-u64: func() -> u64;
+  export call-get-s64: func() -> s64;
+  export call-get-f32: func() -> f32;
+  export call-get-f64: func() -> f64;
+  export call-get-char: func() -> char;
 }
