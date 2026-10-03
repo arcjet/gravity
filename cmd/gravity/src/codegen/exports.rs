@@ -246,4 +246,32 @@ mod tests {
             "the wasm export must be called with the param area pointer, got:\n{generated}"
         );
     }
+
+    /// Regression test: an `option<f64>` export parameter flattens to an i32
+    /// discriminant and the payload, which the export side lowers to its IEEE
+    /// bits with `api.EncodeF64`. The payload's temporary must be a `uint64`;
+    /// as a `float64` the generated Go did not compile.
+    #[test]
+    fn test_export_option_f64_param_temporary_is_uint64() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                export scale: func(value: f64, factor: option<f64>) -> f64;
+            }",
+        );
+        let generated = generate(&fixture, "scale");
+
+        assert!(
+            generated.contains("api.EncodeF64(variantPayload)"),
+            "the option payload must be lowered to its IEEE bits, got:\n{generated}"
+        );
+        assert!(
+            generated.contains("var variant2_1 uint64"),
+            "the flattened payload's temporary must be a uint64, got:\n{generated}"
+        );
+        assert!(
+            !generated.contains("var variant2_1 float64"),
+            "a float64 temporary cannot hold api.EncodeF64's result, got:\n{generated}"
+        );
+    }
 }

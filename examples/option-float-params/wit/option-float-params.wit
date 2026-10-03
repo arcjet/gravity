@@ -1,0 +1,18 @@
+package gravity:option-float-params;
+
+world option-float-params {
+  // An option<f64> parameter flattens to an i32 discriminant and the f64
+  // payload. On the export side the payload is lowered to its IEEE bits
+  // (api.EncodeF64, a uint64), so the temporary holding the flattened
+  // payload must be a uint64, not a float64.
+  export scale: func(value: f64, factor: option<f64>) -> f64;
+  export scale32: func(value: f32, factor: option<f32>) -> f32;
+
+  // A variant whose payloads are all f64 flattens the same way.
+  variant length {
+    meters(f64),
+    feet(f64),
+    unknown,
+  }
+  export to-meters: func(l: length) -> f64;
+}
