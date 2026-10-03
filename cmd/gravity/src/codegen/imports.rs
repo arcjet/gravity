@@ -380,7 +380,7 @@ impl<'a> ImportCodeGenerator<'a> {
             TypeDefinition::Enum { cases } => {
                 let enum_type = &GoIdentifier::private(&typ.name);
                 let enum_interface = &typ.go_type_name;
-                let enum_function = &GoIdentifier::private(format!("is-{}", &typ.name));
+                let enum_function = &GoIdentifier::private(format!("is-{}", typ.name));
                 let variants = cases.iter().map(GoIdentifier::public);
                 quote_in! { *tokens =>
                     $['\n']
@@ -413,7 +413,7 @@ impl<'a> ImportCodeGenerator<'a> {
             }
             TypeDefinition::Variant { cases } => {
                 let variant_interface = &typ.go_type_name;
-                let marker_method = &GoIdentifier::private(format!("is-{}", &typ.name));
+                let marker_method = &GoIdentifier::private(format!("is-{}", typ.name));
                 let case_definitions = cases.iter().map(|case| match &case.dispatch {
                     CaseDispatch::DirectRecord { record_type } => quote! {
                         $['\n']
