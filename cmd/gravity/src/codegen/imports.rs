@@ -503,53 +503,59 @@ impl<'a> ImportCodeGenerator<'a> {
 #[cfg(test)]
 mod tests {
     use genco::prelude::*;
-    use wit_bindgen_core::wit_parser::{
-        Enum, EnumCase, Function, FunctionKind, Interface, Package, PackageName, Param, Resolve,
-        SizeAlign, Type, TypeDef, TypeDefKind, TypeOwner, World, WorldId, WorldItem, WorldKey,
-    };
+    use wit_bindgen_core::wit_parser::Type;
 
     use crate::{
         codegen::{
             imports::{ImportAnalyzer, ImportCodeGenerator},
-            ir::{AnalyzedImports, InterfaceMethod, Parameter, WitReturn},
+            ir::{AnalyzedImports, InterfaceMethod, Parameter, TypeDefinition, WitReturn},
+            test_wit::Fixture,
         },
         go::{GoIdentifier, GoType},
     };
 
-    #[test]
-    fn test_wit_type_driven_generation() {
-        // Create a mock function with string parameter and string return
-        let func = Function {
-            name: "test_function".to_string(),
-            kind: FunctionKind::Freestanding,
-            params: vec![Param {
-                name: "input".to_string(),
-                ty: Type::String,
-                span: Default::default(),
-            }],
-            result: Some(Type::String),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
+    /// A fixture whose `host` interface declares `functions`, imported by the
+    /// world `test-world`.
+    fn host_fixture(functions: &str) -> Fixture {
+        Fixture::parse(&format!(
+            "package test:fixture;
+            interface host {{
+                {functions}
+            }}
+            world test-world {{
+                import host;
+            }}"
+        ))
+    }
 
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        // Mock data
-        let analyzed = AnalyzedImports {
+    fn empty_analysis() -> AnalyzedImports {
+        AnalyzedImports {
             instance_name: GoIdentifier::public("TestInstance"),
             interfaces: vec![],
             standalone_functions: vec![],
             standalone_types: vec![],
             factory_name: GoIdentifier::public("TestFactory"),
             constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
+        }
+    }
 
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+    /// Generates the host function builder for `method` with the
+    /// fixture's resolve and sizes.
+    fn host_function(fixture: &Fixture, method: &InterfaceMethod) -> String {
+        let analyzed = empty_analysis();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let param_name = GoIdentifier::private("handler");
+        generator
+            .generate_host_function_builder(method, &param_name)
+            .to_string()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_wit_type_driven_generation() {
+        let fixture = host_fixture("test-function: func(input: string) -> string;");
         let method = InterfaceMethod {
-            name: "test_function".to_string(),
+            name: "test-function".to_string(),
             go_method_name: GoIdentifier::public("TestFunction"),
             parameters: vec![Parameter {
                 name: GoIdentifier::private("input"),
@@ -560,14 +566,11 @@ mod tests {
                 go_type: GoType::String,
                 wit_type: Type::String,
             }),
-            wit_function: func,
+            wit_function: fixture.function("host", "test-function").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
         // The result should contain the WIT type-driven generation
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         assert!(code_str.contains("NewFunctionBuilder"));
         assert!(code_str.contains("mod.Memory().Read"));
         assert!(code_str.contains("writeString"));
@@ -578,22 +581,9 @@ mod tests {
     #[test]
     fn test_different_wit_types() {
         // Test that different WIT types generate different parameter handling
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
-        // Test U32 parameter
+        let fixture = host_fixture("test-u32: func(value: u32);");
         let u32_method = InterfaceMethod {
-            name: "test_u32".to_string(),
+            name: "test-u32".to_string(),
             go_method_name: GoIdentifier::public("TestU32"),
             parameters: vec![Parameter {
                 name: GoIdentifier::private("value"),
@@ -601,27 +591,11 @@ mod tests {
                 wit_type: Type::U32,
             }],
             return_type: None,
-            wit_function: Function {
-                name: "test_u32".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![Param {
-                    name: "value".to_string(),
-                    ty: Type::U32,
-                    span: Default::default(),
-                }],
-                result: None,
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "test-u32").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&u32_method, &param_name);
-
         // Should have only one uint32 parameter (plus ctx and mod)
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &u32_method);
         assert!(code_str.contains("arg0 uint32"));
         assert!(!code_str.contains("arg1 uint32"));
         assert!(!code_str.contains("mod.Memory().Read")); // No string reading
@@ -635,22 +609,10 @@ mod tests {
     /// with `todo!()`, which caused a panic at build time.
     #[test]
     fn test_import_with_bool_return_type() {
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
         // A function returning bool has a single i32 Wasm result
+        let fixture = host_fixture("is-valid: func(input: string) -> bool;");
         let method = InterfaceMethod {
-            name: "is_valid".to_string(),
+            name: "is-valid".to_string(),
             go_method_name: GoIdentifier::public("IsValid"),
             parameters: vec![Parameter {
                 name: GoIdentifier::private("input"),
@@ -661,26 +623,10 @@ mod tests {
                 go_type: GoType::Bool,
                 wit_type: Type::Bool,
             }),
-            wit_function: Function {
-                name: "is_valid".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![Param {
-                    name: "input".to_string(),
-                    ty: Type::String,
-                    span: Default::default(),
-                }],
-                result: Some(Type::Bool),
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "is-valid").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         // The host function must declare a uint32 return (Wasm i32 representation of bool)
         assert!(
             code_str.contains(") uint32"),
@@ -698,48 +644,13 @@ mod tests {
     /// (`verify: func(bot-id: string, ip: string) -> validator-response`).
     #[test]
     fn test_import_with_enum_return_type() {
-        let mut resolve = Resolve::default();
-
-        // Create an enum type in the resolve so Type::Id works
-        let type_id = resolve.types.alloc(TypeDef {
-            name: Some("status".to_string()),
-            kind: TypeDefKind::Enum(Enum {
-                cases: vec![
-                    EnumCase {
-                        name: "ok".to_string(),
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                    EnumCase {
-                        name: "error".to_string(),
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                ],
-            }),
-            owner: TypeOwner::None,
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        });
-
-        let sizes = SizeAlign::default();
-
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
         // A function returning an enum has a single i32 Wasm result
+        let fixture = host_fixture(
+            "enum status { ok, failed }
+            get-status: func(id: string) -> status;",
+        );
         let method = InterfaceMethod {
-            name: "get_status".to_string(),
+            name: "get-status".to_string(),
             go_method_name: GoIdentifier::public("GetStatus"),
             parameters: vec![Parameter {
                 name: GoIdentifier::private("id"),
@@ -748,28 +659,12 @@ mod tests {
             }],
             return_type: Some(WitReturn {
                 go_type: GoType::Uint32,
-                wit_type: Type::Id(type_id),
+                wit_type: Type::Id(fixture.type_id("status")),
             }),
-            wit_function: Function {
-                name: "get_status".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![Param {
-                    name: "id".to_string(),
-                    ty: Type::String,
-                    span: Default::default(),
-                }],
-                result: Some(Type::Id(type_id)),
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "get-status").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         // The host function must declare a uint32 return (Wasm i32 representation of enum)
         assert!(
             code_str.contains(") uint32"),
@@ -788,21 +683,9 @@ mod tests {
     /// the import (host function) pathway, params are already uint32.
     #[test]
     fn test_import_u32_params_use_identity_cast() {
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
         // A function that takes multiple u32 params — the same pattern as
         // rate-limit's token-bucket import.
+        let fixture = host_fixture("compute: func(a: u32, b: u32);");
         let method = InterfaceMethod {
             name: "compute".to_string(),
             go_method_name: GoIdentifier::public("Compute"),
@@ -819,33 +702,10 @@ mod tests {
                 },
             ],
             return_type: None,
-            wit_function: Function {
-                name: "compute".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![
-                    Param {
-                        name: "a".to_string(),
-                        ty: Type::U32,
-                        span: Default::default(),
-                    },
-                    Param {
-                        name: "b".to_string(),
-                        ty: Type::U32,
-                        span: Default::default(),
-                    },
-                ],
-                result: None,
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "compute").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         // Must use simple uint32() casts, NOT api.DecodeU32() which expects uint64
         assert!(
             !code_str.contains("api.DecodeU32"),
@@ -870,42 +730,18 @@ mod tests {
     /// is a Go syntax error.
     #[test]
     fn test_import_zero_params_no_trailing_comma() {
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
         // A function with no WIT parameters — only ctx and mod should appear
         // in the generated Go host function signature.
+        let fixture = host_fixture("ping: func();");
         let method = InterfaceMethod {
             name: "ping".to_string(),
             go_method_name: GoIdentifier::public("Ping"),
             parameters: vec![],
             return_type: None,
-            wit_function: Function {
-                name: "ping".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![],
-                result: None,
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "ping").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         // Must NOT contain a bare comma on its own line (the symptom of the bug)
         assert!(
             !code_str.contains(",\n\t\t,"),
@@ -927,43 +763,19 @@ mod tests {
     /// exercises both the zero-param fix and the result-type fix together.
     #[test]
     fn test_import_zero_params_with_return_type() {
-        let analyzed = AnalyzedImports {
-            instance_name: GoIdentifier::public("TestInstance"),
-            interfaces: vec![],
-            standalone_functions: vec![],
-            standalone_types: vec![],
-            factory_name: GoIdentifier::public("TestFactory"),
-            constructor_name: GoIdentifier::public("NewTestFactory"),
-        };
-        let resolve = Resolve::new();
-        let sizes = SizeAlign::default();
-
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
-
+        let fixture = host_fixture("is-ready: func() -> bool;");
         let method = InterfaceMethod {
-            name: "is_ready".to_string(),
+            name: "is-ready".to_string(),
             go_method_name: GoIdentifier::public("IsReady"),
             parameters: vec![],
             return_type: Some(WitReturn {
                 go_type: GoType::Bool,
                 wit_type: Type::Bool,
             }),
-            wit_function: Function {
-                name: "is_ready".to_string(),
-                kind: FunctionKind::Freestanding,
-                params: vec![],
-                result: Some(Type::Bool),
-                docs: Default::default(),
-                stability: Default::default(),
-                span: Default::default(),
-                external_id: None,
-            },
+            wit_function: fixture.function("host", "is-ready").clone(),
         };
 
-        let param_name = GoIdentifier::private("handler");
-        let result = generator.generate_host_function_builder(&method, &param_name);
-
-        let code_str = result.to_string().unwrap();
+        let code_str = host_function(&fixture, &method);
         // Must not have consecutive commas
         assert!(
             !code_str.contains(",\n\t\t,") && !code_str.contains(", ,"),
@@ -981,83 +793,22 @@ mod tests {
         );
     }
 
-    fn create_test_world_with_interface() -> (Resolve, WorldId) {
-        let mut resolve = Resolve::default();
-
-        // Create a package
-        let package_name = PackageName {
-            namespace: "test".to_string(),
-            name: "pkg".to_string(),
-            version: None,
-        };
-        let package_id = resolve.packages.alloc(Package {
-            name: package_name.clone(),
-            interfaces: Default::default(),
-            worlds: Default::default(),
-            docs: Default::default(),
-        });
-
-        // Create an interface with a function
-        let interface_id = resolve.interfaces.alloc(Interface {
-            name: Some("logger".to_string()),
-            package: Some(package_id),
-            functions: [(
-                "log".to_string(),
-                Function {
-                    name: "log".to_string(),
-                    params: vec![Param {
-                        name: "message".to_string(),
-                        ty: Type::String,
-                        span: Default::default(),
-                    }],
-                    result: None,
-                    kind: FunctionKind::Freestanding,
-                    docs: Default::default(),
-                    stability: Default::default(),
-                    span: Default::default(),
-                    external_id: None,
-                },
-            )]
-            .into(),
-            types: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            clone_of: None,
-        });
-
-        // Create a world with the interface as import
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [(
-                WorldKey::Name("logger".to_string()),
-                WorldItem::Interface {
-                    id: interface_id,
-                    stability: Default::default(),
-                    span: Default::default(),
-                    docs: Default::default(),
-                    external_id: None,
-                },
-            )]
-            .into(),
-            exports: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            package: Some(package_id),
-            includes: Default::default(),
-            span: Default::default(),
-        };
-
-        let world_id = resolve.worlds.alloc(world);
-        (resolve, world_id)
+    fn logger_fixture() -> Fixture {
+        Fixture::parse(
+            "package test:pkg;
+            interface logger {
+                log: func(message: string);
+            }
+            world test-world {
+                import logger;
+            }",
+        )
     }
 
     #[test]
     fn test_import_analyzer() {
-        let (resolve, world_id) = create_test_world_with_interface();
-        let world = &resolve.worlds[world_id];
-
-        let analyzer = ImportAnalyzer::new(&resolve, &world);
+        let fixture = logger_fixture();
+        let analyzer = ImportAnalyzer::new(&fixture.resolve, fixture.world());
         let analyzed = analyzer.analyze();
 
         // Check that we got one interface
@@ -1077,16 +828,14 @@ mod tests {
 
     #[test]
     fn test_import_code_generator() {
-        let (resolve, world_id) = create_test_world_with_interface();
-        let world = &resolve.worlds[world_id];
-        let sizes = SizeAlign::default();
+        let fixture = logger_fixture();
 
         // Analyze
-        let analyzer = ImportAnalyzer::new(&resolve, &world);
+        let analyzer = ImportAnalyzer::new(&fixture.resolve, fixture.world());
         let analyzed = analyzer.analyze();
 
         // Generate
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
         let mut tokens = Tokens::<Go>::new();
         generator.format_into(&mut tokens);
 
@@ -1097,154 +846,35 @@ mod tests {
 
     #[test]
     fn test_record_type_generation() {
-        use crate::codegen::ir::TypeDefinition;
-        use wit_bindgen_core::wit_parser::{Field, Record, TypeDef, TypeDefKind, TypeOwner};
-
-        let mut resolve = Resolve::default();
-
-        // Create a package
-        let package_name = PackageName {
-            namespace: "test".to_string(),
-            name: "records".to_string(),
-            version: None,
-        };
-        let package_id = resolve.packages.alloc(Package {
-            name: package_name.clone(),
-            interfaces: Default::default(),
-            worlds: Default::default(),
-            docs: Default::default(),
-        });
-
-        // Create a record type similar to the "foo" record
-        let record_def = Record {
-            fields: vec![
-                Field {
-                    name: "float32".to_string(),
-                    ty: Type::F32,
-                    docs: Default::default(),
-                    span: Default::default(),
-                },
-                Field {
-                    name: "float64".to_string(),
-                    ty: Type::F64,
-                    docs: Default::default(),
-                    span: Default::default(),
-                },
-                Field {
-                    name: "uint32".to_string(),
-                    ty: Type::U32,
-                    docs: Default::default(),
-                    span: Default::default(),
-                },
-                Field {
-                    name: "uint64".to_string(),
-                    ty: Type::U64,
-                    docs: Default::default(),
-                    span: Default::default(),
-                },
-                Field {
-                    name: "s".to_string(),
-                    ty: Type::String,
-                    docs: Default::default(),
-                    span: Default::default(),
-                },
-            ],
-        };
-
-        // Create an interface that will own this type
-        let interface_id = resolve.interfaces.alloc(Interface {
-            name: Some("types".to_string()),
-            package: Some(package_id),
-            functions: Default::default(),
-            types: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            clone_of: None,
-        });
-
-        // Create the TypeDef for the record with proper owner
-        let type_def = TypeDef {
-            name: Some("foo".to_string()),
-            kind: TypeDefKind::Record(record_def),
-            owner: TypeOwner::Interface(interface_id),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let type_id = resolve.types.alloc(type_def);
-
-        // Add the type to the interface
-        resolve.interfaces[interface_id]
-            .types
-            .insert("foo".to_string(), type_id);
-
-        // Create a world that imports this interface
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [(
-                WorldKey::Name("types".to_string()),
-                WorldItem::Interface {
-                    id: interface_id,
-                    stability: Default::default(),
-                    span: Default::default(),
-                    docs: Default::default(),
-                    external_id: None,
-                },
-            )]
-            .into(),
-            exports: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            package: Some(package_id),
-            includes: Default::default(),
-            span: Default::default(),
-        };
-
-        let world_id = resolve.worlds.alloc(world);
-        let world = &resolve.worlds[world_id];
-
-        // Test the analyzer first
-        let analyzer = ImportAnalyzer::new(&resolve, &world);
+        let fixture = Fixture::parse(
+            "package test:records;
+            interface types {
+                record foo {
+                    float32: f32,
+                    float64: f64,
+                    uint32: u32,
+                    uint64: u64,
+                    s: string,
+                }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzer = ImportAnalyzer::new(&fixture.resolve, fixture.world());
 
         // Test analyze_type_definition directly with the record kind
-        let type_def = &resolve.types[type_id];
+        let type_def = &fixture.resolve.types[fixture.type_id("foo")];
         let analyzed_definition = analyzer.analyze_type_definition(&type_def.kind).unwrap();
-
-        println!(
-            "Direct analysis of type definition: {:?}",
-            analyzed_definition
-        );
 
         // This should be a Record, not an Alias
         match &analyzed_definition {
-            TypeDefinition::Record { fields } => {
-                println!(
-                    "✓ Correctly identified as Record with {} fields",
-                    fields.len()
-                );
-                assert_eq!(fields.len(), 5);
-            }
-            TypeDefinition::Alias { target } => {
-                panic!(
-                    "❌ Incorrectly identified as Alias with target: {:?}",
-                    target
-                );
-            }
-            other => {
-                panic!("❌ Unexpected type definition: {:?}", other);
-            }
+            TypeDefinition::Record { fields } => assert_eq!(fields.len(), 5),
+            other => panic!("expected a Record, got: {other:?}"),
         }
 
-        // Test full analysis
-        let analyzed = analyzer.analyze();
-        println!("Full analysis result:");
-        println!("  Interfaces: {}", analyzed.interfaces.len());
-        println!("  Standalone types: {}", analyzed.standalone_types.len());
-
         // Check analysis results
+        let analyzed = analyzer.analyze();
         assert_eq!(analyzed.interfaces.len(), 1);
         let interface = &analyzed.interfaces[0];
         assert_eq!(interface.name, "types");
@@ -1255,221 +885,62 @@ mod tests {
         // would collide with another concrete type in the same world. The
         // test world's `foo` is unique, so it stays flat.
         assert_eq!(analyzed_type.name, "foo");
-        println!("Analyzed type definition: {:?}", analyzed_type.definition);
 
         // This is the key assertion - it should be a Record, not an Alias
         match &analyzed_type.definition {
             TypeDefinition::Record { fields } => {
-                println!(
-                    "✓ Analysis correctly produced Record with {} fields",
-                    fields.len()
-                );
                 assert_eq!(fields.len(), 5);
 
                 // Check that field names are correct
                 let field_names: Vec<String> =
                     fields.iter().map(|(name, _)| String::from(name)).collect();
-                println!("Field names: {:?}", field_names);
-
                 assert!(field_names.contains(&"Float32".to_string()));
                 assert!(field_names.contains(&"Float64".to_string()));
                 assert!(field_names.contains(&"Uint32".to_string()));
                 assert!(field_names.contains(&"Uint64".to_string()));
                 assert!(field_names.contains(&"S".to_string()));
             }
-            TypeDefinition::Alias { target } => {
-                panic!(
-                    "❌ Analysis incorrectly produced Alias with target: {:?}",
-                    target
-                );
-            }
-            other => {
-                panic!(
-                    "❌ Analysis produced unexpected type definition: {:?}",
-                    other
-                );
-            }
+            other => panic!("expected a Record, got: {other:?}"),
         }
 
-        // Test code generation
-        let sizes = SizeAlign::default();
-        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+        // Generating the record must not produce the self-referential alias
+        // `type Foo Foo`.
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
         let mut tokens = Tokens::<Go>::new();
         generator.format_into(&mut tokens);
-
         let output = tokens.to_string().unwrap();
-        println!("\nGenerated code:\n{}", output);
-        println!("Generated code length: {}", output.len());
-
-        // Debug: let's see what's actually in the analyzed data that's being passed to the generator
-        println!("\nDebug - what's being passed to generator:");
-        println!("  analyzed.interfaces.len(): {}", analyzed.interfaces.len());
-        println!(
-            "  analyzed.standalone_types.len(): {}",
-            analyzed.standalone_types.len()
+        assert!(
+            !output.contains("type Foo Foo"),
+            "generated a self-referential alias, got:\n{output}"
         );
-
-        for (i, interface) in analyzed.interfaces.iter().enumerate() {
-            println!(
-                "  Interface {}: name='{}', types.len()={}",
-                i,
-                interface.name,
-                interface.types.len()
-            );
-            for (j, typ) in interface.types.iter().enumerate() {
-                println!(
-                    "    Type {}: name='{}', definition={:?}",
-                    j, typ.name, typ.definition
-                );
-            }
-        }
-
-        for (i, typ) in analyzed.standalone_types.iter().enumerate() {
-            println!(
-                "  Standalone type {}: name='{}', definition={:?}",
-                i, typ.name, typ.definition
-            );
-        }
-
-        // The issue: types are in interface.types but generator only looks at standalone_types
-        // Let's see if we can find where types should be moved to standalone_types
-
-        // Expected behavior: Should generate "type Foo struct {" not "type Foo Foo"
-        if output.contains("type Foo Foo") {
-            panic!(
-                "❌ Generated incorrect alias: 'type Foo Foo' - this creates infinite recursion!"
-            );
-        }
-
-        if !output.contains("type Foo struct") && analyzed.interfaces[0].types.len() > 0 {
-            println!(
-                "❌ Generated code doesn't contain struct definition, but types were analyzed correctly"
-            );
-            println!("This suggests the code generator isn't processing interface types properly");
-            // This is the actual bug - the generator doesn't handle interface types
-        }
-
-        // For now, let's just verify the analysis is correct (the generation bug is separate)
-        println!("✓ Test completed - analysis is working correctly");
     }
 
     #[test]
     fn test_record_vs_alias_analysis() {
-        use crate::codegen::ir::TypeDefinition;
-        use wit_bindgen_core::wit_parser::{Field, Record, TypeDef, TypeDefKind, TypeOwner};
-
-        let mut resolve = Resolve::default();
-
-        // Create a package
-        let package_name = PackageName {
-            namespace: "test".to_string(),
-            name: "types".to_string(),
-            version: None,
-        };
-        let package_id = resolve.packages.alloc(Package {
-            name: package_name.clone(),
-            interfaces: Default::default(),
-            worlds: Default::default(),
-            docs: Default::default(),
-        });
-
-        let interface_id = resolve.interfaces.alloc(Interface {
-            name: Some("types".to_string()),
-            package: Some(package_id),
-            functions: Default::default(),
-            types: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            clone_of: None,
-        });
-
-        // Test 1: Create a proper record type
-        let record_def = Record {
-            fields: vec![Field {
-                name: "x".to_string(),
-                ty: Type::U32,
-                docs: Default::default(),
-                span: Default::default(),
-            }],
-        };
-
-        let record_type_def = TypeDef {
-            name: Some("my_record".to_string()),
-            kind: TypeDefKind::Record(record_def),
-            owner: TypeOwner::Interface(interface_id),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        // Test 2: Create a type alias
-        let alias_type_def = TypeDef {
-            name: Some("my_alias".to_string()),
-            kind: TypeDefKind::Type(Type::String),
-            owner: TypeOwner::Interface(interface_id),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let record_type_id = resolve.types.alloc(record_type_def);
-        let alias_type_id = resolve.types.alloc(alias_type_def);
-
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [(
-                WorldKey::Name("types".to_string()),
-                WorldItem::Interface {
-                    id: interface_id,
-                    stability: Default::default(),
-                    span: Default::default(),
-                    docs: Default::default(),
-                    external_id: None,
-                },
-            )]
-            .into(),
-            exports: Default::default(),
-            docs: Default::default(),
-            stability: Default::default(),
-            package: Some(package_id),
-            includes: Default::default(),
-            span: Default::default(),
-        };
-
-        let world_id = resolve.worlds.alloc(world);
-        let world = &resolve.worlds[world_id];
-
-        let analyzer = ImportAnalyzer::new(&resolve, &world);
+        let fixture = Fixture::parse(
+            "package test:types;
+            interface types {
+                record my-record { x: u32 }
+                type my-alias = string;
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzer = ImportAnalyzer::new(&fixture.resolve, fixture.world());
 
         // Test record analysis
-        let record_def = &resolve.types[record_type_id];
-        let record_analysis = analyzer.analyze_type_definition(&record_def.kind).unwrap();
-
-        match record_analysis {
-            TypeDefinition::Record { .. } => {
-                println!("✓ Record correctly analyzed as Record");
-            }
-            other => {
-                panic!("❌ Record incorrectly analyzed as: {:?}", other);
-            }
+        let record_def = &fixture.resolve.types[fixture.type_id("my-record")];
+        match analyzer.analyze_type_definition(&record_def.kind).unwrap() {
+            TypeDefinition::Record { .. } => {}
+            other => panic!("record analyzed as: {other:?}"),
         }
 
         // Test alias analysis
-        let alias_def = &resolve.types[alias_type_id];
-        let alias_analysis = analyzer.analyze_type_definition(&alias_def.kind).unwrap();
-
-        match alias_analysis {
-            TypeDefinition::Alias { .. } => {
-                println!("✓ Alias correctly analyzed as Alias");
-            }
-            other => {
-                panic!("❌ Alias incorrectly analyzed as: {:?}", other);
-            }
+        let alias_def = &fixture.resolve.types[fixture.type_id("my-alias")];
+        match analyzer.analyze_type_definition(&alias_def.kind).unwrap() {
+            TypeDefinition::Alias { .. } => {}
+            other => panic!("alias analyzed as: {other:?}"),
         }
-
-        println!("✓ Both record and alias types analyzed correctly");
     }
 }

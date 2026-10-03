@@ -96,65 +96,35 @@ impl FormatInto<Go> for ExportGenerator<'_> {
 #[cfg(test)]
 mod tests {
     use genco::prelude::*;
-    use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Param, Resolve, SizeAlign, Type, World, WorldItem, WorldKey,
-    };
 
-    use crate::go::GoIdentifier;
+    use crate::{codegen::test_wit::Fixture, go::GoIdentifier};
 
     use super::{ExportConfig, ExportGenerator};
 
-    #[test]
-    fn test_generate_function_simple_u32_param() {
-        let func = Function {
-            name: "add_number".to_string(),
-            kind: FunctionKind::Freestanding,
-            params: vec![Param {
-                name: "value".to_string(),
-                ty: Type::U32,
-                span: Default::default(),
-            }],
-            result: Some(Type::U32),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [].into(),
-            exports: [(
-                WorldKey::Name("add-number".to_string()),
-                WorldItem::Function(func.clone()),
-            )]
-            .into(),
-            docs: Default::default(),
-            stability: Default::default(),
-            includes: Default::default(),
-            span: Default::default(),
-            package: None,
-        };
-
-        let resolve = Resolve::new();
-        let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve).expect("sizes should fill");
+    /// Generates the Go method for the export `name` in `fixture`'s world.
+    fn generate(fixture: &Fixture, name: &str) -> String {
         let instance = GoIdentifier::public("TestInstance");
-
         let config = ExportConfig {
             instance: &instance,
-            world: &world,
-            resolve: &resolve,
-            sizes: &sizes,
+            world: fixture.world(),
+            resolve: &fixture.resolve,
+            sizes: &fixture.sizes,
         };
-
         let generator = ExportGenerator::new(config);
         let mut tokens = Tokens::new();
+        generator.generate_function(fixture.export(name), &mut tokens);
+        tokens.to_string().unwrap()
+    }
 
-        // Call the actual generate_function method
-        generator.generate_function(&func, &mut tokens);
-
-        let generated = tokens.to_string().unwrap();
+    #[test]
+    fn test_generate_function_simple_u32_param() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                export add-number: func(value: u32) -> u32;
+            }",
+        );
+        let generated = generate(&fixture, "add-number");
         println!("Generated: {}", generated);
 
         // Verify basic function structure
@@ -166,7 +136,7 @@ mod tests {
         // Verify function body
         assert!(generated.contains("arg0 := value"));
         assert!(generated
-            .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))"));
+            .contains("i.module.ExportedFunction(\"add-number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
@@ -193,85 +163,14 @@ mod tests {
     /// causing a Go compile error: cannot use uint64 as uint32.
     #[test]
     fn test_export_variant_u32_no_encode_u32() {
-        use wit_bindgen_core::wit_parser::{
-            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
-        };
-
-        let mut resolve = Resolve::new();
-
-        // variant u32-option { some-val(u32), none-val }
-        let variant_def = TypeDef {
-            name: Some("u32-option".to_string()),
-            kind: TypeDefKind::Variant(Variant {
-                cases: vec![
-                    Case {
-                        name: "some-val".to_string(),
-                        ty: Some(Type::U32),
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                    Case {
-                        name: "none-val".to_string(),
-                        ty: None,
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                ],
-            }),
-            owner: TypeOwner::None,
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-        let variant_id = resolve.types.alloc(variant_def);
-
-        let func = Function {
-            name: "process_u32_option".to_string(),
-            kind: FunctionKind::Freestanding,
-            params: vec![Param {
-                name: "opt".to_string(),
-                ty: Type::Id(variant_id),
-                span: Default::default(),
-            }],
-            result: Some(Type::U32),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [].into(),
-            exports: [(
-                WorldKey::Name("process-u32-option".to_string()),
-                WorldItem::Function(func.clone()),
-            )]
-            .into(),
-            docs: Default::default(),
-            stability: Default::default(),
-            includes: Default::default(),
-            span: Default::default(),
-            package: None,
-        };
-
-        let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve).expect("sizes should fill");
-        let instance = GoIdentifier::public("TestInstance");
-
-        let config = ExportConfig {
-            instance: &instance,
-            world: &world,
-            resolve: &resolve,
-            sizes: &sizes,
-        };
-
-        let generator = ExportGenerator::new(config);
-        let mut tokens = Tokens::new();
-        generator.generate_function(&func, &mut tokens);
-
-        let generated = tokens.to_string().unwrap();
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                variant u32-option { some-val(u32), none-val }
+                export process-u32-option: func(opt: u32-option) -> u32;
+            }",
+        );
+        let generated = generate(&fixture, "process-u32-option");
         println!("Generated u32-option function:\n{}", generated);
 
         // VariantLower declares `var variant_1 uint32` for the I32 payload slot.
@@ -290,85 +189,14 @@ mod tests {
     /// Go compile error: cannot use int64 as uint64.
     #[test]
     fn test_export_variant_u64_no_int64_cast() {
-        use wit_bindgen_core::wit_parser::{
-            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
-        };
-
-        let mut resolve = Resolve::new();
-
-        // variant u64-option { some-val(u64), none-val }
-        let variant_def = TypeDef {
-            name: Some("u64-option".to_string()),
-            kind: TypeDefKind::Variant(Variant {
-                cases: vec![
-                    Case {
-                        name: "some-val".to_string(),
-                        ty: Some(Type::U64),
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                    Case {
-                        name: "none-val".to_string(),
-                        ty: None,
-                        docs: Default::default(),
-                        span: Default::default(),
-                    },
-                ],
-            }),
-            owner: TypeOwner::None,
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-        let variant_id = resolve.types.alloc(variant_def);
-
-        let func = Function {
-            name: "process_u64_option".to_string(),
-            kind: FunctionKind::Freestanding,
-            params: vec![Param {
-                name: "opt".to_string(),
-                ty: Type::Id(variant_id),
-                span: Default::default(),
-            }],
-            result: Some(Type::U64),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [].into(),
-            exports: [(
-                WorldKey::Name("process-u64-option".to_string()),
-                WorldItem::Function(func.clone()),
-            )]
-            .into(),
-            docs: Default::default(),
-            stability: Default::default(),
-            includes: Default::default(),
-            span: Default::default(),
-            package: None,
-        };
-
-        let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve).expect("sizes should fill");
-        let instance = GoIdentifier::public("TestInstance");
-
-        let config = ExportConfig {
-            instance: &instance,
-            world: &world,
-            resolve: &resolve,
-            sizes: &sizes,
-        };
-
-        let generator = ExportGenerator::new(config);
-        let mut tokens = Tokens::new();
-        generator.generate_function(&func, &mut tokens);
-
-        let generated = tokens.to_string().unwrap();
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                variant u64-option { some-val(u64), none-val }
+                export process-u64-option: func(opt: u64-option) -> u64;
+            }",
+        );
+        let generated = generate(&fixture, "process-u64-option");
         println!("Generated u64-option function:\n{}", generated);
 
         // VariantLower declares `var variant_1 uint64` for the I64 payload slot.
@@ -383,81 +211,20 @@ mod tests {
     /// Regression test: an export whose parameters flatten to more than the
     /// canonical ABI's 16 flat params is lowered *indirectly* - the host must
     /// `cabi_realloc` an area, store each field into it and pass a single
-    /// pointer. That path emits `Instruction::Malloc`, which used to `todo!()`.
+    /// pointer.
     #[test]
     fn test_export_indirect_params_allocates_with_realloc() {
-        use wit_bindgen_core::wit_parser::{Field, Record, TypeDef, TypeDefKind, TypeOwner};
-
-        let mut resolve = Resolve::new();
-
         // A record with 17 u32 fields flattens to 17 core params, one over the
         // limit of 16, which forces indirect parameter lowering.
-        let record_def = TypeDef {
-            name: Some("wide".to_string()),
-            kind: TypeDefKind::Record(Record {
-                fields: (0..17)
-                    .map(|i| Field {
-                        name: format!("field{i}"),
-                        ty: Type::U32,
-                        docs: Default::default(),
-                        span: Default::default(),
-                    })
-                    .collect(),
-            }),
-            owner: TypeOwner::None,
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-        let record_id = resolve.types.alloc(record_def);
-
-        let func = Function {
-            name: "take_wide".to_string(),
-            kind: FunctionKind::Freestanding,
-            params: vec![Param {
-                name: "wide".to_string(),
-                ty: Type::Id(record_id),
-                span: Default::default(),
-            }],
-            result: Some(Type::U32),
-            docs: Default::default(),
-            stability: Default::default(),
-            span: Default::default(),
-            external_id: None,
-        };
-
-        let world = World {
-            name: "test-world".to_string(),
-            imports: [].into(),
-            exports: [(
-                WorldKey::Name("take-wide".to_string()),
-                WorldItem::Function(func.clone()),
-            )]
-            .into(),
-            docs: Default::default(),
-            stability: Default::default(),
-            includes: Default::default(),
-            span: Default::default(),
-            package: None,
-        };
-
-        let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve).expect("sizes should fill");
-        let instance = GoIdentifier::public("TestInstance");
-
-        let config = ExportConfig {
-            instance: &instance,
-            world: &world,
-            resolve: &resolve,
-            sizes: &sizes,
-        };
-
-        let generator = ExportGenerator::new(config);
-        let mut tokens = Tokens::new();
-        generator.generate_function(&func, &mut tokens);
-
-        let generated = tokens.to_string().unwrap();
+        let fields: String = (0..17).map(|i| format!("field{i}: u32, ")).collect();
+        let fixture = Fixture::parse(&format!(
+            "package test:fixture;
+            world test-world {{
+                record wide {{ {fields} }}
+                export take-wide: func(wide: wide) -> u32;
+            }}"
+        ));
+        let generated = generate(&fixture, "take-wide");
         println!("Generated wide-record function:\n{}", generated);
 
         // The param area is allocated through the guest's `cabi_realloc` with
@@ -473,7 +240,7 @@ mod tests {
             "indirect params must be stored into the allocated area, got:\n{generated}"
         );
         assert!(
-            generated.contains("ExportedFunction(\"take_wide\").Call(ctx, uint64(ptr"),
+            generated.contains("ExportedFunction(\"take-wide\").Call(ctx, uint64(ptr"),
             "the wasm export must be called with the param area pointer, got:\n{generated}"
         );
     }
