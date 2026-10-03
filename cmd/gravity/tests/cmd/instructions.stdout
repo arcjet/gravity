@@ -128,7 +128,7 @@ func (i *InstructionsInstance) S8Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := int8(api.DecodeI32(results1))
+	result2 := int8(results1)
 	return result2
 }
 
@@ -145,7 +145,7 @@ func (i *InstructionsInstance) U8Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := uint8(api.DecodeU32(results1))
+	result2 := uint8(results1)
 	return result2
 }
 
@@ -162,7 +162,7 @@ func (i *InstructionsInstance) S16Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := int16(api.DecodeI32(results1))
+	result2 := int16(results1)
 	return result2
 }
 
@@ -179,7 +179,7 @@ func (i *InstructionsInstance) U16Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := uint16(api.DecodeU32(results1))
+	result2 := uint16(results1)
 	return result2
 }
 
@@ -196,7 +196,7 @@ func (i *InstructionsInstance) S32Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := api.DecodeI32(results1)
+	result2 := int32(results1)
 	return result2
 }
 
@@ -303,35 +303,35 @@ func (i *InstructionsInstance) IndirectParams(
 	o1 := arg0.O
 	p1 := arg0.P
 	result2 := uint32(a1)
-	i.module.Memory().WriteUint32Le(ptr0+0, result2)
+	i.module.Memory().WriteUint32Le(ptr0+0, uint32(result2))
 	result3 := uint32(b1)
-	i.module.Memory().WriteUint32Le(ptr0+4, result3)
+	i.module.Memory().WriteUint32Le(ptr0+4, uint32(result3))
 	result4 := uint32(c1)
-	i.module.Memory().WriteUint32Le(ptr0+8, result4)
+	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result4))
 	result5 := uint32(d1)
-	i.module.Memory().WriteUint32Le(ptr0+12, result5)
+	i.module.Memory().WriteUint32Le(ptr0+12, uint32(result5))
 	result6 := uint32(e1)
-	i.module.Memory().WriteUint32Le(ptr0+16, result6)
+	i.module.Memory().WriteUint32Le(ptr0+16, uint32(result6))
 	result7 := uint32(f1)
-	i.module.Memory().WriteUint32Le(ptr0+20, result7)
+	i.module.Memory().WriteUint32Le(ptr0+20, uint32(result7))
 	result8 := uint32(g1)
-	i.module.Memory().WriteUint32Le(ptr0+24, result8)
+	i.module.Memory().WriteUint32Le(ptr0+24, uint32(result8))
 	result9 := uint32(h1)
-	i.module.Memory().WriteUint32Le(ptr0+28, result9)
+	i.module.Memory().WriteUint32Le(ptr0+28, uint32(result9))
 	result10 := uint32(i1)
-	i.module.Memory().WriteUint32Le(ptr0+32, result10)
+	i.module.Memory().WriteUint32Le(ptr0+32, uint32(result10))
 	result11 := uint32(j1)
-	i.module.Memory().WriteUint32Le(ptr0+36, result11)
+	i.module.Memory().WriteUint32Le(ptr0+36, uint32(result11))
 	result12 := uint32(k1)
-	i.module.Memory().WriteUint32Le(ptr0+40, result12)
+	i.module.Memory().WriteUint32Le(ptr0+40, uint32(result12))
 	result13 := uint32(l1)
-	i.module.Memory().WriteUint32Le(ptr0+44, result13)
+	i.module.Memory().WriteUint32Le(ptr0+44, uint32(result13))
 	result14 := uint32(m1)
-	i.module.Memory().WriteUint32Le(ptr0+48, result14)
+	i.module.Memory().WriteUint32Le(ptr0+48, uint32(result14))
 	result15 := uint32(n1)
-	i.module.Memory().WriteUint32Le(ptr0+52, result15)
+	i.module.Memory().WriteUint32Le(ptr0+52, uint32(result15))
 	result16 := uint32(o1)
-	i.module.Memory().WriteUint32Le(ptr0+56, result16)
+	i.module.Memory().WriteUint32Le(ptr0+56, uint32(result16))
 	memory17 := i.module.Memory()
 	realloc17 := i.module.ExportedFunction("cabi_realloc")
 	ptr17, len17, err17 := writeString(ctx, p1, memory17, realloc17)

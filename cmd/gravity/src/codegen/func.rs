@@ -11,8 +11,7 @@ use crate::{
         comment,
         imports::{
             ERRORS_NEW, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
-            WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
-            WAZERO_API_ENCODE_F64,
+            WAZERO_API_ENCODE_F32, WAZERO_API_ENCODE_F64,
         },
         GoIdentifier, GoResult, GoType, Operand,
     },
@@ -111,6 +110,43 @@ impl<'a> Func<'a> {
 
     fn pop_block(&mut self) -> (Tokens<Go>, Vec<Operand>) {
         self.blocks.pop().expect("should have block to pop")
+    }
+
+    /// Emits `valueN, okN := <module>.Memory().<read>(uint32(ptr + offset))`
+    /// followed by the check that handles a failed read for the function's
+    /// return type, and returns the name of the value variable. `what` names
+    /// the value in the error message.
+    fn read_memory(&mut self, read: &str, ptr: &Operand, offset: usize, what: &str) -> String {
+        let tmp = self.tmp();
+        let value = format!("value{tmp}");
+        let ok = &format!("ok{tmp}");
+        let default = &format!("default{tmp}");
+        let module_handle = self.module_handle();
+        let message = format!("failed to read {what} from memory");
+        quote_in! { self.body =>
+            $['\r']
+            $(&value), $ok := $module_handle.Memory().$read(uint32($ptr + $offset))
+            $(match &self.result {
+                GoResult::Anon(GoType::ValueOrError(typ)) => {
+                    if !$ok {
+                        var $default $(typ.as_ref())
+                        return $default, $ERRORS_NEW($(quoted(&message)))
+                    }
+                }
+                GoResult::Anon(GoType::Error) => {
+                    if !$ok {
+                        return $ERRORS_NEW($(quoted(&message)))
+                    }
+                }
+                GoResult::Anon(_) | GoResult::Empty => {
+                    $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                    if !$ok {
+                        panic($ERRORS_NEW($(quoted(&message))))
+                    }
+                }
+            })
+        };
+        value
     }
 }
 
@@ -643,28 +679,11 @@ impl Bindgen for Func<'_> {
                 let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
-                if let Operand::Literal(byte) = tag {
-                    quote_in! { self.body =>
-                        $['\r']
-                        $module_handle.Memory().WriteByte($ptr+$offset, $byte)
-                    }
-                } else {
-                    let tmp = self.tmp();
-                    let byte = format!("byte{tmp}");
-                    quote_in! { self.body =>
-                        $['\r']
-                        var $(&byte) uint8
-                        switch $tag {
-                        case 0:
-                            $(&byte) = 0
-                        case 1:
-                            $(&byte) = 1
-                        default:
-                            $(comment(["TODO(#8): Return an error if the return type allows it"]))
-                            panic($ERRORS_NEW("invalid int8 value encountered"))
-                        }
-                        $module_handle.Memory().WriteByte($ptr+$offset, $byte)
-                    }
+                // The canonical ABI stores the low 8 bits of the i32. This
+                // covers bool, u8, s8, enum and variant discriminants alike.
+                quote_in! { self.body =>
+                    $['\r']
+                    $module_handle.Memory().WriteByte($ptr+$offset, uint8($tag))
                 }
             }
             Instruction::I32Store { offset } => {
@@ -674,7 +693,7 @@ impl Bindgen for Func<'_> {
                 let ptr = &operands[1];
                 quote_in! { self.body =>
                     $['\r']
-                    $module_handle.Memory().WriteUint32Le($ptr+$offset, $tag)
+                    $module_handle.Memory().WriteUint32Le($ptr+$offset, uint32($tag))
                 }
             }
             Instruction::LengthStore { offset } => {
@@ -1059,9 +1078,20 @@ impl Bindgen for Func<'_> {
                 results.push(Operand::SingleValue(enum_tmp.to_string()));
             }
             Instruction::Bitcasts { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::I32Load8S { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::I32Load16U { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::I32Load16S { .. } => todo!("implement instruction: {inst:?}"),
+            // The lift that follows (S8FromI32, U16FromI32, S16FromI32)
+            // converts the raw bits to the signed or unsigned Go type.
+            Instruction::I32Load8S { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let value =
+                    self.read_memory("ReadByte", &operands[0], offset.size_wasm32(), "byte");
+                results.push(Operand::SingleValue(value));
+            }
+            Instruction::I32Load16U { offset } | Instruction::I32Load16S { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let value =
+                    self.read_memory("ReadUint16Le", &operands[0], offset.size_wasm32(), "i16");
+                results.push(Operand::SingleValue(value));
+            }
             Instruction::I64Load { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
@@ -1095,82 +1125,75 @@ impl Bindgen for Func<'_> {
                 };
                 results.push(Operand::SingleValue(value.into()));
             }
+            // Imports lift floats from Go float values; exports lift them
+            // from the IEEE bits in a uint64, as CallWasm returns them, so an
+            // export widens the f32's 4 bytes to a uint64.
             Instruction::F32Load { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
-                let tmp = self.tmp();
-                let value = &format!("value{tmp}");
-                let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
-                let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $value, $ok := $module_handle.Memory().ReadUint64Le(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read f32 from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read f32 from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read f32 from memory"))
-                            }
-                        }
-                    })
+                let value = match self.direction {
+                    Direction::Import { .. } => {
+                        self.read_memory("ReadFloat32Le", &operands[0], offset, "f32")
+                    }
+                    Direction::Export => {
+                        let value = self.read_memory("ReadUint32Le", &operands[0], offset, "f32");
+                        let tmp = self.tmp();
+                        let bits = format!("bits{tmp}");
+                        quote_in! { self.body =>
+                            $['\r']
+                            $(&bits) := uint64($(&value))
+                        };
+                        bits
+                    }
                 };
-                results.push(Operand::SingleValue(value.into()));
+                results.push(Operand::SingleValue(value));
             }
             Instruction::F64Load { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
-                let tmp = self.tmp();
-                let value = &format!("value{tmp}");
-                let ok = &format!("ok{tmp}");
-                let default = &format!("default{tmp}");
-                let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $value, $ok := $module_handle.Memory().ReadUint64Le(uint32($operand + $offset))
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            if !$ok {
-                                var $default $(typ.as_ref())
-                                return $default, $ERRORS_NEW("failed to read f64 from memory")
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            if !$ok {
-                                return $ERRORS_NEW("failed to read f64 from memory")
-                            }
-                        }
-                        GoResult::Anon(_) | GoResult::Empty => {
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if !$ok {
-                                panic($ERRORS_NEW("failed to read f64 from memory"))
-                            }
-                        }
-                    })
+                let read = match self.direction {
+                    Direction::Import { .. } => "ReadFloat64Le",
+                    Direction::Export => "ReadUint64Le",
                 };
-                results.push(Operand::SingleValue(value.into()));
+                let value = self.read_memory(read, &operands[0], offset, "f64");
+                results.push(Operand::SingleValue(value));
             }
-            Instruction::I32Store16 { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::I64Store { .. } => todo!("implement instruction: {inst:?}"),
-            Instruction::F32Store { offset } => {
+            Instruction::I32Store16 { offset } => {
                 // TODO(#58): Support additional ArchitectureSize
                 let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
                 quote_in! { self.body =>
                     $['\r']
-                    $module_handle.Memory().WriteUint64Le($ptr+$offset, $tag)
+                    $module_handle.Memory().WriteUint16Le($ptr+$offset, uint16($tag))
+                }
+            }
+            Instruction::I64Store { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tag = &operands[0];
+                let ptr = &operands[1];
+                quote_in! { self.body =>
+                    $['\r']
+                    $module_handle.Memory().WriteUint64Le($ptr+$offset, uint64($tag))
+                }
+            }
+            // Imports lower floats to Go float values; exports lower them to
+            // the IEEE bits in a uint64 (api.EncodeF32/EncodeF64).
+            Instruction::F32Store { offset } => {
+                // TODO(#58): Support additional ArchitectureSize
+                let offset = offset.size_wasm32();
+                let tag = &operands[0];
+                let ptr = &operands[1];
+                match self.direction {
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $module_handle.Memory().WriteFloat32Le($ptr+$offset, $tag)
+                    },
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $module_handle.Memory().WriteUint32Le($ptr+$offset, uint32($tag))
+                    },
                 }
             }
             Instruction::F64Store { offset } => {
@@ -1178,9 +1201,15 @@ impl Bindgen for Func<'_> {
                 let offset = offset.size_wasm32();
                 let tag = &operands[0];
                 let ptr = &operands[1];
-                quote_in! { self.body =>
-                    $['\r']
-                    $module_handle.Memory().WriteUint64Le($ptr+$offset, $tag)
+                match self.direction {
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $module_handle.Memory().WriteFloat64Le($ptr+$offset, $tag)
+                    },
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $module_handle.Memory().WriteUint64Le($ptr+$offset, $tag)
+                    },
                 }
             }
             Instruction::I32FromChar => {
@@ -1272,47 +1301,47 @@ impl Bindgen for Func<'_> {
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
-            // TODO: Validate the Go cast truncates the upper bits in the I32
+            // Go's conversion keeps the low bits and reinterprets their sign,
+            // which is the canonical ABI's lift of an i32. It accepts the
+            // uint64 CallWasm returns, a uint32 host parameter, and the
+            // narrower values a load produces.
             Instruction::S8FromI32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := int8($WAZERO_API_DECODE_I32($operand))
+                    $result := int8($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
-            // TODO: Validate the Go cast truncates the upper bits in the I32
             Instruction::U8FromI32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := uint8($WAZERO_API_DECODE_U32($operand))
+                    $result := uint8($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
-            // TODO: Validate the Go cast truncates the upper bits in the I32
             Instruction::S16FromI32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := int16($WAZERO_API_DECODE_I32($operand))
+                    $result := int16($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
-            // TODO: Validate the Go cast truncates the upper bits in the I32
             Instruction::U16FromI32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := uint16($WAZERO_API_DECODE_U32($operand))
+                    $result := uint16($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1322,7 +1351,7 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 quote_in! { self.body =>
                     $['\r']
-                    $result := $WAZERO_API_DECODE_I32($operand)
+                    $result := int32($operand)
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1362,13 +1391,22 @@ impl Bindgen for Func<'_> {
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
+            // A host function receives float32 and float64 directly, and the
+            // float loads produce them; CallWasm returns the IEEE bits in a
+            // uint64.
             Instruction::F32FromCoreF32 => {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_DECODE_F32($operand)
+                match self.direction {
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $result := $WAZERO_API_DECODE_F32($operand)
+                    },
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $result := $operand
+                    },
                 };
                 results.push(Operand::SingleValue(result.into()));
             }
@@ -1376,9 +1414,15 @@ impl Bindgen for Func<'_> {
                 let tmp = self.tmp();
                 let result = &format!("result{tmp}");
                 let operand = &operands[0];
-                quote_in! { self.body =>
-                    $['\r']
-                    $result := $WAZERO_API_DECODE_F64($operand)
+                match self.direction {
+                    Direction::Export => quote_in! { self.body =>
+                        $['\r']
+                        $result := $WAZERO_API_DECODE_F64($operand)
+                    },
+                    Direction::Import { .. } => quote_in! { self.body =>
+                        $['\r']
+                        $result := $operand
+                    },
                 };
                 results.push(Operand::SingleValue(result.into()));
             }

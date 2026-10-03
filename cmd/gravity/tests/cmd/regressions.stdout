@@ -249,10 +249,10 @@ func NewRegressionsFactory(
 		str0 := string(buf0)
 		value1 := ipSource.Lookup(ctx, str0)
 		if value1 == nil {
-			mod.Memory().WriteByte(arg2+0, 0)
+			mod.Memory().WriteByte(arg2+0, uint8(0))
 		} else {
 			variantPayload := *value1
-			mod.Memory().WriteByte(arg2+0, 1)
+			mod.Memory().WriteByte(arg2+0, uint8(1))
 			memory2 := mod.Memory()
 			realloc2 := mod.ExportedFunction("cabi_realloc")
 			ptr2, len2, err2 := writeString(ctx, variantPayload, memory2, realloc2)
