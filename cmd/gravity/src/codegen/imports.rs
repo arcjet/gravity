@@ -137,7 +137,7 @@ impl<'a> ImportAnalyzer<'a> {
         }
     }
 
-    fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
+    pub(crate) fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
         let type_def = &self.resolve.types[type_id];
         let qualified = crate::qualified_type_name(type_id, self.resolve);
         let go_type_name = GoIdentifier::public(&qualified);
@@ -370,7 +370,7 @@ impl<'a> ImportCodeGenerator<'a> {
         }
     }
 
-    fn generate_type_definition(&self, typ: &AnalyzedType, tokens: &mut Tokens<Go>) {
+    pub(crate) fn generate_type_definition(&self, typ: &AnalyzedType, tokens: &mut Tokens<Go>) {
         match &typ.definition {
             TypeDefinition::Record { fields } => {
                 quote_in! { *tokens =>
