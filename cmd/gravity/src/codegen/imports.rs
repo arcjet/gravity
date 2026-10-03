@@ -18,8 +18,8 @@ use crate::{
         },
     },
     go::{
-        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
         GoIdentifier, GoResult, GoType,
+        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
     },
     resolve_param_type, resolve_type, resolve_wasm_type,
 };
@@ -167,9 +167,7 @@ impl<'a> ImportAnalyzer<'a> {
         let payload = case.ty.as_ref().map(|t| resolve_type(t, self.resolve));
         let dispatch = match crate::case_dispatch_kind(case, self.resolve) {
             crate::CaseDispatchKind::DirectRecord => CaseDispatch::DirectRecord {
-                record_type: payload
-                    .clone()
-                    .expect("DirectRecord case has a payload"),
+                record_type: payload.clone().expect("DirectRecord case has a payload"),
             },
             crate::CaseDispatchKind::Wrapped => CaseDispatch::Wrapped {
                 wrapper_name: GoIdentifier::public(format!("{variant_name}-{}", case.name)),
@@ -415,8 +413,7 @@ impl<'a> ImportCodeGenerator<'a> {
             }
             TypeDefinition::Variant { cases } => {
                 let variant_interface = &typ.go_type_name;
-                let marker_method =
-                    &GoIdentifier::private(format!("is-{}", &typ.name));
+                let marker_method = &GoIdentifier::private(format!("is-{}", &typ.name));
                 let case_definitions = cases.iter().map(|case| match &case.dispatch {
                     CaseDispatch::DirectRecord { record_type } => quote! {
                         $['\n']

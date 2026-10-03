@@ -57,6 +57,9 @@ jobs:
 
       # Workflow
 
+      - name: cargo fmt
+        run: cargo fmt --all --check
+
       - name: cargo build
         run: cargo build --locked --verbose
         env:

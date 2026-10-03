@@ -8,13 +8,12 @@ use wit_bindgen_core::{
 
 use crate::{
     go::{
-        comment,
+        GoIdentifier, GoResult, GoType, Operand, comment,
         imports::{
             ERRORS_NEW, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_DECODE_I32, WAZERO_API_DECODE_U32, WAZERO_API_ENCODE_F32,
             WAZERO_API_ENCODE_F64,
         },
-        GoIdentifier, GoResult, GoType, Operand,
     },
     resolve_type, resolve_wasm_type,
 };
@@ -983,9 +982,8 @@ impl Bindgen for Func<'_> {
                         };
                     }
 
-                    let case_type = GoIdentifier::public(crate::case_dispatch_name(
-                        &name, case, resolve,
-                    ));
+                    let case_type =
+                        GoIdentifier::public(crate::case_dispatch_name(&name, case, resolve));
                     let payload_intro = if all_direct {
                         quote!()
                     } else {
