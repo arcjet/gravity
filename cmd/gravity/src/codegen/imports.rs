@@ -94,15 +94,13 @@ impl<'a> ImportAnalyzer<'a> {
         let go_interface_name =
             GoIdentifier::public(format!("i-{}-{}", self.world.name, interface_name));
 
-        let wazero_module_name = if let Some(package_id) = interface.package {
-            let package = &self.resolve.packages[package_id];
-            format!(
-                "{}:{}/{}",
-                package.name.namespace, package.name.name, interface_name
-            )
-        } else {
-            interface_name.to_string()
-        };
+        // The module the guest imports from: the interface's full id, which
+        // carries the package version when there is one
+        // (`example:pkg/types@0.1.0`).
+        let wazero_module_name = self
+            .resolve
+            .id_of(interface_id)
+            .unwrap_or_else(|| interface_name.to_string());
 
         AnalyzedInterface {
             name: interface_name.clone(),
@@ -1109,5 +1107,29 @@ mod tests {
             !generated.contains("ITestWorldTypes"),
             "no Go interface for a types-only interface, got:\n{generated}"
         );
+    }
+
+    /// Regression test: a guest built from a versioned package imports
+    /// `<namespace>:<package>/<interface>@<version>`. The host module was
+    /// named without the version, so instantiation failed:
+    /// "module[gravity:interface-exports/log@0.1.0] not instantiated".
+    #[test]
+    fn test_host_module_name_carries_the_package_version() {
+        let fixture = Fixture::parse(
+            "package test:fixture@1.2.3;
+            interface host {
+                ping: func();
+            }
+            world test-world {
+                import host;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let names: Vec<&str> = analyzed
+            .interfaces
+            .iter()
+            .map(|i| i.wazero_module_name.as_str())
+            .collect();
+        assert_eq!(names, ["test:fixture/host@1.2.3"]);
     }
 }
