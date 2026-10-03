@@ -11,9 +11,9 @@ import (
 
 func newInstance(t *testing.T) *EnumCollisionsInstance {
 	t.Helper()
-	// The world's `use types.{...}` makes `types` an import with no
-	// functions, so its host argument has nothing to implement.
-	fac, err := NewEnumCollisionsFactory(t.Context(), nil)
+	// The world imports `types` only for its types, so the factory takes no
+	// host argument for it.
+	fac, err := NewEnumCollisionsFactory(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
