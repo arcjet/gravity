@@ -29,9 +29,9 @@ type color int
 func (color) isColor() {}
 
 const (
-	Red color = iota
-	Green color = iota
-	Blue color = iota
+	ColorRed color = iota
+	ColorGreen color = iota
+	ColorBlue color = iota
 )
 
 type Everything struct {
@@ -168,11 +168,11 @@ func NewMemoryFactory(
 		var enum23 Color
 		switch value22 {
 		case 0:
-			enum23 = Red
+			enum23 = ColorRed
 		case 1:
-			enum23 = Green
+			enum23 = ColorGreen
 		case 2:
-			enum23 = Blue
+			enum23 = ColorBlue
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid color discriminant"))
@@ -276,11 +276,11 @@ func NewMemoryFactory(
 		mod.Memory().WriteUint32Le(arg1+44, uint32(value46))
 		var enum47 uint32
 		switch aColor35 {
-		case Red:
+		case ColorRed:
 			enum47 = 0
-		case Green:
+		case ColorGreen:
 			enum47 = 1
-		case Blue:
+		case ColorBlue:
 			enum47 = 2
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -427,11 +427,11 @@ func (i *MemoryInstance) RoundTrip(
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(value12))
 	var enum13 uint32
 	switch aColor1 {
-	case Red:
+	case ColorRed:
 		enum13 = 0
-	case Green:
+	case ColorGreen:
 		enum13 = 1
-	case Blue:
+	case ColorBlue:
 		enum13 = 2
 	default:
 		panic(errors.New("invalid enum type provided"))
@@ -555,11 +555,11 @@ func (i *MemoryInstance) RoundTrip(
 	var enum42 Color
 	switch value41 {
 	case 0:
-		enum42 = Red
+		enum42 = ColorRed
 	case 1:
-		enum42 = Green
+		enum42 = ColorGreen
 	case 2:
-		enum42 = Blue
+		enum42 = ColorBlue
 	default:
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(errors.New("invalid color discriminant"))
@@ -679,11 +679,11 @@ func (i *MemoryInstance) CallHostEcho(
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(value12))
 	var enum13 uint32
 	switch aColor1 {
-	case Red:
+	case ColorRed:
 		enum13 = 0
-	case Green:
+	case ColorGreen:
 		enum13 = 1
-	case Blue:
+	case ColorBlue:
 		enum13 = 2
 	default:
 		panic(errors.New("invalid enum type provided"))
@@ -807,11 +807,11 @@ func (i *MemoryInstance) CallHostEcho(
 	var enum42 Color
 	switch value41 {
 	case 0:
-		enum42 = Red
+		enum42 = ColorRed
 	case 1:
-		enum42 = Green
+		enum42 = ColorGreen
 	case 2:
-		enum42 = Blue
+		enum42 = ColorBlue
 	default:
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(errors.New("invalid color discriminant"))

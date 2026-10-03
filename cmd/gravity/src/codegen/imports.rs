@@ -381,7 +381,9 @@ impl<'a> ImportCodeGenerator<'a> {
                 let enum_type = &GoIdentifier::private(&typ.name);
                 let enum_interface = &typ.go_type_name;
                 let enum_function = &GoIdentifier::private(format!("is-{}", &typ.name));
-                let variants = cases.iter().map(GoIdentifier::public);
+                let variants = cases
+                    .iter()
+                    .map(|case| GoIdentifier::public(crate::enum_case_name(&typ.name, case)));
                 quote_in! { *tokens =>
                     $['\n']
                     type $(enum_interface) interface {
@@ -939,5 +941,44 @@ mod tests {
             TypeDefinition::Alias { .. } => {}
             other => panic!("alias analyzed as: {other:?}"),
         }
+    }
+
+    /// Regression test: enum case constants are named for their enum. WIT
+    /// scopes a case to its enum, and unqualified constants made two enums
+    /// sharing a case name, or a case sharing a type's name, redeclare an
+    /// identifier.
+    #[test]
+    fn test_enum_case_constants_are_named_for_their_enum() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                enum via { peer-svid, anonymous }
+                enum credential-kind { peer-svid, bearer }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        for constant in [
+            "ViaPeerSvid via = iota",
+            "ViaAnonymous via = iota",
+            "CredentialKindPeerSvid credentialKind = iota",
+            "CredentialKindBearer credentialKind = iota",
+        ] {
+            assert!(
+                generated.contains(constant),
+                "expected `{constant}`, got:\n{generated}"
+            );
+        }
+        assert!(
+            !generated.contains("\n    PeerSvid "),
+            "no case constant may be unqualified, got:\n{generated}"
+        );
     }
 }
