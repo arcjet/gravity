@@ -248,7 +248,9 @@ func NewExampleFactory(
 }
 
 func (f *ExampleFactory) Instantiate(ctx context.Context) (*ExampleInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	// An anonymous module: wazero refuses a second module of the same name
+	// in one runtime, and every instance of this factory is the same module.
+	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig().WithName("")); err != nil {
 		return nil, err
 	} else {
 		return &ExampleInstance{module}, nil
