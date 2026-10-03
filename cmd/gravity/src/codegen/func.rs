@@ -91,6 +91,24 @@ impl<'a> Func<'a> {
         }
     }
 
+    /// The Go expression that resolves to the guest export `name` as an
+    /// `api.Function`, memoized per module instance.
+    ///
+    /// `api.Module.ExportedFunction` builds a fresh function, with its own
+    /// call engine, on every call (about 12 KB each, measured on wazero
+    /// 1.12), and the canonical ABI asks for `cabi_realloc` once per string
+    /// or list it lowers. The export side
+    /// asks the instance's own memo; a host function receives only the
+    /// calling module, so it asks the factory's registry for that module's.
+    fn exported_function(&self, name: &str) -> Tokens<Go> {
+        match self.direction {
+            Direction::Export => quote!(i.exports.get($(quoted(name)))),
+            Direction::Import { .. } => {
+                quote!(gravityExportCache.lookup(mod, $(quoted(name))))
+            }
+        }
+    }
+
     pub fn args(&self) -> &[String] {
         &self.args
     }
@@ -187,12 +205,13 @@ impl Bindgen for Func<'_> {
                 let memory = &format!("memory{tmp}");
                 let realloc = &format!("realloc{tmp}");
                 let operand = &operands[0];
+                let realloc_fn = self.exported_function(realloc_name);
                 match self.direction {
                     Direction::Export => {
                         quote_in! { self.body =>
                             $['\r']
                             $memory := i.module.Memory()
-                            $realloc := i.module.ExportedFunction($(quoted(*realloc_name)))
+                            $realloc := $realloc_fn
                             $ptr, $len, $err := writeString(ctx, $operand, $memory, $realloc)
                             $(match &self.result {
                                 GoResult::Anon(GoType::ValueOrError(typ)) => {
@@ -219,7 +238,7 @@ impl Bindgen for Func<'_> {
                         quote_in! { self.body =>
                             $['\r']
                             $memory := mod.Memory()
-                            $realloc := mod.ExportedFunction($(quoted(*realloc_name)))
+                            $realloc := $realloc_fn
                             $ptr, $len, $err := writeString(ctx, $operand, $memory, $realloc)
                             if $err != nil {
                                 panic($err)
@@ -236,33 +255,35 @@ impl Bindgen for Func<'_> {
                 let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
                 let default = &format!("default{tmp}");
+                let call_fn = &self.exported_function(name);
+                let post_fn = &self.exported_function(&format!("cabi_post_{name}"));
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
                 quote_in! { self.body =>
                     $['\r']
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             if $err != nil {
                                 var $default $(typ.as_ref())
                                 return $default, $err
                             }
                         }
                         GoResult::Anon(GoType::Error) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             if $err != nil {
                                 return $err
                             }
                         }
                         GoResult::Anon(_) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
                             if $err != nil {
                                 panic($err)
                             }
                         }
                         GoResult::Empty => {
-                            _, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            _, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
                             if $err != nil {
                                 panic($err)
@@ -277,7 +298,7 @@ impl Bindgen for Func<'_> {
                             "is done accessing it."
                         ]))
                         defer func() {
-                            if postFn := $module_handle.ExportedFunction($(quoted(format!("cabi_post_{name}")))); postFn != nil {
+                            if postFn := $post_fn; postFn != nil {
                                 if _, err := postFn.Call(ctx, $raw...); err != nil {
                                     $(comment(&[
                                         "If we get an error during cleanup, something really bad is",
@@ -886,12 +907,13 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 let size = self.sizes.size(element).size_wasm32();
                 let align = self.sizes.align(element).align_wasm32();
+                let realloc_fn = self.exported_function(realloc_name);
 
                 quote_in! { self.body =>
                     $['\r']
                     $vec := $operand
                     $len := uint64(len($vec))
-                    $result, $err := $module_handle.ExportedFunction($(quoted(*realloc_name))).Call(ctx, 0, 0, $align, $len * $size)
+                    $result, $err := $realloc_fn.Call(ctx, 0, 0, $align, $len * $size)
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if $err != nil {
@@ -1548,11 +1570,12 @@ impl Bindgen for Func<'_> {
                 let err = &format!("err{tmp}");
                 let default = &format!("default{tmp}");
                 let ptr = &format!("ptr{tmp}");
+                let realloc_fn = self.exported_function(realloc);
 
                 quote_in! { self.body =>
                     $['\r']
                     $(comment(&["Allocate the area holding the indirectly passed parameters"]))
-                    $result, $err := $module_handle.ExportedFunction($(quoted(*realloc))).Call(ctx, 0, 0, $align, $size)
+                    $result, $err := $realloc_fn.Call(ctx, 0, 0, $align, $size)
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
                             if $err != nil {
