@@ -1,0 +1,19 @@
+package gravity:import-param-widths;
+
+// Every scalar crosses a host function boundary as its own core wasm type:
+// u64 and s64 as i64, f32 as f32, f64 as f64, the narrower integers as i32.
+// wazero builds a host function's wasm signature from its Go parameters, so
+// each Go parameter must have the width of its core wasm parameter.
+interface host {
+  wide: func(a: u64, b: s64, c: f32, d: f64, e: u32, f: s8) -> f64;
+
+  // option<s64> flattens to an i32 discriminant and an i64 payload.
+  opt: func(x: option<s64>) -> s64;
+}
+
+world import-param-widths {
+  import host;
+
+  export call-wide: func(a: u64, b: s64, c: f32, d: f64, e: u32, f: s8) -> f64;
+  export call-opt: func(x: option<s64>) -> s64;
+}

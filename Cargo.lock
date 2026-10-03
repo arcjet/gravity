@@ -173,6 +173,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-import-param-widths"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-instructions"
 version = "0.0.2"
 dependencies = [
