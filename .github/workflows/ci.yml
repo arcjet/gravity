@@ -15,6 +15,9 @@ jobs:
   gravity:
     name: Gravity tests
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       # Environment security
       - name: Step Security
@@ -43,12 +46,10 @@ jobs:
         with:
           go-version: stable
 
+      # The runner image ships rustup. With no toolchain argument it installs
+      # the toolchain, components and targets pinned in `rust-toolchain.toml`.
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
-        with:
-          # We start by installing the stable toolchain but the
-          # `rust-toolchain.toml` file takes precendence
-          toolchain: stable
+        run: rustup toolchain install --no-self-update
 
       - name: Inspect toolchain versions
         run: |
