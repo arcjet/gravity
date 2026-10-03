@@ -41,6 +41,10 @@ pub struct Func<'a> {
     block_storage: Vec<Tokens<Go>>,
     blocks: Vec<(Tokens<Go>, Vec<Operand>)>,
     sizes: &'a SizeAlign,
+    /// The core wasm export this function calls, when it is not the WIT
+    /// function's own name: a function exported from an interface is
+    /// exported as `<interface>#<function>`.
+    wasm_name: Option<String>,
 }
 
 impl<'a> Func<'a> {
@@ -55,10 +59,18 @@ impl<'a> Func<'a> {
             block_storage: Vec::new(),
             blocks: Vec::new(),
             sizes,
+            wasm_name: None,
         }
     }
 
-    /// Create a new exported function.
+    /// Calls the core wasm export `name` rather than the WIT function's own
+    /// name, and its `cabi_post_<name>` for cleanup.
+    pub fn with_wasm_name(mut self, name: String) -> Self {
+        self.wasm_name = Some(name);
+        self
+    }
+
+    /// Create a new imported function.
     pub fn import(param_name: &'a GoIdentifier, result: GoResult, sizes: &'a SizeAlign) -> Self {
         Self {
             direction: Direction::Import { param_name },
@@ -69,6 +81,7 @@ impl<'a> Func<'a> {
             block_storage: Vec::new(),
             blocks: Vec::new(),
             sizes,
+            wasm_name: None,
         }
     }
 
@@ -268,6 +281,7 @@ impl Bindgen for Func<'_> {
                 let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
                 let default = &format!("default{tmp}");
+                let name = self.wasm_name.as_deref().unwrap_or(name);
                 let call_fn = &self.exported_function(name);
                 let post_fn = &self.exported_function(&format!("cabi_post_{name}"));
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
