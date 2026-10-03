@@ -18,14 +18,14 @@ jobs:
     steps:
       # Environment security
       - name: Step Security
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           disable-sudo-and-containers: true
           egress-policy: block
           allowed-endpoints: >
             api.github.com:443
             objects.githubusercontent.com:443
-            release-assets.githubusercontent:443
+            release-assets.githubusercontent.com:443
             github.com:443
             index.crates.io:443
             static.crates.io:443
@@ -35,16 +35,16 @@ jobs:
       # Checkout
       # Most toolchains require checkout first
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Language toolchains
       - name: Install Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@f7ccc83f9ed1e5b9c81d8a67d7ad1a747e22a561
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
           # We start by installing the stable toolchain but the
           # `rust-toolchain.toml` file takes precendence

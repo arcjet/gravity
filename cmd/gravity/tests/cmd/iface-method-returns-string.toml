@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world example ../../target/wasm32-unknown-unknown/release/example_iface_method_returns_string.wasm"

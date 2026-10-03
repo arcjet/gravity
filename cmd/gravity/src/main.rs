@@ -12,8 +12,15 @@ use arcjet_gravity::codegen::{Bindings, WasmData};
 // 2. https://github.com/bytecodealliance/wasm-tools/issues/1315
 pub const PRIMARY_WORLD_NAME: &str = "root";
 
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")");
+
 fn main() -> Result<ExitCode, ()> {
     let cmd = Command::new("gravity")
+        .version(VERSION)
+        .about(format!(
+            "gravity {}\n\nGenerate host bindings for WebAssembly Components",
+            VERSION
+        ))
         .arg(
             Arg::new("world")
                 .short('w')
@@ -76,7 +83,10 @@ fn main() -> Result<ExitCode, ()> {
     };
 
     let mut sizes = SizeAlign::default();
-    sizes.fill(&bindgen.resolve);
+    if let Err(err) = sizes.fill(&bindgen.resolve) {
+        eprintln!("unable to compute type sizes: {err}");
+        return Ok(ExitCode::FAILURE);
+    }
     let mut bindings = Bindings::new(&bindgen.resolve, world, &sizes);
 
     bindings.include_wasm(if inline_wasm {

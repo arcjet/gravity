@@ -1,0 +1,15 @@
+gravity 0.0.3 ([..])
+
+Generate host bindings for WebAssembly Components
+
+Usage: gravity [OPTIONS] <file>
+
+Arguments:
+  <file>  the WebAssembly file to process
+
+Options:
+  -w, --world <world>    generate host bindings for the specified world [default: root]
+      --inline-wasm      include the WebAssembly file as hex bytes in the output code
+  -o, --output <output>  the file path where output generated code should be output
+  -h, --help             Print help
+  -V, --version          Print version

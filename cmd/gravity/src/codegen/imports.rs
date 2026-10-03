@@ -4,26 +4,24 @@ use genco::prelude::*;
 use wit_bindgen_core::{
     abi::{AbiVariant, LiftLower},
     wit_parser::{
-        Function, InterfaceId, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World, WorldItem,
+        Case, Function, InterfaceId, Param, Resolve, SizeAlign, Type, TypeDefKind, TypeId, World,
+        WorldItem,
     },
 };
 
 use crate::{
     codegen::{
-        ImportedFunc,
+        func::Func,
         ir::{
-            AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, InterfaceMethod,
-            Parameter, TypeDefinition, WitReturn,
+            AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, CaseDispatch,
+            InterfaceMethod, Parameter, TypeDefinition, VariantCase, WitReturn,
         },
     },
     go::{
+        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
         GoIdentifier, GoResult, GoType,
-        imports::{
-            CONTEXT_CONTEXT, GoImport, WAZERO_API_GO_MODULE_FUNC, WAZERO_API_MODULE,
-            WAZERO_API_VALUE_TYPE,
-        },
     },
-    resolve_type,
+    resolve_param_type, resolve_type, resolve_wasm_type,
 };
 
 /// Analyzer for imports - only does analysis, no code generation
@@ -48,7 +46,7 @@ impl<'a> ImportAnalyzer<'a> {
                 WorldItem::Interface { id, .. } => {
                     interfaces.push(self.analyze_interface(*id));
                 }
-                WorldItem::Type(type_id) => {
+                WorldItem::Type { id: type_id, .. } => {
                     if let Some(t) = self.analyze_type(*type_id) {
                         standalone_types.push(t);
                     }
@@ -120,10 +118,10 @@ impl<'a> ImportAnalyzer<'a> {
         let parameters = func
             .params
             .iter()
-            .map(|(name, wit_type)| Parameter {
+            .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(wit_type, self.resolve),
-                wit_type: *wit_type,
+                go_type: resolve_param_type(ty, self.resolve),
+                wit_type: *ty,
             })
             .collect();
 
@@ -143,25 +141,49 @@ impl<'a> ImportAnalyzer<'a> {
 
     fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
         let type_def = &self.resolve.types[type_id];
-        let type_name = type_def.name.as_ref().expect("type missing name");
-
-        let go_type_name = GoIdentifier::public(type_name);
-        let definition = self.analyze_type_definition(&type_def.kind);
+        let qualified = crate::qualified_type_name(type_id, self.resolve);
+        let go_type_name = GoIdentifier::public(&qualified);
+        // Variants live here (not in `analyze_type_definition`) because
+        // their case wrapper names need the qualified variant name.
+        let definition = match &type_def.kind {
+            TypeDefKind::Variant(variant) => Some(TypeDefinition::Variant {
+                cases: variant
+                    .cases
+                    .iter()
+                    .map(|case| self.analyze_variant_case(&qualified, case))
+                    .collect(),
+            }),
+            kind => self.analyze_type_definition(kind),
+        };
 
         definition.map(|definition| AnalyzedType {
-            name: type_name.clone(),
+            name: qualified,
             go_type_name,
             definition,
         })
     }
 
-    /// Analyze a type definition and return an intermediate representation ready for
-    /// codegen.
-    ///
-    /// Returns `None` if the kind is just a `TypeDefKind::Type(Type::Id)`, because this
-    /// is probably a reference to an imported type that we have already analyzed.
-    ///
-    /// TODO: we should probably instead resolve and return type and dedup elsewhere.
+    fn analyze_variant_case(&self, variant_name: &str, case: &Case) -> VariantCase {
+        let payload = case.ty.as_ref().map(|t| resolve_type(t, self.resolve));
+        let dispatch = match crate::case_dispatch_kind(case, self.resolve) {
+            crate::CaseDispatchKind::DirectRecord => CaseDispatch::DirectRecord {
+                record_type: payload
+                    .clone()
+                    .expect("DirectRecord case has a payload"),
+            },
+            crate::CaseDispatchKind::Wrapped => CaseDispatch::Wrapped {
+                wrapper_name: GoIdentifier::public(format!("{variant_name}-{}", case.name)),
+            },
+        };
+        VariantCase {
+            name: case.name.clone(),
+            payload,
+            dispatch,
+        }
+    }
+
+    /// Analyze a type definition. Returns `None` for `Type::Id` aliases
+    /// that just re-export an already-analyzed type.
     fn analyze_type_definition(&self, kind: &TypeDefKind) -> Option<TypeDefinition> {
         Some(match kind {
             TypeDefKind::Record(record) => TypeDefinition::Record {
@@ -179,18 +201,9 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Enum(enum_def) => TypeDefinition::Enum {
                 cases: enum_def.cases.iter().map(|c| c.name.clone()).collect(),
             },
-            TypeDefKind::Variant(variant) => TypeDefinition::Variant {
-                cases: variant
-                    .cases
-                    .iter()
-                    .map(|case| {
-                        (
-                            case.name.clone(),
-                            case.ty.as_ref().map(|t| resolve_type(t, self.resolve)),
-                        )
-                    })
-                    .collect(),
-            },
+            TypeDefKind::Variant(_) => unreachable!(
+                "Variant analysis is handled in `analyze_type` where the qualified name is in scope"
+            ),
             TypeDefKind::Type(Type::Id(_)) => {
                 // TODO(#4):  Only skip this if we have already generated the type
                 return None;
@@ -213,8 +226,8 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Type(Type::ErrorContext) => {
                 todo!("TODO(#4): generate error context definition")
             }
-            TypeDefKind::FixedSizeList(_, _) => {
-                todo!("TODO(#4): generate fixed size list definition")
+            TypeDefKind::FixedLengthList(_, _) => {
+                todo!("TODO(#4): generate fixed length list definition")
             }
             TypeDefKind::Option(_) => todo!("TODO(#4): generate option type definition"),
             TypeDefKind::Result(_) => todo!("TODO(#4): generate result type definition"),
@@ -225,6 +238,7 @@ impl<'a> ImportAnalyzer<'a> {
             TypeDefKind::Tuple(_) => todo!("TODO(#4):generate tuple type definition"),
             TypeDefKind::Resource => todo!("TODO(#5): implement resources"),
             TypeDefKind::Handle(_) => todo!("TODO(#5): implement resources"),
+            TypeDefKind::Map(_, _) => todo!("TODO(#4): generate map type definition"),
             TypeDefKind::Unknown => panic!("cannot generate Unknown type"),
         })
     }
@@ -233,10 +247,10 @@ impl<'a> ImportAnalyzer<'a> {
         let parameters = func
             .params
             .iter()
-            .map(|(name, wit_type)| Parameter {
+            .map(|Param { name, ty, .. }| Parameter {
                 name: GoIdentifier::private(name),
-                go_type: resolve_type(wit_type, self.resolve),
-                wit_type: *wit_type,
+                go_type: resolve_param_type(ty, self.resolve),
+                wit_type: *ty,
             })
             .collect();
 
@@ -399,10 +413,33 @@ impl<'a> ImportCodeGenerator<'a> {
                     // Primitive type: $(typ.name)
                 }
             }
-            TypeDefinition::Variant { .. } => {
+            TypeDefinition::Variant { cases } => {
+                let variant_interface = &typ.go_type_name;
+                let marker_method =
+                    &GoIdentifier::private(format!("is-{}", &typ.name));
+                let case_definitions = cases.iter().map(|case| match &case.dispatch {
+                    CaseDispatch::DirectRecord { record_type } => quote! {
+                        $['\n']
+                        func ($record_type) $marker_method() {}
+                    },
+                    CaseDispatch::Wrapped { wrapper_name } => {
+                        let payload_field = case.payload.as_ref().map(|p| quote!(Value $p));
+                        quote! {
+                            $['\n']
+                            type $wrapper_name struct {
+                                $(if let Some(field) = payload_field => $field)
+                            }
+                            $['\n']
+                            func ($wrapper_name) $marker_method() {}
+                        }
+                    }
+                });
                 quote_in! { *tokens =>
                     $['\n']
-                    // Variant type: $(typ.name) (TODO: implement)
+                    type $variant_interface interface {
+                        $marker_method()
+                    }
+                    $(for def in case_definitions => $def)
                 }
             }
         }
@@ -420,7 +457,14 @@ impl<'a> ImportCodeGenerator<'a> {
         let wasm_sig = self
             .resolve
             .wasm_signature(AbiVariant::GuestImport, &method.wit_function);
-        let mut f = ImportedFunc::new(param_name, self.sizes);
+        let result = if wasm_sig.results.is_empty() {
+            GoResult::Empty
+        } else if wasm_sig.results.len() == 1 {
+            GoResult::Anon(resolve_wasm_type(&wasm_sig.results[0]))
+        } else {
+            todo!("implement handling of wasm signatures with multiple results");
+        };
+        let mut f = Func::import(param_name, result, self.sizes);
 
         // Magic
         wit_bindgen_core::abi::call(
@@ -433,26 +477,24 @@ impl<'a> ImportCodeGenerator<'a> {
             false,
         );
 
-        let wasm_params = wasm_sig.params.iter().map(GoImport::from);
-        let wasm_results = wasm_sig.results.iter().map(GoImport::from);
+        // Collect all host function parameters into a single list so
+        // that the join produces correct commas even when there are no
+        // WIT-level parameters (only ctx and mod).
+        let mut all_params: Vec<Tokens<Go>> = vec![
+            quote! { ctx $CONTEXT_CONTEXT },
+            quote! { mod $WAZERO_API_MODULE },
+        ];
+        for arg in f.args() {
+            all_params.push(quote! { $arg uint32 });
+        }
 
         quote! {
             NewFunctionBuilder().
-            WithGoModuleFunction(
-                $WAZERO_API_GO_MODULE_FUNC(func(
-                    ctx $CONTEXT_CONTEXT,
-                    mod $WAZERO_API_MODULE,
-                    stack []uint64,
-                ) {
-                    $(f.body())
-                }),
-                []$WAZERO_API_VALUE_TYPE{
-                    $(for typ in wasm_params join ($['\r']) => $typ,)
-                },
-                []$WAZERO_API_VALUE_TYPE{
-                    $(for typ in wasm_results join ($['\r']) => $typ,)
-                },
-            ).
+            WithFunc(func(
+                $(for param in all_params join (,$['\r']) => $param),
+            ) $(f.result()){
+                $(f.body())
+            }).
             Export($(quoted(func_name))).
         }
     }
@@ -462,8 +504,8 @@ impl<'a> ImportCodeGenerator<'a> {
 mod tests {
     use genco::prelude::*;
     use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Interface, Package, PackageName, Resolve, SizeAlign, Type, World,
-        WorldId, WorldItem, WorldKey,
+        Enum, EnumCase, Function, FunctionKind, Interface, Package, PackageName, Param, Resolve,
+        SizeAlign, Type, TypeDef, TypeDefKind, TypeOwner, World, WorldId, WorldItem, WorldKey,
     };
 
     use crate::{
@@ -480,10 +522,16 @@ mod tests {
         let func = Function {
             name: "test_function".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![("input".to_string(), Type::String)],
+            params: vec![Param {
+                name: "input".to_string(),
+                ty: Type::String,
+                span: Default::default(),
+            }],
             result: Some(Type::String),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
         };
 
         let resolve = Resolve::new();
@@ -556,10 +604,16 @@ mod tests {
             wit_function: Function {
                 name: "test_u32".to_string(),
                 kind: FunctionKind::Freestanding,
-                params: vec![("value".to_string(), Type::U32)],
+                params: vec![Param {
+                    name: "value".to_string(),
+                    ty: Type::U32,
+                    span: Default::default(),
+                }],
                 result: None,
                 docs: Default::default(),
                 stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
             },
         };
 
@@ -568,11 +622,363 @@ mod tests {
 
         // Should have only one uint32 parameter (plus ctx and mod)
         let code_str = result.to_string().unwrap();
-        assert!(code_str.contains("arg0 := stack[0]"));
+        assert!(code_str.contains("arg0 uint32"));
         assert!(!code_str.contains("arg1 uint32"));
         assert!(!code_str.contains("mod.Memory().Read")); // No string reading
 
         println!("U32 generated code:\n{}", code_str);
+    }
+
+    /// Regression test: import functions whose WIT return type maps to a Wasm
+    /// result (e.g. `bool`, `enum`) must produce a non-empty Go return type
+    /// in the host function signature. A refactoring replaced the handling
+    /// with `todo!()`, which caused a panic at build time.
+    #[test]
+    fn test_import_with_bool_return_type() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function returning bool has a single i32 Wasm result
+        let method = InterfaceMethod {
+            name: "is_valid".to_string(),
+            go_method_name: GoIdentifier::public("IsValid"),
+            parameters: vec![Parameter {
+                name: GoIdentifier::private("input"),
+                go_type: GoType::String,
+                wit_type: Type::String,
+            }],
+            return_type: Some(WitReturn {
+                go_type: GoType::Bool,
+                wit_type: Type::Bool,
+            }),
+            wit_function: Function {
+                name: "is_valid".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![Param {
+                    name: "input".to_string(),
+                    ty: Type::String,
+                    span: Default::default(),
+                }],
+                result: Some(Type::Bool),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // The host function must declare a uint32 return (Wasm i32 representation of bool)
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected host function to return uint32, got:\n{code_str}"
+        );
+        // The body must contain a return statement
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement in the generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Same regression test but for enum return types, which is the exact
+    /// case that was failing in Arcjet's rule code.
+    /// (`verify: func(bot-id: string, ip: string) -> validator-response`).
+    #[test]
+    fn test_import_with_enum_return_type() {
+        let mut resolve = Resolve::default();
+
+        // Create an enum type in the resolve so Type::Id works
+        let type_id = resolve.types.alloc(TypeDef {
+            name: Some("status".to_string()),
+            kind: TypeDefKind::Enum(Enum {
+                cases: vec![
+                    EnumCase {
+                        name: "ok".to_string(),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    EnumCase {
+                        name: "error".to_string(),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        });
+
+        let sizes = SizeAlign::default();
+
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function returning an enum has a single i32 Wasm result
+        let method = InterfaceMethod {
+            name: "get_status".to_string(),
+            go_method_name: GoIdentifier::public("GetStatus"),
+            parameters: vec![Parameter {
+                name: GoIdentifier::private("id"),
+                go_type: GoType::String,
+                wit_type: Type::String,
+            }],
+            return_type: Some(WitReturn {
+                go_type: GoType::Uint32,
+                wit_type: Type::Id(type_id),
+            }),
+            wit_function: Function {
+                name: "get_status".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![Param {
+                    name: "id".to_string(),
+                    ty: Type::String,
+                    span: Default::default(),
+                }],
+                result: Some(Type::Id(type_id)),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // The host function must declare a uint32 return (Wasm i32 representation of enum)
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected host function to return uint32, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement in the generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Regression test: import functions with u32 parameters must generate
+    /// simple `uint32()` casts, not `api.DecodeU32()` / `api.EncodeU32()`.
+    /// Those wazero API functions convert between uint32 and uint64 and are
+    /// only appropriate for the api.Function.Call() pathway (exports). In
+    /// the import (host function) pathway, params are already uint32.
+    #[test]
+    fn test_import_u32_params_use_identity_cast() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function that takes multiple u32 params — the same pattern as
+        // rate-limit's token-bucket import.
+        let method = InterfaceMethod {
+            name: "compute".to_string(),
+            go_method_name: GoIdentifier::public("Compute"),
+            parameters: vec![
+                Parameter {
+                    name: GoIdentifier::private("a"),
+                    go_type: GoType::Uint32,
+                    wit_type: Type::U32,
+                },
+                Parameter {
+                    name: GoIdentifier::private("b"),
+                    go_type: GoType::Uint32,
+                    wit_type: Type::U32,
+                },
+            ],
+            return_type: None,
+            wit_function: Function {
+                name: "compute".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![
+                    Param {
+                        name: "a".to_string(),
+                        ty: Type::U32,
+                        span: Default::default(),
+                    },
+                    Param {
+                        name: "b".to_string(),
+                        ty: Type::U32,
+                        span: Default::default(),
+                    },
+                ],
+                result: None,
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must use simple uint32() casts, NOT api.DecodeU32() which expects uint64
+        assert!(
+            !code_str.contains("api.DecodeU32"),
+            "Import must not use api.DecodeU32 (expects uint64 but params are uint32), got:\n{code_str}"
+        );
+        assert!(
+            !code_str.contains("api.EncodeU32"),
+            "Import must not use api.EncodeU32 (returns uint64 but context expects uint32), got:\n{code_str}"
+        );
+        // Should use uint32() identity casts instead
+        assert!(
+            code_str.contains("uint32("),
+            "Expected uint32() identity cast in generated code, got:\n{code_str}"
+        );
+    }
+
+    /// Regression test: import functions with zero WIT parameters must not
+    /// produce a trailing comma after `mod api.Module` in the host function
+    /// signature. Previously, the template unconditionally emitted a comma
+    /// separator between the fixed params (ctx, mod) and the WIT params,
+    /// resulting in `func(ctx context.Context, mod api.Module, ,)` which
+    /// is a Go syntax error.
+    #[test]
+    fn test_import_zero_params_no_trailing_comma() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        // A function with no WIT parameters — only ctx and mod should appear
+        // in the generated Go host function signature.
+        let method = InterfaceMethod {
+            name: "ping".to_string(),
+            go_method_name: GoIdentifier::public("Ping"),
+            parameters: vec![],
+            return_type: None,
+            wit_function: Function {
+                name: "ping".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![],
+                result: None,
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must NOT contain a bare comma on its own line (the symptom of the bug)
+        assert!(
+            !code_str.contains(",\n\t\t,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // Must NOT contain ", ," which is another form of the double comma
+        assert!(
+            !code_str.contains(", ,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // The signature should close cleanly after mod api.Module
+        assert!(
+            code_str.contains("mod api.Module,\n)") || code_str.contains("mod api.Module,\n\t)"),
+            "Expected host function params to end with 'mod api.Module,' followed by closing paren, got:\n{code_str}"
+        );
+    }
+
+    /// Same as above but with a return type — zero params + bool return
+    /// exercises both the zero-param fix and the result-type fix together.
+    #[test]
+    fn test_import_zero_params_with_return_type() {
+        let analyzed = AnalyzedImports {
+            instance_name: GoIdentifier::public("TestInstance"),
+            interfaces: vec![],
+            standalone_functions: vec![],
+            standalone_types: vec![],
+            factory_name: GoIdentifier::public("TestFactory"),
+            constructor_name: GoIdentifier::public("NewTestFactory"),
+        };
+        let resolve = Resolve::new();
+        let sizes = SizeAlign::default();
+
+        let generator = ImportCodeGenerator::new(&resolve, &analyzed, &sizes);
+
+        let method = InterfaceMethod {
+            name: "is_ready".to_string(),
+            go_method_name: GoIdentifier::public("IsReady"),
+            parameters: vec![],
+            return_type: Some(WitReturn {
+                go_type: GoType::Bool,
+                wit_type: Type::Bool,
+            }),
+            wit_function: Function {
+                name: "is_ready".to_string(),
+                kind: FunctionKind::Freestanding,
+                params: vec![],
+                result: Some(Type::Bool),
+                docs: Default::default(),
+                stability: Default::default(),
+                span: Default::default(),
+                external_id: None,
+            },
+        };
+
+        let param_name = GoIdentifier::private("handler");
+        let result = generator.generate_host_function_builder(&method, &param_name);
+
+        let code_str = result.to_string().unwrap();
+        // Must not have consecutive commas
+        assert!(
+            !code_str.contains(",\n\t\t,") && !code_str.contains(", ,"),
+            "Host function signature must not have consecutive commas, got:\n{code_str}"
+        );
+        // Must have uint32 return type
+        assert!(
+            code_str.contains(") uint32"),
+            "Expected uint32 return type, got:\n{code_str}"
+        );
+        // Must have a return statement
+        assert!(
+            code_str.contains("return"),
+            "Expected a return statement, got:\n{code_str}"
+        );
     }
 
     fn create_test_world_with_interface() -> (Resolve, WorldId) {
@@ -599,17 +1005,25 @@ mod tests {
                 "log".to_string(),
                 Function {
                     name: "log".to_string(),
-                    params: vec![("message".to_string(), Type::String)],
+                    params: vec![Param {
+                        name: "message".to_string(),
+                        ty: Type::String,
+                        span: Default::default(),
+                    }],
                     result: None,
                     kind: FunctionKind::Freestanding,
                     docs: Default::default(),
                     stability: Default::default(),
+                    span: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Create a world with the interface as import
@@ -620,6 +1034,9 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -628,7 +1045,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);
@@ -705,26 +1122,31 @@ mod tests {
                     name: "float32".to_string(),
                     ty: Type::F32,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "float64".to_string(),
                     ty: Type::F64,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "uint32".to_string(),
                     ty: Type::U32,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "uint64".to_string(),
                     ty: Type::U64,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
                 Field {
                     name: "s".to_string(),
                     ty: Type::String,
                     docs: Default::default(),
+                    span: Default::default(),
                 },
             ],
         };
@@ -737,6 +1159,8 @@ mod tests {
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Create the TypeDef for the record with proper owner
@@ -746,6 +1170,8 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
         };
 
         let type_id = resolve.types.alloc(type_def);
@@ -763,6 +1189,9 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -771,7 +1200,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);
@@ -822,6 +1251,9 @@ mod tests {
         assert_eq!(interface.types.len(), 1);
 
         let analyzed_type = &interface.types[0];
+        // Interface-scoped types are qualified only when their bare name
+        // would collide with another concrete type in the same world. The
+        // test world's `foo` is unique, so it stays flat.
         assert_eq!(analyzed_type.name, "foo");
         println!("Analyzed type definition: {:?}", analyzed_type.definition);
 
@@ -948,6 +1380,8 @@ mod tests {
             types: Default::default(),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            clone_of: None,
         });
 
         // Test 1: Create a proper record type
@@ -956,6 +1390,7 @@ mod tests {
                 name: "x".to_string(),
                 ty: Type::U32,
                 docs: Default::default(),
+                span: Default::default(),
             }],
         };
 
@@ -965,6 +1400,8 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
         };
 
         // Test 2: Create a type alias
@@ -974,6 +1411,8 @@ mod tests {
             owner: TypeOwner::Interface(interface_id),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
         };
 
         let record_type_id = resolve.types.alloc(record_type_def);
@@ -986,6 +1425,9 @@ mod tests {
                 WorldItem::Interface {
                     id: interface_id,
                     stability: Default::default(),
+                    span: Default::default(),
+                    docs: Default::default(),
+                    external_id: None,
                 },
             )]
             .into(),
@@ -994,7 +1436,7 @@ mod tests {
             stability: Default::default(),
             package: Some(package_id),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
         };
 
         let world_id = resolve.worlds.alloc(world);

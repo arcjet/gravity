@@ -26,6 +26,25 @@ const (
 	Three enumValues = iota
 )
 
+type WideParams struct {
+	A uint32
+	B uint32
+	C uint32
+	D uint32
+	E uint32
+	F uint32
+	G uint32
+	H uint32
+	I uint32
+	J uint32
+	K uint32
+	L uint32
+	M uint32
+	N uint32
+	O uint32
+	P string
+}
+
 type InstructionsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
@@ -186,7 +205,7 @@ func (i *InstructionsInstance) U32Roundtrip(
 	val uint32,
 ) uint32 {
 	arg0 := val
-	result0 := api.EncodeU32(arg0)
+	result0 := uint32(arg0)
 	raw1, err1 := i.module.ExportedFunction("u32-roundtrip").Call(ctx, uint64(result0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
@@ -194,7 +213,7 @@ func (i *InstructionsInstance) U32Roundtrip(
 	}
 
 	results1 := raw1[0]
-	result2 := api.DecodeU32(results1)
+	result2 := uint32(results1)
 	return result2
 }
 
@@ -237,7 +256,7 @@ func (i *InstructionsInstance) EnumInput(
 	val EnumValues,
 ) {
 	arg0 := val
-	var enum0 uint64
+	var enum0 uint32
 	switch arg0 {
 	case One:
 		enum0 = 0
@@ -253,5 +272,112 @@ func (i *InstructionsInstance) EnumInput(
 	if err1 != nil {
 		panic(err1)
 	}
+}
+
+func (i *InstructionsInstance) IndirectParams(
+	ctx context.Context,
+	val WideParams,
+) string {
+	arg0 := val
+	// Allocate the area holding the indirectly passed parameters
+	result0, err0 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, 68)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err0 != nil {
+		panic(err0)
+	}
+	ptr0 := uint32(result0[0])
+	a1 := arg0.A
+	b1 := arg0.B
+	c1 := arg0.C
+	d1 := arg0.D
+	e1 := arg0.E
+	f1 := arg0.F
+	g1 := arg0.G
+	h1 := arg0.H
+	i1 := arg0.I
+	j1 := arg0.J
+	k1 := arg0.K
+	l1 := arg0.L
+	m1 := arg0.M
+	n1 := arg0.N
+	o1 := arg0.O
+	p1 := arg0.P
+	result2 := uint32(a1)
+	i.module.Memory().WriteUint32Le(ptr0+0, result2)
+	result3 := uint32(b1)
+	i.module.Memory().WriteUint32Le(ptr0+4, result3)
+	result4 := uint32(c1)
+	i.module.Memory().WriteUint32Le(ptr0+8, result4)
+	result5 := uint32(d1)
+	i.module.Memory().WriteUint32Le(ptr0+12, result5)
+	result6 := uint32(e1)
+	i.module.Memory().WriteUint32Le(ptr0+16, result6)
+	result7 := uint32(f1)
+	i.module.Memory().WriteUint32Le(ptr0+20, result7)
+	result8 := uint32(g1)
+	i.module.Memory().WriteUint32Le(ptr0+24, result8)
+	result9 := uint32(h1)
+	i.module.Memory().WriteUint32Le(ptr0+28, result9)
+	result10 := uint32(i1)
+	i.module.Memory().WriteUint32Le(ptr0+32, result10)
+	result11 := uint32(j1)
+	i.module.Memory().WriteUint32Le(ptr0+36, result11)
+	result12 := uint32(k1)
+	i.module.Memory().WriteUint32Le(ptr0+40, result12)
+	result13 := uint32(l1)
+	i.module.Memory().WriteUint32Le(ptr0+44, result13)
+	result14 := uint32(m1)
+	i.module.Memory().WriteUint32Le(ptr0+48, result14)
+	result15 := uint32(n1)
+	i.module.Memory().WriteUint32Le(ptr0+52, result15)
+	result16 := uint32(o1)
+	i.module.Memory().WriteUint32Le(ptr0+56, result16)
+	memory17 := i.module.Memory()
+	realloc17 := i.module.ExportedFunction("cabi_realloc")
+	ptr17, len17, err17 := writeString(ctx, p1, memory17, realloc17)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err17 != nil {
+		panic(err17)
+	}
+	i.module.Memory().WriteUint32Le(ptr0+64, uint32(len17))
+	i.module.Memory().WriteUint32Le(ptr0+60, uint32(ptr17))
+	raw18, err18 := i.module.ExportedFunction("indirect-params").Call(ctx, uint64(ptr0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err18 != nil {
+		panic(err18)
+	}
+
+	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
+	// deferring this, we ensure that no memory is corrupted before the function
+	// is done accessing it.
+	defer func() {
+		if postFn := i.module.ExportedFunction("cabi_post_indirect-params"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw18...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
+		}
+	}()
+
+	results18 := raw18[0]
+	ptr19, ok19 := i.module.Memory().ReadUint32Le(uint32(results18 + 0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok19 {
+		panic(errors.New("failed to read pointer from memory"))
+	}
+	len20, ok20 := i.module.Memory().ReadUint32Le(uint32(results18 + 4))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok20 {
+		panic(errors.New("failed to read length from memory"))
+	}
+	buf21, ok21 := i.module.Memory().Read(ptr19, len20)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok21 {
+		panic(errors.New("failed to read bytes from memory"))
+	}
+	str21 := string(buf21)
+	return str21
 }
 

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [":dependencyDashboardApproval"],
+  "enabledManagers": ["cargo", "github-actions"],
+  "minimumReleaseAge": "7 days",
+  "schedule": [],
+  "updateNotScheduled": false,
+  "semanticCommitScope": "",
+  "semanticCommitType": "deps",
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "dependencyDashboardCategory": "GitHub Actions updates"
+    },
+    {
+      "matchManagers": ["cargo"],
+      "dependencyDashboardCategory": "Rust updates"
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "semanticCommitScope": "dev",
+      "semanticCommitType": "deps",
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "automerge": true
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
+  "prBodyColumns": ["Package", "Change"],
+  "ignorePresets": ["mergeConfidence:all-badges"],
+  "vulnerabilityAlerts": {
+    "groupName": null,
+    "dependencyDashboardApproval": true,
+    "rangeStrategy": "update-lockfile",
+    "commitMessageSuffix": "[security]",
+    "branchTopic": "{{{datasource}}}-{{{depNameSanitized}}}-vulnerability",
+    "prCreation": "immediate",
+    "vulnerabilityFixStrategy": "lowest"
+  }
+}

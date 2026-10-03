@@ -45,4 +45,26 @@ impl Guest for InstructionsWorld {
             EnumValues::One | EnumValues::Two | EnumValues::Three
         ));
     }
+
+    fn indirect_params(val: WideParams) -> String {
+        let WideParams {
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+            g,
+            h,
+            i,
+            j,
+            k,
+            l,
+            m,
+            n,
+            o,
+            p,
+        } = val;
+        format!("{p}:{a},{b},{c},{d},{e},{f},{g},{h},{i},{j},{k},{l},{m},{n},{o}")
+    }
 }

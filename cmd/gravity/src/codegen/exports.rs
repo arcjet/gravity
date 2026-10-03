@@ -1,10 +1,7 @@
 use genco::prelude::*;
-use wit_bindgen_core::wit_parser::{Function, Resolve, SizeAlign, World, WorldItem};
+use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
 
-use crate::{
-    Func,
-    go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT},
-};
+use crate::go::{imports::CONTEXT_CONTEXT, GoIdentifier, GoResult, GoType};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
@@ -39,7 +36,7 @@ impl<'a> ExportGenerator<'a> {
             .params
             .iter()
             .map(
-                |(name, wit_type)| match crate::resolve_type(wit_type, self.config.resolve) {
+                |Param { name, ty, .. }| match crate::resolve_param_type(ty, self.config.resolve) {
                     GoType::ValueOrOk(t) => (GoIdentifier::local(name), *t),
                     t => (GoIdentifier::local(name), t),
                 },
@@ -52,7 +49,7 @@ impl<'a> ExportGenerator<'a> {
             GoResult::Empty
         };
 
-        let mut f = Func::new(result, self.config.sizes);
+        let mut f = crate::Func::export(result, self.config.sizes);
         wit_bindgen_core::abi::call(
             self.config.resolve,
             wit_bindgen_core::abi::AbiVariant::GuestExport,
@@ -90,7 +87,7 @@ impl FormatInto<Go> for ExportGenerator<'_> {
             match item {
                 WorldItem::Function(func) => self.generate_function(func, tokens),
                 WorldItem::Interface { .. } => todo!("generate interface exports"),
-                WorldItem::Type(_) => todo!("generate type exports"),
+                WorldItem::Type { .. } => todo!("generate type exports"),
             }
         }
     }
@@ -100,7 +97,7 @@ impl FormatInto<Go> for ExportGenerator<'_> {
 mod tests {
     use genco::prelude::*;
     use wit_bindgen_core::wit_parser::{
-        Function, FunctionKind, Resolve, SizeAlign, Type, World, WorldItem, WorldKey,
+        Function, FunctionKind, Param, Resolve, SizeAlign, Type, World, WorldItem, WorldKey,
     };
 
     use crate::go::GoIdentifier;
@@ -112,10 +109,16 @@ mod tests {
         let func = Function {
             name: "add_number".to_string(),
             kind: FunctionKind::Freestanding,
-            params: vec![("value".to_string(), Type::U32)],
+            params: vec![Param {
+                name: "value".to_string(),
+                ty: Type::U32,
+                span: Default::default(),
+            }],
             result: Some(Type::U32),
             docs: Default::default(),
             stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
         };
 
         let world = World {
@@ -129,13 +132,13 @@ mod tests {
             docs: Default::default(),
             stability: Default::default(),
             includes: Default::default(),
-            include_names: Default::default(),
+            span: Default::default(),
             package: None,
         };
 
         let resolve = Resolve::new();
         let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve);
+        sizes.fill(&resolve).expect("sizes should fill");
         let instance = GoIdentifier::public("TestInstance");
 
         let config = ExportConfig {
@@ -162,14 +165,316 @@ mod tests {
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
-        assert!(
-            generated
-                .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))")
-        );
+        assert!(generated
+            .contains("i.module.ExportedFunction(\"add_number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
         assert!(generated.contains("panic(err1)"));
         assert!(generated.contains("results1 := raw1[0]"));
-        assert!(generated.contains("result2 := api.DecodeU32(results1)"));
+        assert!(generated.contains("result2 := uint32(results1)"));
         assert!(generated.contains("return result2"));
+
+        // I32FromU32 / U32FromI32 are no-op reinterpretations — they must not
+        // use api.EncodeU32 or api.DecodeU32 (which round-trip through uint64,
+        // causing type mismatches in VariantLower and needless widening elsewhere).
+        assert!(
+            !generated.contains("api.EncodeU32"),
+            "Export must not use api.EncodeU32 (returns uint64 but downstream expects uint32), got:\n{generated}"
+        );
+        assert!(
+            !generated.contains("api.DecodeU32"),
+            "Export must not use api.DecodeU32 (needless uint32→uint64→uint32 round-trip), got:\n{generated}"
+        );
+    }
+
+    /// Regression test: export function with a variant parameter containing
+    /// a u32 payload must generate Go code where I32FromU32 produces a
+    /// uint32 value matching the VariantLower variable declaration.
+    /// Previously I32FromU32 used api.EncodeU32() which returns uint64,
+    /// causing a Go compile error: cannot use uint64 as uint32.
+    #[test]
+    fn test_export_variant_u32_no_encode_u32() {
+        use wit_bindgen_core::wit_parser::{
+            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
+        };
+
+        let mut resolve = Resolve::new();
+
+        // variant u32-option { some-val(u32), none-val }
+        let variant_def = TypeDef {
+            name: Some("u32-option".to_string()),
+            kind: TypeDefKind::Variant(Variant {
+                cases: vec![
+                    Case {
+                        name: "some-val".to_string(),
+                        ty: Some(Type::U32),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    Case {
+                        name: "none-val".to_string(),
+                        ty: None,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+        let variant_id = resolve.types.alloc(variant_def);
+
+        let func = Function {
+            name: "process_u32_option".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "opt".to_string(),
+                ty: Type::Id(variant_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U32),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("process-u32-option".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve).expect("sizes should fill");
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated u32-option function:\n{}", generated);
+
+        // VariantLower declares `var variant_1 uint32` for the I32 payload slot.
+        // I32FromU32 must NOT use api.EncodeU32 (returns uint64 → type mismatch)
+        assert!(
+            !generated.contains("api.EncodeU32"),
+            "I32FromU32 must not use api.EncodeU32 in exports (returns uint64, \
+             but VariantLower variable is uint32), got:\n{generated}"
+        );
+    }
+
+    /// Regression test: export function with a variant parameter containing
+    /// a u64 payload must generate Go code where I64FromU64 produces a
+    /// uint64 value matching the VariantLower variable declaration.
+    /// Previously I64FromU64 used int64() which returns int64, causing a
+    /// Go compile error: cannot use int64 as uint64.
+    #[test]
+    fn test_export_variant_u64_no_int64_cast() {
+        use wit_bindgen_core::wit_parser::{
+            Case, TypeDef, TypeDefKind, TypeOwner, Variant,
+        };
+
+        let mut resolve = Resolve::new();
+
+        // variant u64-option { some-val(u64), none-val }
+        let variant_def = TypeDef {
+            name: Some("u64-option".to_string()),
+            kind: TypeDefKind::Variant(Variant {
+                cases: vec![
+                    Case {
+                        name: "some-val".to_string(),
+                        ty: Some(Type::U64),
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                    Case {
+                        name: "none-val".to_string(),
+                        ty: None,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    },
+                ],
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+        let variant_id = resolve.types.alloc(variant_def);
+
+        let func = Function {
+            name: "process_u64_option".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "opt".to_string(),
+                ty: Type::Id(variant_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U64),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("process-u64-option".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve).expect("sizes should fill");
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated u64-option function:\n{}", generated);
+
+        // VariantLower declares `var variant_1 uint64` for the I64 payload slot.
+        // I64FromU64 must NOT use int64() (returns int64 → type mismatch)
+        assert!(
+            !generated.contains(":= int64("),
+            "I64FromU64 must not use int64() cast in exports (returns int64, \
+             but VariantLower variable is uint64), got:\n{generated}"
+        );
+    }
+
+    /// Regression test: an export whose parameters flatten to more than the
+    /// canonical ABI's 16 flat params is lowered *indirectly* - the host must
+    /// `cabi_realloc` an area, store each field into it and pass a single
+    /// pointer. That path emits `Instruction::Malloc`, which used to `todo!()`.
+    #[test]
+    fn test_export_indirect_params_allocates_with_realloc() {
+        use wit_bindgen_core::wit_parser::{Field, Record, TypeDef, TypeDefKind, TypeOwner};
+
+        let mut resolve = Resolve::new();
+
+        // A record with 17 u32 fields flattens to 17 core params, one over the
+        // limit of 16, which forces indirect parameter lowering.
+        let record_def = TypeDef {
+            name: Some("wide".to_string()),
+            kind: TypeDefKind::Record(Record {
+                fields: (0..17)
+                    .map(|i| Field {
+                        name: format!("field{i}"),
+                        ty: Type::U32,
+                        docs: Default::default(),
+                        span: Default::default(),
+                    })
+                    .collect(),
+            }),
+            owner: TypeOwner::None,
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+        let record_id = resolve.types.alloc(record_def);
+
+        let func = Function {
+            name: "take_wide".to_string(),
+            kind: FunctionKind::Freestanding,
+            params: vec![Param {
+                name: "wide".to_string(),
+                ty: Type::Id(record_id),
+                span: Default::default(),
+            }],
+            result: Some(Type::U32),
+            docs: Default::default(),
+            stability: Default::default(),
+            span: Default::default(),
+            external_id: None,
+        };
+
+        let world = World {
+            name: "test-world".to_string(),
+            imports: [].into(),
+            exports: [(
+                WorldKey::Name("take-wide".to_string()),
+                WorldItem::Function(func.clone()),
+            )]
+            .into(),
+            docs: Default::default(),
+            stability: Default::default(),
+            includes: Default::default(),
+            span: Default::default(),
+            package: None,
+        };
+
+        let mut sizes = SizeAlign::default();
+        sizes.fill(&resolve).expect("sizes should fill");
+        let instance = GoIdentifier::public("TestInstance");
+
+        let config = ExportConfig {
+            instance: &instance,
+            world: &world,
+            resolve: &resolve,
+            sizes: &sizes,
+        };
+
+        let generator = ExportGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_function(&func, &mut tokens);
+
+        let generated = tokens.to_string().unwrap();
+        println!("Generated wide-record function:\n{}", generated);
+
+        // The param area is allocated through the guest's `cabi_realloc` with
+        // the record's alignment (4) and size (17 * 4 = 68 bytes).
+        assert!(
+            generated.contains("ExportedFunction(\"cabi_realloc\").Call(ctx, 0, 0, 4, 68)"),
+            "indirect params must allocate the param area via cabi_realloc, got:\n{generated}"
+        );
+        // Each field is stored into that area, and the pointer is the only
+        // argument passed to the exported wasm function.
+        assert!(
+            generated.contains("Memory().WriteUint32Le"),
+            "indirect params must be stored into the allocated area, got:\n{generated}"
+        );
+        assert!(
+            generated.contains("ExportedFunction(\"take_wide\").Call(ctx, uint64(ptr"),
+            "the wasm export must be called with the param area pointer, got:\n{generated}"
+        );
     }
 }
