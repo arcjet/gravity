@@ -138,7 +138,7 @@ mod tests {
 
         let resolve = Resolve::new();
         let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve);
+        sizes.fill(&resolve).expect("sizes should fill");
         let instance = GoIdentifier::public("TestInstance");
 
         let config = ExportConfig {
@@ -257,7 +257,7 @@ mod tests {
         };
 
         let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve);
+        sizes.fill(&resolve).expect("sizes should fill");
         let instance = GoIdentifier::public("TestInstance");
 
         let config = ExportConfig {
@@ -354,7 +354,7 @@ mod tests {
         };
 
         let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve);
+        sizes.fill(&resolve).expect("sizes should fill");
         let instance = GoIdentifier::public("TestInstance");
 
         let config = ExportConfig {
@@ -443,7 +443,7 @@ mod tests {
         };
 
         let mut sizes = SizeAlign::default();
-        sizes.fill(&resolve);
+        sizes.fill(&resolve).expect("sizes should fill");
         let instance = GoIdentifier::public("TestInstance");
 
         let config = ExportConfig {

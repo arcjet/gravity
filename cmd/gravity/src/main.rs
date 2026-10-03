@@ -83,7 +83,10 @@ fn main() -> Result<ExitCode, ()> {
     };
 
     let mut sizes = SizeAlign::default();
-    sizes.fill(&bindgen.resolve);
+    if let Err(err) = sizes.fill(&bindgen.resolve) {
+        eprintln!("unable to compute type sizes: {err}");
+        return Ok(ExitCode::FAILURE);
+    }
     let mut bindings = Bindings::new(&bindgen.resolve, world, &sizes);
 
     bindings.include_wasm(if inline_wasm {
