@@ -13,8 +13,6 @@ import _ "embed"
 //go:embed enum_collisions.wasm
 var wasmFileEnumCollisions []byte
 
-type IEnumCollisionsTypes interface {}
-
 type Via interface {
 	isVia()
 }
@@ -102,15 +100,8 @@ type EnumCollisionsFactory struct {
 
 func NewEnumCollisionsFactory(
 	ctx context.Context,
-	types IEnumCollisionsTypes,
 ) (*EnumCollisionsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
-
-	_, err0 := wazeroRuntime.NewHostModuleBuilder("gravity:enum-collisions/types").
-	Instantiate(ctx)
-	if err0 != nil {
-		return nil, err0
-	}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
 	// onto it with the Runtime

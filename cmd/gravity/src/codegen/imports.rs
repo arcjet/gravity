@@ -287,7 +287,12 @@ impl<'a> ImportCodeGenerator<'a> {
     pub fn import_chains(&self) -> BTreeMap<String, Tokens<Go>> {
         let mut chains = BTreeMap::new();
 
+        // An interface with no functions (one a world imports only for its
+        // types) gets no host module: the guest imports nothing from it.
         for (i, interface) in self.analyzed.interfaces.iter().enumerate() {
+            if !interface.needs_host() {
+                continue;
+            }
             let err = &GoIdentifier::private(format!("err{i}"));
             let mut chain = quote! {
                 _, $err := wazeroRuntime.NewHostModuleBuilder($(quoted(&interface.wazero_module_name))).
@@ -321,7 +326,9 @@ impl FormatInto<Go> for ImportCodeGenerator<'_> {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         // Generate interface type definitions
         for interface in &self.analyzed.interfaces {
-            self.generate_interface_type(interface, tokens);
+            if interface.needs_host() {
+                self.generate_interface_type(interface, tokens);
+            }
 
             for typ in &interface.types {
                 self.generate_type_definition(typ, tokens);
@@ -1063,5 +1070,44 @@ mod tests {
                 "expected `{expected}`, got:\n{generated}"
             );
         }
+    }
+
+    /// Regression test: a world that imports an interface only for its types
+    /// (here through `use`) needs no host for it. Gravity used to emit an
+    /// empty Go interface, a factory argument of that type and an empty host
+    /// module, so every caller passed a placeholder.
+    #[test]
+    fn test_types_only_interface_needs_no_host() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                record point { x: u32 }
+            }
+            world test-world {
+                use types.{point};
+                export f: func(p: point) -> point;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        assert_eq!(
+            analyzed.interfaces.len(),
+            1,
+            "types is an import of the world"
+        );
+        assert!(!analyzed.interfaces[0].needs_host());
+
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        assert!(
+            generator.import_chains().is_empty(),
+            "no host module for a types-only interface"
+        );
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+        assert!(generated.contains("type Point struct"), "got:\n{generated}");
+        assert!(
+            !generated.contains("ITestWorldTypes"),
+            "no Go interface for a types-only interface, got:\n{generated}"
+        );
     }
 }

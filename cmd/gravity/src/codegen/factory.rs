@@ -176,7 +176,7 @@ impl<'a> FactoryGenerator<'a> {
 
         quote! {
             ctx $CONTEXT_CONTEXT,
-            $(for interface in interfaces.iter() join ($['\r']) =>
+            $(for interface in interfaces.iter().filter(|i| i.needs_host()) join ($['\r']) =>
             $(&interface.constructor_param_name) $(&interface.go_interface_name),
             )
         }
