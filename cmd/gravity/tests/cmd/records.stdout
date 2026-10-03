@@ -127,7 +127,7 @@ func (i *RecordsInstance) ModifyFoo(
 		e := vec7[idx]
 		base := uint32(ptr7 + uint64(idx) * uint64(4))
 		result6 := api.EncodeF32(e)
-		i.module.Memory().WriteUint64Le(base+0, result6)
+		i.module.Memory().WriteUint32Le(base+0, uint32(result6))
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
@@ -164,102 +164,104 @@ func (i *RecordsInstance) ModifyFoo(
 	}()
 
 	results10 := raw10[0]
-	value11, ok11 := i.module.Memory().ReadUint64Le(uint32(results10 + 0))
+	value11, ok11 := i.module.Memory().ReadUint32Le(uint32(results10 + 0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok11 {
 		panic(errors.New("failed to read f32 from memory"))
 	}
-	result12 := api.DecodeF32(value11)
-	value13, ok13 := i.module.Memory().ReadUint64Le(uint32(results10 + 8))
+	bits12 := uint64(value11)
+	result13 := api.DecodeF32(bits12)
+	value14, ok14 := i.module.Memory().ReadUint64Le(uint32(results10 + 8))
 	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok13 {
+	if !ok14 {
 		panic(errors.New("failed to read f64 from memory"))
 	}
-	result14 := api.DecodeF64(value13)
-	value15, ok15 := i.module.Memory().ReadUint32Le(uint32(results10 + 16))
+	result15 := api.DecodeF64(value14)
+	value16, ok16 := i.module.Memory().ReadUint32Le(uint32(results10 + 16))
 	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok15 {
+	if !ok16 {
 		panic(errors.New("failed to read i32 from memory"))
 	}
-	result16 := uint32(value15)
-	value17, ok17 := i.module.Memory().ReadUint64Le(uint32(results10 + 24))
+	result17 := uint32(value16)
+	value18, ok18 := i.module.Memory().ReadUint64Le(uint32(results10 + 24))
 	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok17 {
+	if !ok18 {
 		panic(errors.New("failed to read i64 from memory"))
 	}
-	value18 := uint64(value17)
-	ptr19, ok19 := i.module.Memory().ReadUint32Le(uint32(results10 + 32))
-	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok19 {
-		panic(errors.New("failed to read pointer from memory"))
-	}
-	len20, ok20 := i.module.Memory().ReadUint32Le(uint32(results10 + 36))
+	value19 := uint64(value18)
+	ptr20, ok20 := i.module.Memory().ReadUint32Le(uint32(results10 + 32))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok20 {
-		panic(errors.New("failed to read length from memory"))
+		panic(errors.New("failed to read pointer from memory"))
 	}
-	buf21, ok21 := i.module.Memory().Read(ptr19, len20)
+	len21, ok21 := i.module.Memory().ReadUint32Le(uint32(results10 + 36))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok21 {
-		panic(errors.New("failed to read bytes from memory"))
+		panic(errors.New("failed to read length from memory"))
 	}
-	str21 := string(buf21)
-	ptr22, ok22 := i.module.Memory().ReadUint32Le(uint32(results10 + 40))
+	buf22, ok22 := i.module.Memory().Read(ptr20, len21)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok22 {
-		panic(errors.New("failed to read pointer from memory"))
+		panic(errors.New("failed to read bytes from memory"))
 	}
-	len23, ok23 := i.module.Memory().ReadUint32Le(uint32(results10 + 44))
+	str22 := string(buf22)
+	ptr23, ok23 := i.module.Memory().ReadUint32Le(uint32(results10 + 40))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok23 {
-		panic(errors.New("failed to read length from memory"))
-	}
-	base26 := ptr22
-	len26 := len23
-	result26 := make([]float32, len26)
-	for idx26 := uint32(0); idx26 < len26; idx26++ {
-		base := base26 + idx26 * 4
-		value24, ok24 := i.module.Memory().ReadUint64Le(uint32(base + 0))
-		// The return type doesn't contain an error so we panic if one is encountered
-		if !ok24 {
-			panic(errors.New("failed to read f32 from memory"))
-		}
-		result25 := api.DecodeF32(value24)
-		result26[idx26] = result25
-	}
-	ptr27, ok27 := i.module.Memory().ReadUint32Le(uint32(results10 + 48))
-	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok27 {
 		panic(errors.New("failed to read pointer from memory"))
 	}
-	len28, ok28 := i.module.Memory().ReadUint32Le(uint32(results10 + 52))
+	len24, ok24 := i.module.Memory().ReadUint32Le(uint32(results10 + 44))
 	// The return type doesn't contain an error so we panic if one is encountered
-	if !ok28 {
+	if !ok24 {
 		panic(errors.New("failed to read length from memory"))
 	}
-	base31 := ptr27
-	len31 := len28
-	result31 := make([]float64, len31)
-	for idx31 := uint32(0); idx31 < len31; idx31++ {
-		base := base31 + idx31 * 8
-		value29, ok29 := i.module.Memory().ReadUint64Le(uint32(base + 0))
+	base28 := ptr23
+	len28 := len24
+	result28 := make([]float32, len28)
+	for idx28 := uint32(0); idx28 < len28; idx28++ {
+		base := base28 + idx28 * 4
+		value25, ok25 := i.module.Memory().ReadUint32Le(uint32(base + 0))
 		// The return type doesn't contain an error so we panic if one is encountered
-		if !ok29 {
+		if !ok25 {
+			panic(errors.New("failed to read f32 from memory"))
+		}
+		bits26 := uint64(value25)
+		result27 := api.DecodeF32(bits26)
+		result28[idx28] = result27
+	}
+	ptr29, ok29 := i.module.Memory().ReadUint32Le(uint32(results10 + 48))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok29 {
+		panic(errors.New("failed to read pointer from memory"))
+	}
+	len30, ok30 := i.module.Memory().ReadUint32Le(uint32(results10 + 52))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok30 {
+		panic(errors.New("failed to read length from memory"))
+	}
+	base33 := ptr29
+	len33 := len30
+	result33 := make([]float64, len33)
+	for idx33 := uint32(0); idx33 < len33; idx33++ {
+		base := base33 + idx33 * 8
+		value31, ok31 := i.module.Memory().ReadUint64Le(uint32(base + 0))
+		// The return type doesn't contain an error so we panic if one is encountered
+		if !ok31 {
 			panic(errors.New("failed to read f64 from memory"))
 		}
-		result30 := api.DecodeF64(value29)
-		result31[idx31] = result30
+		result32 := api.DecodeF64(value31)
+		result33[idx33] = result32
 	}
-	value32 := Foo{
-		Float32: result12,
-		Float64: result14,
-		Uint32: result16,
-		Uint64: value18,
-		S: str21,
-		Vf32: result26,
-		Vf64: result31,
+	value34 := Foo{
+		Float32: result13,
+		Float64: result15,
+		Uint32: result17,
+		Uint64: value19,
+		S: str22,
+		Vf32: result28,
+		Vf64: result33,
 	}
-	return value32
+	return value34
 }
 
 func (i *RecordsInstance) ModifyFooFallible(
@@ -297,7 +299,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 		e := vec7[idx]
 		base := uint32(ptr7 + uint64(idx) * uint64(4))
 		result6 := api.EncodeF32(e)
-		i.module.Memory().WriteUint64Le(base+0, result6)
+		i.module.Memory().WriteUint32Le(base+0, uint32(result6))
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
@@ -339,127 +341,129 @@ func (i *RecordsInstance) ModifyFooFallible(
 		var default11 Foo
 		return default11, errors.New("failed to read byte from memory")
 	}
-	var value37 Foo
-	var err37 error
+	var value39 Foo
+	var err39 error
 	switch value11 {
 	case 0:
-		value12, ok12 := i.module.Memory().ReadUint64Le(uint32(results10 + 8))
+		value12, ok12 := i.module.Memory().ReadUint32Le(uint32(results10 + 8))
 		if !ok12 {
 			var default12 Foo
 			return default12, errors.New("failed to read f32 from memory")
 		}
-		result13 := api.DecodeF32(value12)
-		value14, ok14 := i.module.Memory().ReadUint64Le(uint32(results10 + 16))
-		if !ok14 {
-			var default14 Foo
-			return default14, errors.New("failed to read f64 from memory")
+		bits13 := uint64(value12)
+		result14 := api.DecodeF32(bits13)
+		value15, ok15 := i.module.Memory().ReadUint64Le(uint32(results10 + 16))
+		if !ok15 {
+			var default15 Foo
+			return default15, errors.New("failed to read f64 from memory")
 		}
-		result15 := api.DecodeF64(value14)
-		value16, ok16 := i.module.Memory().ReadUint32Le(uint32(results10 + 24))
-		if !ok16 {
-			var default16 Foo
-			return default16, errors.New("failed to read i32 from memory")
+		result16 := api.DecodeF64(value15)
+		value17, ok17 := i.module.Memory().ReadUint32Le(uint32(results10 + 24))
+		if !ok17 {
+			var default17 Foo
+			return default17, errors.New("failed to read i32 from memory")
 		}
-		result17 := uint32(value16)
-		value18, ok18 := i.module.Memory().ReadUint64Le(uint32(results10 + 32))
-		if !ok18 {
-			var default18 Foo
-			return default18, errors.New("failed to read i64 from memory")
+		result18 := uint32(value17)
+		value19, ok19 := i.module.Memory().ReadUint64Le(uint32(results10 + 32))
+		if !ok19 {
+			var default19 Foo
+			return default19, errors.New("failed to read i64 from memory")
 		}
-		value19 := uint64(value18)
-		ptr20, ok20 := i.module.Memory().ReadUint32Le(uint32(results10 + 40))
-		if !ok20 {
-			var default20 Foo
-			return default20, errors.New("failed to read pointer from memory")
-		}
-		len21, ok21 := i.module.Memory().ReadUint32Le(uint32(results10 + 44))
+		value20 := uint64(value19)
+		ptr21, ok21 := i.module.Memory().ReadUint32Le(uint32(results10 + 40))
 		if !ok21 {
 			var default21 Foo
-			return default21, errors.New("failed to read length from memory")
+			return default21, errors.New("failed to read pointer from memory")
 		}
-		buf22, ok22 := i.module.Memory().Read(ptr20, len21)
+		len22, ok22 := i.module.Memory().ReadUint32Le(uint32(results10 + 44))
 		if !ok22 {
 			var default22 Foo
-			return default22, errors.New("failed to read bytes from memory")
+			return default22, errors.New("failed to read length from memory")
 		}
-		str22 := string(buf22)
-		ptr23, ok23 := i.module.Memory().ReadUint32Le(uint32(results10 + 48))
+		buf23, ok23 := i.module.Memory().Read(ptr21, len22)
 		if !ok23 {
 			var default23 Foo
-			return default23, errors.New("failed to read pointer from memory")
+			return default23, errors.New("failed to read bytes from memory")
 		}
-		len24, ok24 := i.module.Memory().ReadUint32Le(uint32(results10 + 52))
+		str23 := string(buf23)
+		ptr24, ok24 := i.module.Memory().ReadUint32Le(uint32(results10 + 48))
 		if !ok24 {
 			var default24 Foo
-			return default24, errors.New("failed to read length from memory")
+			return default24, errors.New("failed to read pointer from memory")
 		}
-		base27 := ptr23
-		len27 := len24
-		result27 := make([]float32, len27)
-		for idx27 := uint32(0); idx27 < len27; idx27++ {
-			base := base27 + idx27 * 4
-			value25, ok25 := i.module.Memory().ReadUint64Le(uint32(base + 0))
-			if !ok25 {
-				var default25 Foo
-				return default25, errors.New("failed to read f32 from memory")
+		len25, ok25 := i.module.Memory().ReadUint32Le(uint32(results10 + 52))
+		if !ok25 {
+			var default25 Foo
+			return default25, errors.New("failed to read length from memory")
+		}
+		base29 := ptr24
+		len29 := len25
+		result29 := make([]float32, len29)
+		for idx29 := uint32(0); idx29 < len29; idx29++ {
+			base := base29 + idx29 * 4
+			value26, ok26 := i.module.Memory().ReadUint32Le(uint32(base + 0))
+			if !ok26 {
+				var default26 Foo
+				return default26, errors.New("failed to read f32 from memory")
 			}
-			result26 := api.DecodeF32(value25)
-			result27[idx27] = result26
+			bits27 := uint64(value26)
+			result28 := api.DecodeF32(bits27)
+			result29[idx29] = result28
 		}
-		ptr28, ok28 := i.module.Memory().ReadUint32Le(uint32(results10 + 56))
-		if !ok28 {
-			var default28 Foo
-			return default28, errors.New("failed to read pointer from memory")
+		ptr30, ok30 := i.module.Memory().ReadUint32Le(uint32(results10 + 56))
+		if !ok30 {
+			var default30 Foo
+			return default30, errors.New("failed to read pointer from memory")
 		}
-		len29, ok29 := i.module.Memory().ReadUint32Le(uint32(results10 + 60))
-		if !ok29 {
-			var default29 Foo
-			return default29, errors.New("failed to read length from memory")
+		len31, ok31 := i.module.Memory().ReadUint32Le(uint32(results10 + 60))
+		if !ok31 {
+			var default31 Foo
+			return default31, errors.New("failed to read length from memory")
 		}
-		base32 := ptr28
-		len32 := len29
-		result32 := make([]float64, len32)
-		for idx32 := uint32(0); idx32 < len32; idx32++ {
-			base := base32 + idx32 * 8
-			value30, ok30 := i.module.Memory().ReadUint64Le(uint32(base + 0))
-			if !ok30 {
-				var default30 Foo
-				return default30, errors.New("failed to read f64 from memory")
+		base34 := ptr30
+		len34 := len31
+		result34 := make([]float64, len34)
+		for idx34 := uint32(0); idx34 < len34; idx34++ {
+			base := base34 + idx34 * 8
+			value32, ok32 := i.module.Memory().ReadUint64Le(uint32(base + 0))
+			if !ok32 {
+				var default32 Foo
+				return default32, errors.New("failed to read f64 from memory")
 			}
-			result31 := api.DecodeF64(value30)
-			result32[idx32] = result31
+			result33 := api.DecodeF64(value32)
+			result34[idx34] = result33
 		}
-		value33 := Foo{
-			Float32: result13,
-			Float64: result15,
-			Uint32: result17,
-			Uint64: value19,
-			S: str22,
-			Vf32: result27,
-			Vf64: result32,
+		value35 := Foo{
+			Float32: result14,
+			Float64: result16,
+			Uint32: result18,
+			Uint64: value20,
+			S: str23,
+			Vf32: result29,
+			Vf64: result34,
 		}
-		value37 = value33
+		value39 = value35
 	case 1:
-		ptr34, ok34 := i.module.Memory().ReadUint32Le(uint32(results10 + 8))
-		if !ok34 {
-			var default34 Foo
-			return default34, errors.New("failed to read pointer from memory")
-		}
-		len35, ok35 := i.module.Memory().ReadUint32Le(uint32(results10 + 12))
-		if !ok35 {
-			var default35 Foo
-			return default35, errors.New("failed to read length from memory")
-		}
-		buf36, ok36 := i.module.Memory().Read(ptr34, len35)
+		ptr36, ok36 := i.module.Memory().ReadUint32Le(uint32(results10 + 8))
 		if !ok36 {
 			var default36 Foo
-			return default36, errors.New("failed to read bytes from memory")
+			return default36, errors.New("failed to read pointer from memory")
 		}
-		str36 := string(buf36)
-		err37 = errors.New(str36)
+		len37, ok37 := i.module.Memory().ReadUint32Le(uint32(results10 + 12))
+		if !ok37 {
+			var default37 Foo
+			return default37, errors.New("failed to read length from memory")
+		}
+		buf38, ok38 := i.module.Memory().Read(ptr36, len37)
+		if !ok38 {
+			var default38 Foo
+			return default38, errors.New("failed to read bytes from memory")
+		}
+		str38 := string(buf38)
+		err39 = errors.New(str38)
 	default:
-		err37 = errors.New("invalid variant discriminant for expected")
+		err39 = errors.New("invalid variant discriminant for expected")
 	}
-	return value37, err37
+	return value39, err39
 }
 

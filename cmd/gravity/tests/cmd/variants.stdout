@@ -369,19 +369,19 @@ func (i *VariantsInstance) Choose(
 				switch case2 := e.(type) {
 					case EntityEmail:
 						_ = case2
-						i.module.Memory().WriteByte(base+0, 0)
+						i.module.Memory().WriteByte(base+0, uint8(0))
 					case EntityPhoneNumber:
 						_ = case2
-						i.module.Memory().WriteByte(base+0, 1)
+						i.module.Memory().WriteByte(base+0, uint8(1))
 					case EntityIpAddress:
 						_ = case2
-						i.module.Memory().WriteByte(base+0, 2)
+						i.module.Memory().WriteByte(base+0, uint8(2))
 					case EntityCreditCardNumber:
 						_ = case2
-						i.module.Memory().WriteByte(base+0, 3)
+						i.module.Memory().WriteByte(base+0, uint8(3))
 					case EntityCustom:
 						variantPayload := case2.Value
-						i.module.Memory().WriteByte(base+0, 4)
+						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory1 := i.module.Memory()
 						realloc1 := i.module.ExportedFunction("cabi_realloc")
 						ptr1, len1, err1 := writeString(ctx, variantPayload, memory1, realloc1)
@@ -428,19 +428,19 @@ func (i *VariantsInstance) Choose(
 				switch case8 := e.(type) {
 					case EntityEmail:
 						_ = case8
-						i.module.Memory().WriteByte(base+0, 0)
+						i.module.Memory().WriteByte(base+0, uint8(0))
 					case EntityPhoneNumber:
 						_ = case8
-						i.module.Memory().WriteByte(base+0, 1)
+						i.module.Memory().WriteByte(base+0, uint8(1))
 					case EntityIpAddress:
 						_ = case8
-						i.module.Memory().WriteByte(base+0, 2)
+						i.module.Memory().WriteByte(base+0, uint8(2))
 					case EntityCreditCardNumber:
 						_ = case8
-						i.module.Memory().WriteByte(base+0, 3)
+						i.module.Memory().WriteByte(base+0, uint8(3))
 					case EntityCustom:
 						variantPayload := case8.Value
-						i.module.Memory().WriteByte(base+0, 4)
+						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory7 := i.module.Memory()
 						realloc7 := i.module.ExportedFunction("cabi_realloc")
 						ptr7, len7, err7 := writeString(ctx, variantPayload, memory7, realloc7)
@@ -529,19 +529,19 @@ func (i *VariantsInstance) ChooseMany(
 				switch case1 := e.(type) {
 					case EntityEmail:
 						_ = case1
-						i.module.Memory().WriteByte(base+0, 0)
+						i.module.Memory().WriteByte(base+0, uint8(0))
 					case EntityPhoneNumber:
 						_ = case1
-						i.module.Memory().WriteByte(base+0, 1)
+						i.module.Memory().WriteByte(base+0, uint8(1))
 					case EntityIpAddress:
 						_ = case1
-						i.module.Memory().WriteByte(base+0, 2)
+						i.module.Memory().WriteByte(base+0, uint8(2))
 					case EntityCreditCardNumber:
 						_ = case1
-						i.module.Memory().WriteByte(base+0, 3)
+						i.module.Memory().WriteByte(base+0, uint8(3))
 					case EntityCustom:
 						variantPayload := case1.Value
-						i.module.Memory().WriteByte(base+0, 4)
+						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory0 := i.module.Memory()
 						realloc0 := i.module.ExportedFunction("cabi_realloc")
 						ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
@@ -575,19 +575,19 @@ func (i *VariantsInstance) ChooseMany(
 				switch case4 := e.(type) {
 					case EntityEmail:
 						_ = case4
-						i.module.Memory().WriteByte(base+0, 0)
+						i.module.Memory().WriteByte(base+0, uint8(0))
 					case EntityPhoneNumber:
 						_ = case4
-						i.module.Memory().WriteByte(base+0, 1)
+						i.module.Memory().WriteByte(base+0, uint8(1))
 					case EntityIpAddress:
 						_ = case4
-						i.module.Memory().WriteByte(base+0, 2)
+						i.module.Memory().WriteByte(base+0, uint8(2))
 					case EntityCreditCardNumber:
 						_ = case4
-						i.module.Memory().WriteByte(base+0, 3)
+						i.module.Memory().WriteByte(base+0, uint8(3))
 					case EntityCustom:
 						variantPayload := case4.Value
-						i.module.Memory().WriteByte(base+0, 4)
+						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory3 := i.module.Memory()
 						realloc3 := i.module.ExportedFunction("cabi_realloc")
 						ptr3, len3, err3 := writeString(ctx, variantPayload, memory3, realloc3)

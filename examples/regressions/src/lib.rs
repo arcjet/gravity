@@ -1,6 +1,4 @@
-use gravity::regressions::{
-    bot_verifier, checker, email_checker, ip_source, pinger, processor,
-};
+use gravity::regressions::{bot_verifier, checker, email_checker, ip_source, pinger, processor};
 
 wit_bindgen::generate!({
     world: "regressions",

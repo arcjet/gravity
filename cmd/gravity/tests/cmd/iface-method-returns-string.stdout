@@ -393,7 +393,7 @@ func (i *ExampleInstance) CallGetU8(
 	}
 
 	results0 := raw0[0]
-	result1 := uint8(api.DecodeU32(results0))
+	result1 := uint8(results0)
 	return result1
 }
 
@@ -407,7 +407,7 @@ func (i *ExampleInstance) CallGetS8(
 	}
 
 	results0 := raw0[0]
-	result1 := int8(api.DecodeI32(results0))
+	result1 := int8(results0)
 	return result1
 }
 
@@ -421,7 +421,7 @@ func (i *ExampleInstance) CallGetU16(
 	}
 
 	results0 := raw0[0]
-	result1 := uint16(api.DecodeU32(results0))
+	result1 := uint16(results0)
 	return result1
 }
 
@@ -435,7 +435,7 @@ func (i *ExampleInstance) CallGetS16(
 	}
 
 	results0 := raw0[0]
-	result1 := int16(api.DecodeI32(results0))
+	result1 := int16(results0)
 	return result1
 }
 
@@ -449,7 +449,7 @@ func (i *ExampleInstance) CallGetS32(
 	}
 
 	results0 := raw0[0]
-	result1 := api.DecodeI32(results0)
+	result1 := int32(results0)
 	return result1
 }
 

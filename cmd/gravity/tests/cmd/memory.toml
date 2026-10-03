@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world memory ../../target/wasm32-unknown-unknown/release/example_memory.wasm"

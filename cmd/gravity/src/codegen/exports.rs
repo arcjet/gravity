@@ -1,7 +1,7 @@
 use genco::prelude::*;
 use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
 
-use crate::go::{imports::CONTEXT_CONTEXT, GoIdentifier, GoResult, GoType};
+use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
@@ -35,12 +35,12 @@ impl<'a> ExportGenerator<'a> {
         let params = func
             .params
             .iter()
-            .map(
-                |Param { name, ty, .. }| match crate::resolve_param_type(ty, self.config.resolve) {
+            .map(|Param { name, ty, .. }| {
+                match crate::resolve_param_type(ty, self.config.resolve) {
                     GoType::ValueOrOk(t) => (GoIdentifier::local(name), *t),
                     t => (GoIdentifier::local(name), t),
-                },
-            )
+                }
+            })
             .collect::<Vec<_>>();
 
         let result = if let Some(wit_type) = &func.result {
