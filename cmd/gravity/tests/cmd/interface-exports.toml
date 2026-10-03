@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world interface-exports ../../target/wasm32-unknown-unknown/release/example_interface_exports.wasm"

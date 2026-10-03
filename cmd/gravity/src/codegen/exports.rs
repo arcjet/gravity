@@ -1,13 +1,24 @@
 use genco::prelude::*;
-use wit_bindgen_core::wit_parser::{Function, Param, Resolve, SizeAlign, World, WorldItem};
+use wit_bindgen_core::wit_parser::{
+    Function, InterfaceId, LiftLowerAbi, ManglingAndAbi, Param, Resolve, SizeAlign, WasmExport,
+    WasmExportKind, World, WorldItem, WorldKey,
+};
 
-use crate::go::{GoIdentifier, GoResult, GoType, imports::CONTEXT_CONTEXT};
+use crate::{
+    codegen::{
+        imports::{ImportAnalyzer, ImportCodeGenerator},
+        ir::AnalyzedImports,
+    },
+    go::{GoIdentifier, GoResult, GoType, comment, imports::CONTEXT_CONTEXT},
+};
 
 pub struct ExportConfig<'a> {
     pub instance: &'a GoIdentifier,
     pub world: &'a World,
     pub resolve: &'a Resolve,
     pub sizes: &'a SizeAlign,
+    /// The analyzed imports, whose type generation exported interfaces share.
+    pub analyzed_imports: &'a AnalyzedImports,
 }
 
 pub struct ExportGenerator<'a> {
@@ -31,7 +42,16 @@ impl<'a> ExportGenerator<'a> {
     ///   `wit_bindgen_core::abi::call` function. This will call `Func::emit` lots of
     ///   times, one for each instruction in the function, and `Func::emit` will generate
     ///   Go code for each instruction
-    fn generate_function(&self, func: &Function, tokens: &mut Tokens<Go>) {
+    ///
+    /// The method's receiver is `receiver`, and it calls the core wasm export
+    /// `wasm_name`.
+    fn generate_function(
+        &self,
+        func: &Function,
+        receiver: &GoIdentifier,
+        wasm_name: String,
+        tokens: &mut Tokens<Go>,
+    ) {
         let params = func
             .params
             .iter()
@@ -49,7 +69,7 @@ impl<'a> ExportGenerator<'a> {
             GoResult::Empty
         };
 
-        let mut f = crate::Func::export(result, self.config.sizes);
+        let mut f = crate::Func::export(result, self.config.sizes).with_wasm_name(wasm_name);
         wit_bindgen_core::abi::call(
             self.config.resolve,
             wit_bindgen_core::abi::AbiVariant::GuestExport,
@@ -69,7 +89,7 @@ impl<'a> ExportGenerator<'a> {
         let fn_name = &GoIdentifier::public(&func.name);
         quote_in! { *tokens =>
             $['\n']
-            func (i *$(self.config.instance)) $fn_name(
+            func (i *$receiver) $fn_name(
                 $['\r']
                 ctx $CONTEXT_CONTEXT,
                 $(for (name, typ) in &params join ($['\r']) => $name $typ,)
@@ -79,14 +99,98 @@ impl<'a> ExportGenerator<'a> {
             }
         }
     }
+
+    /// The core wasm export name of `func`, exported from the world (`None`)
+    /// or from the interface the world exports as `key`.
+    fn wasm_name(&self, key: Option<&WorldKey>, func: &Function) -> String {
+        self.config.resolve.wasm_export_name(
+            ManglingAndAbi::Legacy(LiftLowerAbi::Sync),
+            WasmExport::Func {
+                interface: key,
+                func,
+                kind: WasmExportKind::Normal,
+            },
+        )
+    }
+
+    /// Generate an exported interface: its types, a Go type holding its
+    /// functions, and the instance method that answers it.
+    ///
+    /// The Go type is a defined type over the instance's struct, so the
+    /// accessor is a pointer conversion (no allocation) and its methods use
+    /// the instance's module and export memo; the instance's own methods do
+    /// not carry over to it.
+    fn generate_interface(&self, key: &WorldKey, id: InterfaceId, tokens: &mut Tokens<Go>) {
+        let resolve = self.config.resolve;
+        let interface = &resolve.interfaces[id];
+        let name = match &interface.name {
+            Some(name) => name.clone(),
+            None => resolve.name_world_key(key),
+        };
+        let accessor = GoIdentifier::public(&name);
+        let exports = GoIdentifier::public(format!("{}-{name}-exports", self.config.world.name));
+        let accessor_name = String::from(&accessor);
+        let taken = self
+            .config
+            .world
+            .exports
+            .values()
+            .filter_map(|item| match item {
+                WorldItem::Function(func) => Some(String::from(GoIdentifier::public(&func.name))),
+                _ => None,
+            })
+            .chain(["Close".to_string()]);
+        for taken in taken {
+            assert_ne!(
+                taken, accessor_name,
+                "exported interface `{name}` would be answered by {accessor_name}, \
+                 which the instance already has"
+            );
+        }
+
+        let analyzer = ImportAnalyzer::new(resolve, self.config.world);
+        let types =
+            ImportCodeGenerator::new(resolve, self.config.analyzed_imports, self.config.sizes);
+        for type_id in interface.types.values() {
+            if let Some(typ) = analyzer.analyze_type(*type_id) {
+                types.generate_type_definition(&typ, tokens);
+            }
+        }
+
+        let instance = self.config.instance;
+        let wit_name = resolve.name_world_key(key);
+        let exports_name = String::from(&exports);
+        let instance_name = String::from(instance);
+        quote_in! { *tokens =>
+            $['\n']
+            $(comment(&[
+                format!("{exports_name} holds the functions the guest exports from {wit_name}."),
+                format!("Get one with {instance_name}.{accessor_name}; like the instance, it is not safe"),
+                "for concurrent use.".to_string(),
+            ]))
+            type $(&exports) $instance
+            $['\n']
+            func (i *$instance) $(&accessor)() *$(&exports) {
+                return (*$(&exports))(i)
+            }
+        }
+        for func in interface.functions.values() {
+            self.generate_function(func, &exports, self.wasm_name(Some(key), func), tokens);
+        }
+    }
 }
 
 impl FormatInto<Go> for ExportGenerator<'_> {
     fn format_into(self, tokens: &mut Tokens<Go>) {
-        for item in self.config.world.exports.values() {
+        for (key, item) in self.config.world.exports.iter() {
             match item {
-                WorldItem::Function(func) => self.generate_function(func, tokens),
-                WorldItem::Interface { .. } => todo!("generate interface exports"),
+                WorldItem::Function(func) => self.generate_function(
+                    func,
+                    self.config.instance,
+                    self.wasm_name(None, func),
+                    tokens,
+                ),
+                WorldItem::Interface { id, .. } => self.generate_interface(key, *id, tokens),
                 WorldItem::Type { .. } => todo!("generate type exports"),
             }
         }
@@ -97,22 +201,28 @@ impl FormatInto<Go> for ExportGenerator<'_> {
 mod tests {
     use genco::prelude::*;
 
-    use crate::{codegen::test_wit::Fixture, go::GoIdentifier};
+    use crate::{
+        codegen::{imports::ImportAnalyzer, test_wit::Fixture},
+        go::GoIdentifier,
+    };
 
     use super::{ExportConfig, ExportGenerator};
 
     /// Generates the Go method for the export `name` in `fixture`'s world.
     fn generate(fixture: &Fixture, name: &str) -> String {
         let instance = GoIdentifier::public("TestInstance");
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
         let config = ExportConfig {
             instance: &instance,
             world: fixture.world(),
             resolve: &fixture.resolve,
             sizes: &fixture.sizes,
+            analyzed_imports: &analyzed,
         };
         let generator = ExportGenerator::new(config);
         let mut tokens = Tokens::new();
-        generator.generate_function(fixture.export(name), &mut tokens);
+        let func = fixture.export(name);
+        generator.generate_function(func, &instance, func.name.clone(), &mut tokens);
         tokens.to_string().unwrap()
     }
 
@@ -274,5 +384,95 @@ mod tests {
             only_err.contains("= &ResultError[Refusal]{Value: enum"),
             "got:\n{only_err}"
         );
+    }
+
+    /// Generates every export of `fixture`'s world.
+    fn generate_all(fixture: &Fixture) -> String {
+        let instance = GoIdentifier::public("TestInstance");
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let config = ExportConfig {
+            instance: &instance,
+            world: fixture.world(),
+            resolve: &fixture.resolve,
+            sizes: &fixture.sizes,
+            analyzed_imports: &analyzed,
+        };
+        let mut tokens = Tokens::new();
+        ExportGenerator::new(config).format_into(&mut tokens);
+        tokens.to_string().unwrap()
+    }
+
+    /// Regression test: a world that exports an interface generates the
+    /// interface's types, a Go type holding its functions, and the instance
+    /// method answering it; each function calls the guest's
+    /// `<interface>#<function>` export. Gravity used to panic: "not yet
+    /// implemented: generate interface exports".
+    #[test]
+    fn test_exported_interface() {
+        let fixture = Fixture::parse(
+            "package test:fixture@1.0.0;
+            interface api {
+                enum mode { fast, slow }
+                record job { name: string, mode: mode }
+                run: func(j: job) -> string;
+            }
+            world test-world {
+                export api;
+                export version: func() -> u32;
+            }",
+        );
+        let generated = generate_all(&fixture);
+        for expected in [
+            "type Job struct",
+            "ModeFast mode = iota",
+            "type TestWorldApiExports TestInstance",
+            "func (i *TestInstance) Api() *TestWorldApiExports {",
+            "return (*TestWorldApiExports)(i)",
+            "func (i *TestWorldApiExports) Run(",
+            "i.module.ExportedFunction(\"test:fixture/api@1.0.0#run\")",
+            "i.module.ExportedFunction(\"cabi_post_test:fixture/api@1.0.0#run\")",
+            "func (i *TestInstance) Version(",
+            "i.module.ExportedFunction(\"version\")",
+        ] {
+            assert!(
+                generated.contains(expected),
+                "expected `{expected}`, got:\n{generated}"
+            );
+        }
+    }
+
+    /// An exported interface whose accessor would shadow an instance method
+    /// is refused at generation, naming the clash.
+    #[test]
+    #[should_panic(expected = "would be answered by Close")]
+    fn test_exported_interface_accessor_clash() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface close {
+                f: func();
+            }
+            world test-world {
+                export close;
+            }",
+        );
+        generate_all(&fixture);
+    }
+
+    /// An exported interface whose accessor would be a world function's
+    /// method name is refused at generation, naming the clash.
+    #[test]
+    #[should_panic(expected = "would be answered by Status")]
+    fn test_exported_interface_accessor_clashes_with_world_function() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface status {
+                f: func();
+            }
+            world test-world {
+                export status;
+                export status: func() -> u32;
+            }",
+        );
+        generate_all(&fixture);
     }
 }

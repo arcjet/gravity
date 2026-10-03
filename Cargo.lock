@@ -189,6 +189,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-interface-exports"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-memory"
 version = "0.0.2"
 dependencies = [
