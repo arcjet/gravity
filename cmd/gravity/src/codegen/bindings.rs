@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use genco::{prelude::*, tokens::Tokens};
-use wit_bindgen_core::wit_parser::{Resolve, SizeAlign, World};
+use wit_bindgen_core::wit_parser::{Resolve, Result_, SizeAlign, Type, TypeDefKind, World};
 
 use crate::{
     codegen::{
@@ -77,10 +77,20 @@ impl<'a> Bindings<'a> {
         analyzed_imports: &AnalyzedImports,
         import_chains: BTreeMap<String, Tokens<Go>>,
     ) {
+        let typed_result_errors = self.resolve.types.iter().any(|(_, def)| {
+            matches!(
+                def.kind,
+                TypeDefKind::Result(Result_ {
+                    err: Some(err),
+                    ..
+                }) if err != Type::String
+            )
+        });
         let config = FactoryConfig {
             analyzed_imports,
             import_chains,
             wasm_var_name: &self.raw_wasm_var,
+            typed_result_errors,
         };
         FactoryGenerator::new(config).format_into(&mut self.out)
     }

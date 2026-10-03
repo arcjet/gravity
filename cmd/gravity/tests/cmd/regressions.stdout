@@ -4,6 +4,7 @@ package regressions
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
@@ -37,6 +38,18 @@ const (
 	StatusInactive status = iota
 	StatusUnknown status = iota
 )
+
+func (e status) String() string {
+	switch e {
+	case StatusActive:
+		return "active"
+	case StatusInactive:
+		return "inactive"
+	case StatusUnknown:
+		return "unknown"
+	}
+	return fmt.Sprintf("status(%d)", int(e))
+}
 
 type IRegressionsProcessor interface {
 	Double(
@@ -72,6 +85,18 @@ const (
 	EmailCheckerValidatorResponseMaybe emailCheckerValidatorResponse = iota
 )
 
+func (e emailCheckerValidatorResponse) String() string {
+	switch e {
+	case EmailCheckerValidatorResponseYes:
+		return "yes"
+	case EmailCheckerValidatorResponseNo:
+		return "no"
+	case EmailCheckerValidatorResponseMaybe:
+		return "maybe"
+	}
+	return fmt.Sprintf("email-checker-validator-response(%d)", int(e))
+}
+
 type IRegressionsBotVerifier interface {
 	Verify(
 		ctx context.Context,
@@ -92,6 +117,18 @@ const (
 	BotVerifierValidatorResponseSpoofed botVerifierValidatorResponse = iota
 	BotVerifierValidatorResponseUnverifiable botVerifierValidatorResponse = iota
 )
+
+func (e botVerifierValidatorResponse) String() string {
+	switch e {
+	case BotVerifierValidatorResponseVerified:
+		return "verified"
+	case BotVerifierValidatorResponseSpoofed:
+		return "spoofed"
+	case BotVerifierValidatorResponseUnverifiable:
+		return "unverifiable"
+	}
+	return fmt.Sprintf("bot-verifier-validator-response(%d)", int(e))
+}
 
 type IRegressionsIpSource interface {
 	Lookup(

@@ -302,4 +302,33 @@ mod tests {
             );
         }
     }
+
+    /// Regression test: an export returning `result<T, E>` with a non-string
+    /// E (here an enum) returns the err case as a `*ResultError[E]`. Gravity
+    /// used to panic generating it: "TODO(#4): implement remaining result
+    /// conversion".
+    #[test]
+    fn test_export_result_with_enum_err() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                enum refusal { no-credential, malformed, untyped-peer }
+                record decided { name: string }
+                export decide: func(n: u32) -> result<decided, refusal>;
+                export only-err: func(n: u32) -> result<_, refusal>;
+            }",
+        );
+        let decide = generate(&fixture, "decide");
+        assert!(decide.contains(") (Decided, error) {"), "got:\n{decide}");
+        assert!(
+            decide.contains("= &ResultError[Refusal]{Value: enum"),
+            "the err case must be a *ResultError[Refusal], got:\n{decide}"
+        );
+        let only_err = generate(&fixture, "only-err");
+        assert!(only_err.contains(") error {"), "got:\n{only_err}");
+        assert!(
+            only_err.contains("= &ResultError[Refusal]{Value: enum"),
+            "got:\n{only_err}"
+        );
+    }
 }

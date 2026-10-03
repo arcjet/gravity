@@ -1,0 +1,39 @@
+package gravity:result-errors;
+
+// result<T, E> where E is not a string: an enum, a record, a variant, with
+// and without an ok type, returned by the guest and by the host. Gravity used
+// to lower only result<T, string> and panicked generating anything else
+// ("TODO(#4): implement remaining result conversion").
+interface types {
+  enum refusal { no-credential, malformed, untyped-peer, foreign-domain }
+  record problem { code: u32, detail: string }
+  variant fault {
+    refused(refusal),
+    problem(problem),
+    message(string),
+    unknown,
+  }
+  record decided { name: string, n: u32 }
+}
+
+interface host {
+  use types.{refusal, problem, fault};
+
+  check: func(n: u32) -> result<u32, refusal>;
+  probe: func(n: u32) -> result<_, problem>;
+  explain: func(n: u32) -> result<string, fault>;
+}
+
+world result-errors {
+  use types.{refusal, problem, fault, decided};
+  import host;
+
+  export decide: func(n: u32) -> result<decided, refusal>;
+  export inspect: func(n: u32) -> result<u32, problem>;
+  export classify: func(n: u32) -> result<string, fault>;
+  export only-err: func(n: u32) -> result<_, refusal>;
+
+  export via-check: func(n: u32) -> result<u32, refusal>;
+  export via-probe: func(n: u32) -> result<_, problem>;
+  export via-explain: func(n: u32) -> result<string, fault>;
+}
