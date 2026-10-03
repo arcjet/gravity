@@ -91,6 +91,19 @@ pub fn qualified_type_name(type_id: TypeId, resolve: &Resolve) -> String {
     }
 }
 
+/// The kebab-case name of the Go constant for case `case` of the enum
+/// named `enum_name` (its `qualified_type_name`): the enum's name, then the
+/// case's.
+///
+/// Every case is namespaced by its enum, as Go's own convention spells an
+/// enumerated constant (`http.MethodGet`). WIT scopes a case name to its
+/// enum, so two enums may share one (`via { peer-svid }` and
+/// `credential-kind { peer-svid }`), and a case may share a type's name; an
+/// unqualified constant redeclared the first and shadowed the second.
+pub fn enum_case_name(enum_name: &str, case: &str) -> String {
+    format!("{enum_name}-{case}")
+}
+
 /// Resolves a Wasm type to a Go type.
 pub fn resolve_wasm_type(typ: &WasmType) -> GoType {
     match typ {
