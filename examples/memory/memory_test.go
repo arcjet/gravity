@@ -106,3 +106,45 @@ func TestRoundTripNarrow(t *testing.T) {
 		}
 	}
 }
+
+// sameFloat reports whether got and want are the same IEEE value: both NaN,
+// or equal with the same sign, so -0 and +0 are told apart.
+func sameFloat(got, want float64) bool {
+	if math.IsNaN(want) {
+		return math.IsNaN(got)
+	}
+	return got == want && math.Signbit(got) == math.Signbit(want)
+}
+
+// TestSpecialFloats sends the IEEE special values through every memory path:
+// reflect.DeepEqual cannot compare NaN, which is never equal to itself.
+func TestSpecialFloats(t *testing.T) {
+	specials := map[string]float64{
+		"+Inf": math.Inf(1),
+		"-Inf": math.Inf(-1),
+		"NaN":  math.NaN(),
+		"-0":   math.Copysign(0, -1),
+	}
+	check := func(t *testing.T, where string, got Everything, want float64) {
+		t.Helper()
+		if !sameFloat(got.AF64, want) {
+			t.Errorf("%s: f64 wanted: %v, but got: %v", where, want, got.AF64)
+		}
+		if !sameFloat(float64(got.AF32), want) {
+			t.Errorf("%s: f32 wanted: %v, but got: %v", where, want, got.AF32)
+		}
+	}
+	for name, v := range specials {
+		t.Run(name, func(t *testing.T) {
+			x := cases["mixed"]
+			x.AF64, x.AF32 = v, float32(v)
+			h := &Host{reply: x}
+			ins := newInstance(t, h)
+
+			check(t, "export result", ins.RoundTrip(t.Context(), x), v)
+			reply := ins.CallHostEcho(t.Context(), x)
+			check(t, "host parameter", h.got, v)
+			check(t, "host result", reply, v)
+		})
+	}
+}
