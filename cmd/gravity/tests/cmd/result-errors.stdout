@@ -44,6 +44,20 @@ func (e refusal) String() string {
 	return fmt.Sprintf("refusal(%d)", int(e))
 }
 
+func ParseRefusal(s string) (Refusal, bool) {
+	switch s {
+	case "no-credential":
+		return RefusalNoCredential, true
+	case "malformed":
+		return RefusalMalformed, true
+	case "untyped-peer":
+		return RefusalUntypedPeer, true
+	case "foreign-domain":
+		return RefusalForeignDomain, true
+	}
+	return nil, false
+}
+
 type Problem struct {
 	Code uint32
 	Detail string

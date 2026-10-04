@@ -50,6 +50,18 @@ func (e status) String() string {
 	return fmt.Sprintf("status(%d)", int(e))
 }
 
+func ParseStatus(s string) (Status, bool) {
+	switch s {
+	case "active":
+		return StatusActive, true
+	case "inactive":
+		return StatusInactive, true
+	case "unknown":
+		return StatusUnknown, true
+	}
+	return nil, false
+}
+
 type IRegressionsProcessor interface {
 	Double(
 		ctx context.Context,
@@ -96,6 +108,18 @@ func (e emailCheckerValidatorResponse) String() string {
 	return fmt.Sprintf("email-checker-validator-response(%d)", int(e))
 }
 
+func ParseEmailCheckerValidatorResponse(s string) (EmailCheckerValidatorResponse, bool) {
+	switch s {
+	case "yes":
+		return EmailCheckerValidatorResponseYes, true
+	case "no":
+		return EmailCheckerValidatorResponseNo, true
+	case "maybe":
+		return EmailCheckerValidatorResponseMaybe, true
+	}
+	return nil, false
+}
+
 type IRegressionsBotVerifier interface {
 	Verify(
 		ctx context.Context,
@@ -127,6 +151,18 @@ func (e botVerifierValidatorResponse) String() string {
 		return "unverifiable"
 	}
 	return fmt.Sprintf("bot-verifier-validator-response(%d)", int(e))
+}
+
+func ParseBotVerifierValidatorResponse(s string) (BotVerifierValidatorResponse, bool) {
+	switch s {
+	case "verified":
+		return BotVerifierValidatorResponseVerified, true
+	case "spoofed":
+		return BotVerifierValidatorResponseSpoofed, true
+	case "unverifiable":
+		return BotVerifierValidatorResponseUnverifiable, true
+	}
+	return nil, false
 }
 
 type IRegressionsIpSource interface {

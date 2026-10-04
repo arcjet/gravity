@@ -393,6 +393,15 @@ impl<'a> ImportCodeGenerator<'a> {
                             return $(quoted(case))
                     }
                 });
+                // Parse is String's inverse; it answers the enum interface so
+                // a caller never names the private type.
+                let parse_function = &GoIdentifier::public(format!("parse-{}", typ.name));
+                let parsed = variants.iter().zip(cases).map(|(name, case)| {
+                    quote! {
+                        case $(quoted(case)):
+                            return $name, true
+                    }
+                });
                 let unknown = format!("{}(%d)", typ.name);
                 quote_in! { *tokens =>
                     $['\n']
@@ -413,6 +422,13 @@ impl<'a> ImportCodeGenerator<'a> {
                         $(for arm in names join ($['\r']) => $arm)
                         }
                         return $FMT_SPRINTF($(quoted(unknown)), int(e))
+                    }
+                    $['\n']
+                    func $parse_function(s string) ($(enum_interface), bool) {
+                        switch s {
+                        $(for arm in parsed join ($['\r']) => $arm)
+                        }
+                        return nil, false
                     }
                     $['\n']
                 }
