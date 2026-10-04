@@ -47,6 +47,18 @@ func (e color) String() string {
 	return fmt.Sprintf("color(%d)", int(e))
 }
 
+func ParseColor(s string) (Color, bool) {
+	switch s {
+	case "red":
+		return ColorRed, true
+	case "green":
+		return ColorGreen, true
+	case "blue":
+		return ColorBlue, true
+	}
+	return nil, false
+}
+
 type Everything struct {
 	AU8 uint8
 	AS8 int8

@@ -39,6 +39,18 @@ func (e enumValues) String() string {
 	return fmt.Sprintf("enum-values(%d)", int(e))
 }
 
+func ParseEnumValues(s string) (EnumValues, bool) {
+	switch s {
+	case "one":
+		return EnumValuesOne, true
+	case "two":
+		return EnumValuesTwo, true
+	case "three":
+		return EnumValuesThree, true
+	}
+	return nil, false
+}
+
 type WideParams struct {
 	A uint32
 	B uint32
