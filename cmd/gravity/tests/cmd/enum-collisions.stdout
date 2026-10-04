@@ -40,6 +40,18 @@ func (e via) String() string {
 	return fmt.Sprintf("via(%d)", int(e))
 }
 
+func ParseVia(s string) (Via, bool) {
+	switch s {
+	case "peer-svid":
+		return ViaPeerSvid, true
+	case "signed-token":
+		return ViaSignedToken, true
+	case "anonymous":
+		return ViaAnonymous, true
+	}
+	return nil, false
+}
+
 type CredentialKind interface {
 	isCredentialKind()
 }
@@ -64,6 +76,18 @@ func (e credentialKind) String() string {
 		return "bearer"
 	}
 	return fmt.Sprintf("credential-kind(%d)", int(e))
+}
+
+func ParseCredentialKind(s string) (CredentialKind, bool) {
+	switch s {
+	case "peer-svid":
+		return CredentialKindPeerSvid, true
+	case "signed-token":
+		return CredentialKindSignedToken, true
+	case "bearer":
+		return CredentialKindBearer, true
+	}
+	return nil, false
 }
 
 type Point struct {
@@ -92,6 +116,16 @@ func (e shape) String() string {
 		return "line"
 	}
 	return fmt.Sprintf("shape(%d)", int(e))
+}
+
+func ParseShape(s string) (Shape, bool) {
+	switch s {
+	case "point":
+		return ShapePoint, true
+	case "line":
+		return ShapeLine, true
+	}
+	return nil, false
 }
 
 // exportedFunctions memoizes api.Module.ExportedFunction for one module
