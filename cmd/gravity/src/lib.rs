@@ -91,6 +91,57 @@ pub fn qualified_type_name(type_id: TypeId, resolve: &Resolve) -> String {
     }
 }
 
+/// Go's reserved words, which cannot name a package.
+const GO_KEYWORDS: [&str; 25] = [
+    "break",
+    "case",
+    "chan",
+    "const",
+    "continue",
+    "default",
+    "defer",
+    "else",
+    "fallthrough",
+    "for",
+    "func",
+    "go",
+    "goto",
+    "if",
+    "import",
+    "interface",
+    "map",
+    "package",
+    "range",
+    "return",
+    "select",
+    "struct",
+    "switch",
+    "type",
+    "var",
+];
+
+/// The Go package name for the bindings of `world`.
+///
+/// Without `--package` it is the world's name in snake case. An explicit
+/// name decouples the package from the world, so a consumer can import
+/// `identity` for a world called `identity-core`. It must be a name Go will
+/// compile: an ASCII letter or underscore, then letters, digits and
+/// underscores, not `_` alone and not a keyword.
+pub fn go_package_name(world: &str, package: Option<&str>) -> Result<String, String> {
+    let Some(name) = package else {
+        return Ok(world.replace('-', "_"));
+    };
+    let mut chars = name.chars();
+    let starts = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
+    let rest = chars.all(|c| c.is_ascii_alphanumeric() || c == '_');
+    if !starts || !rest || name == "_" || GO_KEYWORDS.contains(&name) {
+        return Err(format!("{name:?} is not a Go package name"));
+    }
+    Ok(name.to_owned())
+}
+
 /// Resolves a Wasm type to a Go type.
 pub fn resolve_wasm_type(typ: &WasmType) -> GoType {
     match typ {
@@ -213,4 +264,47 @@ pub fn resolve_param_type(typ: &Type, resolve: &Resolve) -> GoType {
         }
     }
     resolve_type(typ, resolve)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::go_package_name;
+
+    /// With no `--package` the Go package is the world's name in snake case.
+    #[test]
+    fn test_package_defaults_to_the_world_name() {
+        assert_eq!(
+            go_package_name("identity-core", None).unwrap(),
+            "identity_core"
+        );
+        assert_eq!(go_package_name("root", None).unwrap(), "root");
+    }
+
+    /// `--package` names the Go package whatever the world is called.
+    #[test]
+    fn test_package_flag_overrides_the_world_name() {
+        assert_eq!(
+            go_package_name("identity-core", Some("identity")).unwrap(),
+            "identity"
+        );
+        assert_eq!(go_package_name("w", Some("_x9")).unwrap(), "_x9");
+    }
+
+    /// A name that is not a Go package name is refused, naming the offender.
+    #[test]
+    fn test_package_flag_refuses_what_go_would_not_compile() {
+        for bad in [
+            "",
+            "9lives",
+            "has-dash",
+            "a.b",
+            "_",
+            "func",
+            "pkg name",
+            "caf\u{e9}",
+        ] {
+            let err = go_package_name("w", Some(bad)).unwrap_err();
+            assert!(err.contains(&format!("{bad:?}")), "{bad:?}: {err}");
+        }
+    }
 }
