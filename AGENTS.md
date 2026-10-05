@@ -134,9 +134,10 @@ the `examples/` directory before the Go tests will compile.
 
 - **WIT (WebAssembly Interface Types)**: The interface definition language for
   the Component Model. Gravity reads WIT embedded in Core Wasm files.
-- **wit-bindgen-core**: Bytecode Alliance library (v0.53.1) that Gravity depends
-  on for canonical ABI instruction generation. It provides the `Instruction`
-  enum that `func.rs` handles.
+- **wit-bindgen-core**: Bytecode Alliance library (version pinned in
+  `cmd/gravity/Cargo.toml`) that Gravity depends on for canonical ABI
+  instruction generation. It provides the `Instruction` enum that `func.rs`
+  handles.
 - **Direction (Import vs Export)**: Gravity generates different code depending on
   whether a function is an import (Go host function called by Wasm guest) or an
   export (Wasm guest function called from Go). The `Func` struct tracks this via
@@ -158,10 +159,20 @@ the `examples/` directory before the Go tests will compile.
 
 ### Important Implementation Details
 
-- `I32FromU32` and `U32FromI32` instructions are identity operations at the Wasm
-  level (both are 32-bit integers). They use simple `uint32()` casts, NOT
-  `api.EncodeU32()`/`api.DecodeU32()`. The `uint64` conversion needed for
-  `api.Function.Call()` is handled separately by the `CallWasm` instruction.
+- **Value representation.** Lowering instructions produce Go values of the core
+  Wasm type their consumer expects. Integer lowerings (`I32FromS32`,
+  `I32FromU8`, …, `I64FromS64`) emit plain `uint32(x)`/`uint64(x)` conversions
+  in both directions, and `CallWasm` widens every export argument with
+  `uint64(...)`. Float lowerings depend on `Direction`: imports pass
+  `float32`/`float64` through, because a host function's Go signature is its
+  Wasm signature, while exports encode the IEEE bits with
+  `api.EncodeF32`/`EncodeF64`. Integer lifts are Go conversions (`int8(x)`,
+  `uint16(x)`), which accept both the `uint64` that `CallWasm` returns and the
+  narrower value a load produces. Every store writes exactly its own width with
+  an explicit conversion. When you change the Go type an instruction produces,
+  check every instruction that consumes it (stores, `VariantLower`, `CallWasm`)
+  in both directions. The `memory` example sends every scalar type through all
+  four memory paths.
 - Import functions with simple return types (bool, enum) that map to Wasm i32
   results use `resolve_wasm_type()` on `wasm_sig.results` to determine the Go
   return type.
@@ -179,6 +190,12 @@ the `examples/` directory before the Go tests will compile.
 | genco            | Code generation with Go language support |
 | clap             | CLI argument parsing                     |
 | trycmd           | CLI snapshot testing (dev)               |
+
+`wit-bindgen`, `wit-bindgen-core` and `wit-component` move as one set: each
+`wit-bindgen` release requires exactly one `wit-parser`/`wit-component` minor
+(read `wit-bindgen-rust`'s dependencies on crates.io), and two `wit-parser`
+versions in one build fail to compile with mismatched `Resolve`/`World` types.
+Bump every example's pins with them.
 
 ## Style & Conventions
 
