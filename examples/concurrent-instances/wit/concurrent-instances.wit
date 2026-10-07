@@ -1,0 +1,8 @@
+package gravity:concurrent-instances;
+
+// One factory, an instance per goroutine. Factory.Instantiate named every
+// instance after the module, and wazero refuses a second module of the same
+// name in one runtime ("has already been instantiated").
+world concurrent-instances {
+  export join: func(parts: list<string>, sep: string) -> string;
+}
