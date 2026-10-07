@@ -54,6 +54,23 @@ interface ip-source {
   lookup: func(ip: string) -> option<string>;
 }
 
+// Regression 6: two interfaces in the same world both define a record named
+// `job`, so each Go type carries its interface's name. The host functions
+// lift each record into its own interface's type.
+interface scheduler {
+  record job {
+    id: u32,
+  }
+  submit: func(j: job) -> u32;
+}
+
+interface archiver {
+  record job {
+    name: string,
+  }
+  store: func(j: job) -> u32;
+}
+
 world regressions {
   import checker;
   import processor;
@@ -61,6 +78,8 @@ world regressions {
   import email-checker;
   import bot-verifier;
   import ip-source;
+  import scheduler;
+  import archiver;
 
   export check-enabled: func(key: string) -> bool;
   export check-status: func(key: string) -> u32;
@@ -76,4 +95,8 @@ world regressions {
   // Round-trip the option<string> callback. Returns "absent" when the
   // host returned `none`.
   export run-ip-lookup: func(ip: string) -> string;
+
+  // Passes one `job` record to each interface and returns the sum of what
+  // the two hosts answered.
+  export run-jobs: func(id: u32, name: string) -> u32;
 }

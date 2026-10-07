@@ -1015,4 +1015,50 @@ mod tests {
     fn test_result_as_function_result_still_resolves() {
         resolve_export_result("result<u32, string>");
     }
+
+    /// When two interfaces declare a record with the same name, both Go types
+    /// carry their interface's name, and the host function that lifts the
+    /// record must construct the qualified type.
+    #[test]
+    fn test_host_function_lifts_record_by_its_qualified_name() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface host {
+                record job { a: u32 }
+                ping: func(j: job) -> u32;
+            }
+            interface other {
+                record job { b: u32 }
+            }
+            world test-world {
+                import host;
+                import other;
+            }",
+        );
+        let ping = fixture.function("host", "ping");
+        let method = InterfaceMethod {
+            name: "ping".to_string(),
+            go_method_name: GoIdentifier::public("Ping"),
+            parameters: vec![Parameter {
+                name: GoIdentifier::private("j"),
+                go_type: GoType::UserDefined("HostJob".to_string()),
+                wit_type: ping.params[0].ty,
+            }],
+            return_type: Some(WitReturn {
+                go_type: GoType::Uint32,
+                wit_type: Type::U32,
+            }),
+            wit_function: ping.clone(),
+        };
+
+        let code_str = host_function(&fixture, &method);
+        assert!(
+            code_str.contains(":= HostJob{"),
+            "expected the lift to construct HostJob:\n{code_str}"
+        );
+        assert!(
+            !code_str.contains(":= Job{"),
+            "the lift constructs the unqualified Job:\n{code_str}"
+        );
+    }
 }
