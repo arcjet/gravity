@@ -1,6 +1,8 @@
 > [!IMPORTANT]
 > This is a very early release of Gravity. Many WIT features are not yet implemented
-> and the project is is likely to change significantly as we develop it further.
+> and the project is likely to change significantly as we develop it further.
+> If you want to add functionality to Gravity, contact
+> [david@arcjet.com](mailto:david@arcjet.com) first to discuss your use cases.
 
 # Gravity
 
