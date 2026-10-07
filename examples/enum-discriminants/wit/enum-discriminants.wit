@@ -1,0 +1,31 @@
+package gravity:enum-discriminants;
+
+// Every case of a five-case enum crosses every position an enum can take, in
+// both directions. Stock gravity 0.0.3 (2dc1000) stored an enum into guest
+// memory with a 0/1 switch written for bool, and panicked on any case of 2 or
+// more ("invalid int8 value encountered").
+interface host {
+  enum level { trace, debug, info, warn, fatal }
+
+  record entry { at: level, msg: string }
+
+  pass: func(l: level) -> level;
+  entries: func() -> list<entry>;
+  maybe: func(l: option<level>) -> option<level>;
+}
+
+world enum-discriminants {
+  import host;
+  use host.{level, entry};
+
+  // Flat parameter and result.
+  export echo: func(l: level) -> level;
+  // Through guest memory: a list, a record field, an option.
+  export echo-list: func(ls: list<level>) -> list<level>;
+  export echo-entry: func(e: entry) -> entry;
+  export echo-option: func(l: option<level>) -> option<level>;
+  // Through the host: an import's parameter and result.
+  export via-host: func(l: level) -> level;
+  export host-entries: func() -> list<entry>;
+  export via-host-option: func(l: option<level>) -> option<level>;
+}
