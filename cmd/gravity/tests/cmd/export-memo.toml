@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world export-memo ../../target/wasm32-unknown-unknown/release/example_export_memo.wasm"

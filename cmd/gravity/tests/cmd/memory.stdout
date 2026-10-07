@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 import "unicode/utf8"
 
 import _ "embed"
@@ -70,10 +71,43 @@ type Narrow struct {
 	S string
 	F float32
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type MemoryFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewMemoryFactory(
@@ -81,6 +115,7 @@ func NewMemoryFactory(
 	host IMemoryHost,
 ) (*MemoryFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("arcjet:memory/host").
 	NewFunctionBuilder().
@@ -295,7 +330,7 @@ func NewMemoryFactory(
 			mod.Memory().WriteByte(arg1+50, uint8(value48))
 		}
 		memory50 := mod.Memory()
-		realloc50 := mod.ExportedFunction("cabi_realloc")
+		realloc50 := gravityExportCache.lookup(mod, "cabi_realloc")
 		ptr50, len50, err50 := writeString(ctx, aStr35, memory50, realloc50)
 		if err50 != nil {
 			panic(err50)
@@ -320,26 +355,34 @@ func NewMemoryFactory(
 	return &MemoryFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *MemoryFactory) Instantiate(ctx context.Context) (*MemoryInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &MemoryInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &MemoryInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *MemoryFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type MemoryInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *MemoryInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -377,7 +420,7 @@ func (i *MemoryInstance) RoundTrip(
 ) Everything {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
-	result0, err0 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 8, 64)
+	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, 64)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -446,7 +489,7 @@ func (i *MemoryInstance) RoundTrip(
 		i.module.Memory().WriteByte(ptr0+50, uint8(value14))
 	}
 	memory16 := i.module.Memory()
-	realloc16 := i.module.ExportedFunction("cabi_realloc")
+	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, aStr1, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
@@ -456,7 +499,7 @@ func (i *MemoryInstance) RoundTrip(
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
 	result17 := api.EncodeF32(aF321)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
-	raw18, err18 := i.module.ExportedFunction("round-trip").Call(ctx, uint64(ptr0))
+	raw18, err18 := i.exports.get("round-trip").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
 		panic(err18)
@@ -466,7 +509,7 @@ func (i *MemoryInstance) RoundTrip(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_round-trip"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_round-trip"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -629,7 +672,7 @@ func (i *MemoryInstance) CallHostEcho(
 ) Everything {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
-	result0, err0 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 8, 64)
+	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, 64)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -698,7 +741,7 @@ func (i *MemoryInstance) CallHostEcho(
 		i.module.Memory().WriteByte(ptr0+50, uint8(value14))
 	}
 	memory16 := i.module.Memory()
-	realloc16 := i.module.ExportedFunction("cabi_realloc")
+	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, aStr1, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
@@ -708,7 +751,7 @@ func (i *MemoryInstance) CallHostEcho(
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
 	result17 := api.EncodeF32(aF321)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
-	raw18, err18 := i.module.ExportedFunction("call-host-echo").Call(ctx, uint64(ptr0))
+	raw18, err18 := i.exports.get("call-host-echo").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
 		panic(err18)
@@ -718,7 +761,7 @@ func (i *MemoryInstance) CallHostEcho(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_call-host-echo"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_call-host-echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -881,7 +924,7 @@ func (i *MemoryInstance) RoundTripNarrow(
 ) Narrow {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
-	result0, err0 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, 68)
+	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, 68)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -932,7 +975,7 @@ func (i *MemoryInstance) RoundTripNarrow(
 	result15 := uint32(n131)
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(result15))
 	memory16 := i.module.Memory()
-	realloc16 := i.module.ExportedFunction("cabi_realloc")
+	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, s1, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
@@ -942,7 +985,7 @@ func (i *MemoryInstance) RoundTripNarrow(
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(ptr16))
 	result17 := api.EncodeF32(f1)
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(result17))
-	raw18, err18 := i.module.ExportedFunction("round-trip-narrow").Call(ctx, uint64(ptr0))
+	raw18, err18 := i.exports.get("round-trip-narrow").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
 		panic(err18)
@@ -952,7 +995,7 @@ func (i *MemoryInstance) RoundTripNarrow(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_round-trip-narrow"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_round-trip-narrow"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from

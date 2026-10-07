@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 
 import _ "embed"
 
@@ -76,16 +77,50 @@ type Detected struct {
 	Start uint32
 	End uint32
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type VariantsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewVariantsFactory(
 	ctx context.Context,
 ) (*VariantsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
 	// onto it with the Runtime
@@ -96,26 +131,34 @@ func NewVariantsFactory(
 	return &VariantsFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *VariantsFactory) Instantiate(ctx context.Context) (*VariantsInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &VariantsInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &VariantsInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *VariantsFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type VariantsInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *VariantsInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -153,13 +196,13 @@ func (i *VariantsInstance) Classify(
 ) Entity {
 	arg0 := input
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("classify").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("classify").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -169,7 +212,7 @@ func (i *VariantsInstance) Classify(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_classify"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_classify"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -227,7 +270,7 @@ func (i *VariantsInstance) TagAll(
 	arg0 := inputs
 	vec1 := arg0
 	len1 := uint64(len(vec1))
-	result1, err1 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
+	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -237,7 +280,7 @@ func (i *VariantsInstance) TagAll(
 		e := vec1[idx]
 		base := uint32(ptr1 + uint64(idx) * uint64(8))
 		memory0 := i.module.Memory()
-		realloc0 := i.module.ExportedFunction("cabi_realloc")
+		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, e, memory0, realloc0)
 		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
@@ -246,7 +289,7 @@ func (i *VariantsInstance) TagAll(
 		i.module.Memory().WriteUint32Le(base+4, uint32(len0))
 		i.module.Memory().WriteUint32Le(base+0, uint32(ptr0))
 	}
-	raw2, err2 := i.module.ExportedFunction("tag-all").Call(ctx, uint64(ptr1), uint64(len1))
+	raw2, err2 := i.exports.get("tag-all").Call(ctx, uint64(ptr1), uint64(len1))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
 		panic(err2)
@@ -256,7 +299,7 @@ func (i *VariantsInstance) TagAll(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_tag-all"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_tag-all"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -357,7 +400,7 @@ func (i *VariantsInstance) Choose(
 			contextWindowSize0 := variantPayload.ContextWindowSize
 			vec3 := entities0
 			len3 := uint64(len(vec3))
-			result3, err3 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len3 * 12)
+			result3, err3 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len3 * 12)
 			// The return type doesn't contain an error so we panic if one is encountered
 			if err3 != nil {
 				panic(err3)
@@ -383,7 +426,7 @@ func (i *VariantsInstance) Choose(
 						variantPayload := case2.Value
 						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory1 := i.module.Memory()
-						realloc1 := i.module.ExportedFunction("cabi_realloc")
+						realloc1 := i.exports.get("cabi_realloc")
 						ptr1, len1, err1 := writeString(ctx, variantPayload, memory1, realloc1)
 						// The return type doesn't contain an error so we panic if one is encountered
 						if err1 != nil {
@@ -416,7 +459,7 @@ func (i *VariantsInstance) Choose(
 			entities6 := variantPayload.Entities
 			vec9 := entities6
 			len9 := uint64(len(vec9))
-			result9, err9 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len9 * 12)
+			result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len9 * 12)
 			// The return type doesn't contain an error so we panic if one is encountered
 			if err9 != nil {
 				panic(err9)
@@ -442,7 +485,7 @@ func (i *VariantsInstance) Choose(
 						variantPayload := case8.Value
 						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory7 := i.module.Memory()
-						realloc7 := i.module.ExportedFunction("cabi_realloc")
+						realloc7 := i.exports.get("cabi_realloc")
 						ptr7, len7, err7 := writeString(ctx, variantPayload, memory7, realloc7)
 						// The return type doesn't contain an error so we panic if one is encountered
 						if err7 != nil {
@@ -464,7 +507,7 @@ func (i *VariantsInstance) Choose(
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid variant type provided"))
 	}
-	raw11, err11 := i.module.ExportedFunction("choose").Call(ctx, uint64(variant10_0), uint64(variant10_1), uint64(variant10_2), uint64(variant10_3), uint64(variant10_4))
+	raw11, err11 := i.exports.get("choose").Call(ctx, uint64(variant10_0), uint64(variant10_1), uint64(variant10_2), uint64(variant10_3), uint64(variant10_4))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err11 != nil {
 		panic(err11)
@@ -474,7 +517,7 @@ func (i *VariantsInstance) Choose(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_choose"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_choose"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw11...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -517,7 +560,7 @@ func (i *VariantsInstance) ChooseMany(
 			variantPayload := case6.Value
 			vec2 := variantPayload
 			len2 := uint64(len(vec2))
-			result2, err2 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len2 * 12)
+			result2, err2 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len2 * 12)
 			// The return type doesn't contain an error so we panic if one is encountered
 			if err2 != nil {
 				panic(err2)
@@ -543,7 +586,7 @@ func (i *VariantsInstance) ChooseMany(
 						variantPayload := case1.Value
 						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory0 := i.module.Memory()
-						realloc0 := i.module.ExportedFunction("cabi_realloc")
+						realloc0 := i.exports.get("cabi_realloc")
 						ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
 						// The return type doesn't contain an error so we panic if one is encountered
 						if err0 != nil {
@@ -563,7 +606,7 @@ func (i *VariantsInstance) ChooseMany(
 			variantPayload := case6.Value
 			vec5 := variantPayload
 			len5 := uint64(len(vec5))
-			result5, err5 := i.module.ExportedFunction("cabi_realloc").Call(ctx, 0, 0, 4, len5 * 12)
+			result5, err5 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len5 * 12)
 			// The return type doesn't contain an error so we panic if one is encountered
 			if err5 != nil {
 				panic(err5)
@@ -589,7 +632,7 @@ func (i *VariantsInstance) ChooseMany(
 						variantPayload := case4.Value
 						i.module.Memory().WriteByte(base+0, uint8(4))
 						memory3 := i.module.Memory()
-						realloc3 := i.module.ExportedFunction("cabi_realloc")
+						realloc3 := i.exports.get("cabi_realloc")
 						ptr3, len3, err3 := writeString(ctx, variantPayload, memory3, realloc3)
 						// The return type doesn't contain an error so we panic if one is encountered
 						if err3 != nil {
@@ -609,7 +652,7 @@ func (i *VariantsInstance) ChooseMany(
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid variant type provided"))
 	}
-	raw7, err7 := i.module.ExportedFunction("choose-many").Call(ctx, uint64(variant6_0), uint64(variant6_1), uint64(variant6_2))
+	raw7, err7 := i.exports.get("choose-many").Call(ctx, uint64(variant6_0), uint64(variant6_1), uint64(variant6_2))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
 		panic(err7)
@@ -619,7 +662,7 @@ func (i *VariantsInstance) ChooseMany(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_choose-many"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_choose-many"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw7...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from

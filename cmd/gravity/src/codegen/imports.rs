@@ -940,4 +940,33 @@ mod tests {
             other => panic!("alias analyzed as: {other:?}"),
         }
     }
+
+    /// Regression test: a host function that returns a string lowers it
+    /// with the calling module's `cabi_realloc`, found through the
+    /// factory's registry of per-module memos rather than a fresh
+    /// `mod.ExportedFunction` per call.
+    #[test]
+    fn test_import_realloc_goes_through_the_factory_registry() {
+        let fixture = host_fixture("name: func() -> string;");
+        let method = InterfaceMethod {
+            name: "name".to_string(),
+            go_method_name: GoIdentifier::public("Name"),
+            parameters: vec![],
+            return_type: Some(WitReturn {
+                go_type: GoType::String,
+                wit_type: Type::String,
+            }),
+            wit_function: fixture.function("host", "name").clone(),
+        };
+
+        let code_str = host_function(&fixture, &method);
+        assert!(
+            code_str.contains("gravityExportCache.lookup(mod, \"cabi_realloc\")"),
+            "expected the realloc lookup through the registry, got:\n{code_str}"
+        );
+        assert!(
+            !code_str.contains("mod.ExportedFunction("),
+            "a host function must not call mod.ExportedFunction directly, got:\n{code_str}"
+        );
+    }
 }
