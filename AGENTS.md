@@ -30,6 +30,14 @@ cargo run --bin gravity -- --world <world-name> --output <output.go> <input.wasm
 
 ## Testing
 
+`just check` runs the same steps as `.github/workflows/ci.yml`, in the same
+order: format check, build, unit tests, the Go example tests and the CLI
+snapshot tests. Each step is also its own recipe (`just lint`, `just test`,
+`just test-go`, `just test-cli`); `just --list` shows them all. The recipes
+ignore an inherited `RUSTUP_TOOLCHAIN` or `CARGO_TARGET_DIR`, so they use the
+toolchain pinned in `rust-toolchain.toml` and the `target/` directory that
+`examples/generate.go` reads from.
+
 ### Unit Tests
 
 Run all unit tests (does NOT include snapshot/CLI tests):
@@ -57,7 +65,7 @@ cargo test --test cli
 To update snapshot expectations when output changes intentionally:
 
 ```sh
-TRYCMD=overwrite cargo test --test cli
+just update-snapshots
 ```
 
 Snapshot files live in `cmd/gravity/tests/cmd/` (`.toml` for config, `.stdout`
@@ -200,8 +208,8 @@ Bump every example's pins with them.
 ## Style & Conventions
 
 - Use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, etc.
-- Format code before committing with `cargo fmt`
-- Lint with `cargo clippy`
+- Format code before committing with `just format`
+- Lint with `just clippy` (CI does not run clippy)
 - When adding new instruction handlers in `func.rs`, add corresponding entries
   in the `instructions` example and update snapshot tests
 - When changing codegen output, update snapshot `.stdout` files (or use
@@ -221,4 +229,4 @@ Bump every example's pins with them.
    - `<name>.stdout` — capture with
      `cargo run --bin gravity -- --world <name> <wasm-path> > <stdout-path>`
    - `<name>.stderr` — typically empty (`touch <stderr-path>`)
-6. Verify: `cargo test && cargo test --test cli && (cd examples && go generate ./... && go test ./...)`
+6. Verify: `just check`
