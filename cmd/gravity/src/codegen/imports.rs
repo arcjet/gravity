@@ -21,7 +21,7 @@ use crate::{
         GoIdentifier, GoResult, GoType,
         imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
     },
-    resolve_param_type, resolve_type, resolve_wasm_type,
+    resolve_nested_type, resolve_param_type, resolve_type, resolve_wasm_type,
 };
 
 /// Analyzer for imports - only does analysis, no code generation
@@ -164,7 +164,10 @@ impl<'a> ImportAnalyzer<'a> {
     }
 
     fn analyze_variant_case(&self, variant_name: &str, case: &Case) -> VariantCase {
-        let payload = case.ty.as_ref().map(|t| resolve_type(t, self.resolve));
+        let payload = case.ty.as_ref().map(|t| {
+            let position = format!("the payload of variant case `{}`", case.name);
+            resolve_nested_type(t, self.resolve, &position)
+        });
         let dispatch = match crate::case_dispatch_kind(case, self.resolve) {
             crate::CaseDispatchKind::DirectRecord => CaseDispatch::DirectRecord {
                 record_type: payload.clone().expect("DirectRecord case has a payload"),
@@ -189,9 +192,10 @@ impl<'a> ImportAnalyzer<'a> {
                     .fields
                     .iter()
                     .map(|field| {
+                        let position = format!("record field `{}`", field.name);
                         (
                             GoIdentifier::public(&field.name),
-                            resolve_type(&field.ty, self.resolve),
+                            resolve_nested_type(&field.ty, self.resolve, &position),
                         )
                     })
                     .collect(),
@@ -939,5 +943,76 @@ mod tests {
             TypeDefinition::Alias { .. } => {}
             other => panic!("alias analyzed as: {other:?}"),
         }
+    }
+
+    /// Analyzes a world that imports `types`, an interface declaring `decls`.
+    fn analyze_types(decls: &str) {
+        let fixture = Fixture::parse(&format!(
+            "package test:fixture;
+            interface types {{
+                {decls}
+            }}
+            world test-world {{
+                import types;
+            }}"
+        ));
+        ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+    }
+
+    /// Resolves the result type of the function the world exports as `f`.
+    fn resolve_export_result(wit_result: &str) {
+        let fixture = Fixture::parse(&format!(
+            "package test:fixture;
+            world test-world {{
+                export f: func() -> {wit_result};
+            }}"
+        ));
+        let result = fixture.export("f").result.expect("f has a result");
+        crate::resolve_type(&result, &fixture.resolve);
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a nested result in record field `r`")]
+    fn test_result_record_field_is_refused() {
+        analyze_types("record holder { r: result<u32, string> }");
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a nested result in the payload of variant case `failed`")]
+    fn test_result_variant_payload_is_refused() {
+        analyze_types("variant outcome { done, failed(result<u32, string>) }");
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a nested result in a list element")]
+    fn test_result_list_element_is_refused() {
+        resolve_export_result("list<result<u32, string>>");
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a nested result in an option payload")]
+    fn test_result_option_payload_is_refused() {
+        resolve_export_result("option<result<u32, string>>");
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a nested result in a result's ok type")]
+    fn test_result_ok_type_is_refused() {
+        resolve_export_result("result<result<u32, string>, string>");
+    }
+
+    /// `result<_, string>` is a single Go `error`, which a field could
+    /// declare, but gravity cannot lift or lower it there, so the nested
+    /// check refuses every result shape.
+    #[test]
+    #[should_panic(expected = "implement a nested result in record field `e`")]
+    fn test_error_only_result_record_field_is_refused() {
+        analyze_types("record holder { e: result<_, string> }");
+    }
+
+    /// A result in a function's own result is still supported.
+    #[test]
+    fn test_result_as_function_result_still_resolves() {
+        resolve_export_result("result<u32, string>");
     }
 }
