@@ -6,63 +6,61 @@ Wasm file (with embedded WIT custom section) and generates Go bindings targeting
 
 ## Build & Run
 
+Every routine operation is a `just` recipe; `just --list` shows them all.
+
 ### Prerequisites
 
-- Rust toolchain (version pinned to what's in in `rust-toolchain.toml`)
-- `wasm32-unknown-unknown` and `wasm32-wasip1` targets (configured in
-  `rust-toolchain.toml`)
+- [just](https://just.systems/)
+- Rust toolchain (version pinned in `rust-toolchain.toml`).
+  `just install` installs it with the `wasm32-unknown-unknown` and
+  `wasm32-wasip1` targets the file configures.
 - Go (for running example tests)
+
+The recipes ignore an inherited `RUSTUP_TOOLCHAIN` or `CARGO_TARGET_DIR`, so
+they use the toolchain pinned in `rust-toolchain.toml` and the `target/`
+directory that `examples/generate.go` reads from.
 
 ### Building
 
 ```sh
-cargo build
+just build
 ```
 
 ### Running
 
 Gravity takes a Core Wasm file and produces Go source + an optimized `.wasm`
-file:
+file. `just run` passes its arguments to gravity:
 
 ```sh
-cargo run --bin gravity -- --world <world-name> --output <output.go> <input.wasm>
+just run --world <world-name> --output <output.go> <input.wasm>
 ```
 
 ## Testing
 
 `just check` runs the same steps as `.github/workflows/ci.yml`, in the same
 order: format check, build, unit tests, the Go example tests and the CLI
-snapshot tests. Each step is also its own recipe (`just lint`, `just test`,
-`just test-go`, `just test-cli`); `just --list` shows them all. The recipes
-ignore an inherited `RUSTUP_TOOLCHAIN` or `CARGO_TARGET_DIR`, so they use the
-toolchain pinned in `rust-toolchain.toml` and the `target/` directory that
-`examples/generate.go` reads from.
+snapshot tests. Each step is also its own recipe, described below.
 
 ### Unit Tests
 
 Run all unit tests (does NOT include snapshot/CLI tests):
 
 ```sh
-cargo test
+just test
 ```
 
 ### Snapshot / CLI Tests
 
-The CLI tests use `trycmd` for snapshot testing and require the example Wasm
-files to be built first. They are excluded from the default `cargo test` run.
+The CLI tests use `trycmd` for snapshot testing and read the example Wasm
+files, so `just test-cli` builds every example first. They are excluded from
+`just test`.
 
 ```sh
-# 1. Build example Wasm files
-cargo build -p example-basic --target wasm32-unknown-unknown --release
-cargo build -p example-iface-method-returns-string --target wasm32-unknown-unknown --release
-cargo build -p example-instructions --target wasm32-unknown-unknown --release
-cargo build -p example-regressions --target wasm32-unknown-unknown --release
-
-# 2. Run CLI snapshot tests
-cargo test --test cli
+just test-cli
 ```
 
-To update snapshot expectations when output changes intentionally:
+To update snapshot expectations when output changes intentionally, then read
+the diff before committing it:
 
 ```sh
 just update-snapshots
@@ -72,25 +70,21 @@ Snapshot files live in `cmd/gravity/tests/cmd/` (`.toml` for config, `.stdout`
 and `.stderr` for expected output).
 
 **Important**: The `trycmd` dependency has the `filesystem` feature disabled.
-This means `TRYCMD=overwrite` can only update _existing_ `.stdout`/`.stderr`
-files — it cannot create new ones. When adding a new snapshot test, you must
-manually create the `.stdout` and `.stderr` files first (e.g. by redirecting
-gravity's output), then `TRYCMD=overwrite` can keep them in sync afterward.
+This means `just update-snapshots` can only update _existing_
+`.stdout`/`.stderr` files — it cannot create new ones. `just new-snapshot
+<name>` creates all three files for a new example from gravity's current
+output; after that, `just update-snapshots` keeps them in sync.
 
 ### Example Go Tests
 
 The examples include Go test files that verify the generated bindings work
-end-to-end with wazero. After building the example Wasm files and running
-Gravity to regenerate bindings:
+end-to-end with wazero. `examples/generate.go` has `//go:generate` directives
+that build each example's Wasm and run Gravity on it. `just generate` runs
+them, and `just test-go` runs them and then the Go tests:
 
 ```sh
-cd examples
-go generate ./...
-go test ./...
+just test-go
 ```
-
-Or use `go generate` from the repo root (the `examples/generate.go` file has
-`//go:generate` directives that build Wasm and run Gravity).
 
 ## Project Structure
 
@@ -128,13 +122,18 @@ examples/
   iface-method-returns-string/  # Interface method returning a string
   instructions/          # Tests various canonical ABI instructions
   regressions/           # Regression tests for import codegen edge cases
+
+justfile                 # Recipes for building, testing and the CI gate
 ```
 
 **Note on generated files**: `examples/.gitignore` ignores all `*/*.go` files
 (except `*/*_test.go`) and all `*/*.wasm` files. This means the generated Go
 bindings and Wasm binaries are not committed — only the test files, WIT
-definitions, and Rust source are tracked. You must run `go generate ./...` from
-the `examples/` directory before the Go tests will compile.
+definitions, and Rust source are tracked. The Go tests compile only after
+`just generate` has run, which `just test-go` does first. After switching to a
+branch without an example, its directory holds only these generated files, and
+the `examples/*` workspace glob then fails every cargo command with "failed to
+load manifest"; `just clean-examples` removes them.
 
 ## Architecture
 
@@ -212,8 +211,8 @@ Bump every example's pins with them.
 - Lint with `just clippy` (CI does not run clippy)
 - When adding new instruction handlers in `func.rs`, add corresponding entries
   in the `instructions` example and update snapshot tests
-- When changing codegen output, update snapshot `.stdout` files (or use
-  `TRYCMD=overwrite`)
+- When changing codegen output, update snapshot `.stdout` files with
+  `just update-snapshots`
 
 ## Adding a New Example
 
@@ -224,9 +223,11 @@ Bump every example's pins with them.
 3. Add `//go:generate` directives to `examples/generate.go` (one for
    `cargo build`, one for `cargo run --bin gravity`)
 4. Write `examples/<name>/<name>_test.go` (this file IS committed)
-5. Create snapshot test files in `cmd/gravity/tests/cmd/`:
+5. Create the snapshot test files with `just new-snapshot <name>`, or
+   `just new-snapshot <name> <world>` when the world is not named for the
+   example. It builds the example and writes three files to
+   `cmd/gravity/tests/cmd/`:
    - `<name>.toml` — trycmd config (`bin.name = "gravity"`, `args = "..."`)
-   - `<name>.stdout` — capture with
-     `cargo run --bin gravity -- --world <name> <wasm-path> > <stdout-path>`
-   - `<name>.stderr` — typically empty (`touch <stderr-path>`)
+   - `<name>.stdout` — gravity's output for the example
+   - `<name>.stderr` — empty
 6. Verify: `just check`

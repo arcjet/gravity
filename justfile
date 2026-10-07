@@ -76,6 +76,14 @@ test:
     @echo '{{ h }}test: cargo test{{ n }}'
     @cargo test --locked
 
+# run gravity with the given arguments, e.g.
+# `just run --world basic --output basic.go basic.wasm`
+[doc('run gravity with the given arguments')]
+[group('build')]
+[positional-arguments]
+run *args:
+    @cargo run --quiet --locked --bin gravity -- "$@"
+
 # build the example wasm and generate their Go bindings
 [group('build')]
 generate:
@@ -106,6 +114,37 @@ test-cli: generate
 update-snapshots: generate
     @echo '{{ h }}test: cargo test --test cli (overwrite){{ n }}'
     @TRYCMD=overwrite cargo test --locked --test cli
+
+# create the CLI snapshot files for the example in examples/<name>: a .toml
+# that runs gravity on the example's wasm, the .stdout gravity prints for it,
+# and an empty .stderr. trycmd cannot create these files, only update them.
+# `world` defaults to the example's name. Existing files are left alone.
+[doc('create the CLI snapshot files for a new example')]
+[group('test')]
+[script('bash')]
+new-snapshot name world=name:
+    set -euo pipefail
+    name={{ quote(name) }}
+    world={{ quote(world) }}
+    base="cmd/gravity/tests/cmd/$name"
+    for ext in toml stdout stderr; do
+      if [[ -e "$base.$ext" ]]; then
+        echo "{{ style("error") }}error:{{ n }} $base.$ext already exists" >&2
+        exit 1
+      fi
+    done
+    wasm="target/wasm32-unknown-unknown/release/example_${name//-/_}.wasm"
+    echo "{{ h }}build: example-$name (wasm){{ n }}"
+    cargo build --locked -p "example-$name" --target wasm32-unknown-unknown --release
+    echo "{{ h }}snapshot: $name{{ n }}"
+    # Capture first, so a failing gravity run leaves no partial snapshot behind.
+    stdout="$(mktemp)"
+    trap 'rm -f "$stdout"' EXIT
+    cargo run --quiet --locked --bin gravity -- --world "$world" "$wasm" > "$stdout"
+    # trycmd runs gravity from cmd/gravity, so the .toml's path is relative to it.
+    printf 'bin.name = "gravity"\nargs = "--world %s ../../%s"\n' "$world" "$wasm" > "$base.toml"
+    cp "$stdout" "$base.stdout"
+    : > "$base.stderr"
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────────
 
