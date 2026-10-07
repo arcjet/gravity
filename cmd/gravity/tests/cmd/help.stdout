@@ -8,8 +8,9 @@ Arguments:
   <file>  the WebAssembly file to process
 
 Options:
-  -w, --world <world>    generate host bindings for the specified world [default: root]
-      --inline-wasm      include the WebAssembly file as hex bytes in the output code
-  -o, --output <output>  the file path where output generated code should be output
-  -h, --help             Print help
-  -V, --version          Print version
+  -w, --world <world>      generate host bindings for the specified world [default: root]
+      --package <package>  name the generated Go package (default: the world's name, snake case)
+      --inline-wasm        include the WebAssembly file as hex bytes in the output code
+  -o, --output <output>    the file path where output generated code should be output
+  -h, --help               Print help
+  -V, --version            Print version
