@@ -849,7 +849,8 @@ impl Bindgen for Func<'_> {
                     results.push(Operand::SingleValue(var.into()))
                 }
             }
-            Instruction::RecordLift { record, name, .. } => {
+            Instruction::RecordLift { record, ty, .. } => {
+                let name = crate::qualified_type_name(*ty, resolve);
                 let tmp = self.tmp();
                 let value = &format!("value{tmp}");
                 let fields = record
@@ -860,7 +861,7 @@ impl Bindgen for Func<'_> {
 
                 quote_in! {self.body =>
                     $['\r']
-                    $value := $(GoIdentifier::public(*name)){
+                    $value := $(GoIdentifier::public(&name)){
                         $(for (name, op) in fields join ($['\r']) => $name: $op,)
                     }
                 };

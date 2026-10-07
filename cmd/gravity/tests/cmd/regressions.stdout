@@ -99,6 +99,28 @@ type IRegressionsIpSource interface {
 	) *string
 }
 
+type IRegressionsScheduler interface {
+	Submit(
+		ctx context.Context,
+		j SchedulerJob,
+	) uint32
+}
+
+type SchedulerJob struct {
+	Id uint32
+}
+
+type IRegressionsArchiver interface {
+	Store(
+		ctx context.Context,
+		j ArchiverJob,
+	) uint32
+}
+
+type ArchiverJob struct {
+	Name string
+}
+
 type RegressionsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
@@ -112,9 +134,36 @@ func NewRegressionsFactory(
 	emailChecker IRegressionsEmailChecker,
 	botVerifier IRegressionsBotVerifier,
 	ipSource IRegressionsIpSource,
+	scheduler IRegressionsScheduler,
+	archiver IRegressionsArchiver,
 ) (*RegressionsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
 
+	_, err7 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/archiver").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+	) uint32{
+		buf0, ok0 := mod.Memory().Read(arg0, arg1)
+		if !ok0 {
+			panic(errors.New("failed to read bytes from memory"))
+		}
+		str0 := string(buf0)
+		value1 := ArchiverJob{
+			Name: str0,
+		}
+		value2 := archiver.Store(ctx, value1)
+		result3 := uint32(value2)
+		return result3
+	}).
+	Export("store").
+	Instantiate(ctx)
+	if err7 != nil {
+		return nil, err7
+	}
 	_, err4 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/bot-verifier").
 	NewFunctionBuilder().
 	WithFunc(func(
@@ -304,6 +353,26 @@ func NewRegressionsFactory(
 	Instantiate(ctx)
 	if err1 != nil {
 		return nil, err1
+	}
+	_, err6 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/scheduler").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+	) uint32{
+		result0 := uint32(arg0)
+		value1 := SchedulerJob{
+			Id: result0,
+		}
+		value2 := scheduler.Submit(ctx, value1)
+		result3 := uint32(value2)
+		return result3
+	}).
+	Export("submit").
+	Instantiate(ctx)
+	if err6 != nil {
+		return nil, err6
 	}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
@@ -539,5 +608,31 @@ func (i *RegressionsInstance) RunIpLookup(
 	}
 	str4 := string(buf4)
 	return str4
+}
+
+func (i *RegressionsInstance) RunJobs(
+	ctx context.Context,
+	id uint32,
+	name string,
+) uint32 {
+	arg0 := id
+	arg1 := name
+	result0 := uint32(arg0)
+	memory1 := i.module.Memory()
+	realloc1 := i.module.ExportedFunction("cabi_realloc")
+	ptr1, len1, err1 := writeString(ctx, arg1, memory1, realloc1)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
+	raw2, err2 := i.module.ExportedFunction("run-jobs").Call(ctx, uint64(result0), uint64(ptr1), uint64(len1))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err2 != nil {
+		panic(err2)
+	}
+
+	results2 := raw2[0]
+	result3 := uint32(results2)
+	return result3
 }
 
