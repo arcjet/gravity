@@ -24,11 +24,11 @@ func (Checker) IsEnabled(_ context.Context, key string) bool {
 func (Checker) GetStatus(_ context.Context, key string) Status {
 	switch key {
 	case "active":
-		return Active
+		return StatusActive
 	case "inactive":
-		return Inactive
+		return StatusInactive
 	default:
-		return Unknown
+		return StatusUnknown
 	}
 }
 
@@ -65,11 +65,11 @@ type EmailChecker struct{}
 func (EmailChecker) IsAllowed(_ context.Context, email string) EmailCheckerValidatorResponse {
 	switch email {
 	case "allow@example.com":
-		return Yes
+		return EmailCheckerValidatorResponseYes
 	case "block@example.com":
-		return No
+		return EmailCheckerValidatorResponseNo
 	default:
-		return Maybe
+		return EmailCheckerValidatorResponseMaybe
 	}
 }
 
@@ -78,11 +78,11 @@ type BotVerifier struct{}
 func (BotVerifier) Verify(_ context.Context, botID string) BotVerifierValidatorResponse {
 	switch botID {
 	case "verified-bot":
-		return Verified
+		return BotVerifierValidatorResponseVerified
 	case "spoofed-bot":
-		return Spoofed
+		return BotVerifierValidatorResponseSpoofed
 	default:
-		return Unverifiable
+		return BotVerifierValidatorResponseUnverifiable
 	}
 }
 
@@ -151,9 +151,9 @@ func TestCheckStatus(t *testing.T) {
 		key  string
 		want uint32
 	}{
-		{"active", 0},   // Active
-		{"inactive", 1}, // Inactive
-		{"unknown", 2},  // Unknown
+		{"active", 0},   // StatusActive
+		{"inactive", 1}, // StatusInactive
+		{"unknown", 2},  // StatusUnknown
 	}
 
 	for _, tt := range tests {
