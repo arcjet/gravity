@@ -1,4 +1,6 @@
-use gravity::regressions::{bot_verifier, checker, email_checker, ip_source, pinger, processor};
+use gravity::regressions::{
+    archiver, bot_verifier, checker, email_checker, ip_source, pinger, processor, scheduler,
+};
 
 wit_bindgen::generate!({
     world: "regressions",
@@ -47,5 +49,9 @@ impl Guest for RegressionsWorld {
 
     fn run_ip_lookup(ip: String) -> String {
         ip_source::lookup(&ip).unwrap_or_else(|| "absent".to_string())
+    }
+
+    fn run_jobs(id: u32, name: String) -> u32 {
+        scheduler::submit(scheduler::Job { id }) + archiver::store(&archiver::Job { name })
     }
 }
