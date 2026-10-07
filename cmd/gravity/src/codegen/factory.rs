@@ -7,7 +7,7 @@ use crate::{
     go::{
         GoIdentifier, comment,
         imports::{
-            CONTEXT_CONTEXT, ERRORS_NEW, WAZERO_API_MEMORY, WAZERO_API_MODULE,
+            CONTEXT_CONTEXT, ERRORS_NEW, FMT_SPRINTF, WAZERO_API_MEMORY, WAZERO_API_MODULE,
             WAZERO_COMPILED_MODULE, WAZERO_NEW_MODULE_CONFIG, WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
         },
     },
@@ -18,6 +18,9 @@ pub struct FactoryConfig<'a> {
     pub analyzed_imports: &'a AnalyzedImports,
     pub import_chains: BTreeMap<String, Tokens<Go>>,
     pub wasm_var_name: &'a GoIdentifier,
+    /// Whether any function returns a `result` whose err type is not a
+    /// string, so the bindings need `ResultError`.
+    pub typed_result_errors: bool,
 }
 
 /// Generator for factory and instance types
@@ -64,6 +67,26 @@ impl<'a> FactoryGenerator<'a> {
                     return 1, 0, $ERRORS_NEW("failed to write string to wasm memory")
                 }
                 return uint64(ptr), uint64(len(s)), nil
+            }
+            $['\n']
+        };
+    }
+
+    /// Generate `ResultError`, the error a function returns for the err case
+    /// of a `result<T, E>` whose E is not a string.
+    fn generate_result_error(&self, tokens: &mut Tokens<Go>) {
+        quote_in! { *tokens =>
+            $(comment(&[
+                "ResultError is the error a function returns for the err case of a WIT",
+                "result<T, E> whose E is not a string; Value is the E. Recover it with",
+                "errors.As. Any other error is a trap or a host failure, never an E.",
+            ]))
+            type ResultError[E any] struct {
+                Value E
+            }
+            $['\n']
+            func (e *ResultError[E]) Error() string {
+                return $FMT_SPRINTF("%v", e.Value)
             }
             $['\n']
         };
@@ -153,7 +176,7 @@ impl<'a> FactoryGenerator<'a> {
 
         quote! {
             ctx $CONTEXT_CONTEXT,
-            $(for interface in interfaces.iter() join ($['\r']) =>
+            $(for interface in interfaces.iter().filter(|i| i.needs_host()) join ($['\r']) =>
             $(&interface.constructor_param_name) $(&interface.go_interface_name),
             )
         }
@@ -168,12 +191,16 @@ impl<'a> FormatInto<Go> for &FactoryGenerator<'a> {
         tokens.push();
         self.generate_write_string(tokens);
         tokens.push();
+        if self.config.typed_result_errors {
+            self.generate_result_error(tokens);
+            tokens.push();
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use genco::lang::go::Tokens;
+    use genco::{lang::go::Tokens, tokens::FormatInto};
 
     use crate::{
         codegen::{FactoryGenerator, factory::FactoryConfig, ir::AnalyzedImports},
@@ -194,11 +221,42 @@ mod tests {
             analyzed_imports,
             import_chains: Default::default(),
             wasm_var_name: &GoIdentifier::public("test-wasm"),
+            typed_result_errors: false,
         };
         let generator = FactoryGenerator::new(config);
         let mut tokens = Tokens::new();
         generator.generate_write_string(&mut tokens);
 
         assert!(tokens.to_string().unwrap().contains("func writeString"));
+    }
+
+    /// `ResultError` is emitted exactly when a function needs it.
+    #[test]
+    fn test_result_error_only_when_needed() {
+        let analyzed_imports = &AnalyzedImports {
+            interfaces: vec![],
+            standalone_types: vec![],
+            standalone_functions: vec![],
+            factory_name: GoIdentifier::public("test-factory"),
+            instance_name: GoIdentifier::public("test-instance"),
+            constructor_name: GoIdentifier::public("test-constructor"),
+        };
+        for typed_result_errors in [false, true] {
+            let config = FactoryConfig {
+                analyzed_imports,
+                import_chains: Default::default(),
+                wasm_var_name: &GoIdentifier::public("test-wasm"),
+                typed_result_errors,
+            };
+            let generator = FactoryGenerator::new(config);
+            let mut tokens = Tokens::new();
+            (&generator).format_into(&mut tokens);
+            let generated = tokens.to_string().unwrap();
+            assert_eq!(
+                generated.contains("type ResultError[E any] struct"),
+                typed_result_errors,
+                "got:\n{generated}"
+            );
+        }
     }
 }

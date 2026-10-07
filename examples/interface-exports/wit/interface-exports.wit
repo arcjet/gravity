@@ -1,0 +1,38 @@
+package gravity:interface-exports@0.1.0;
+
+// A world that exports interfaces, not only functions. Gravity panicked on
+// `export <interface>`: "not yet implemented: generate interface exports".
+// The guest exports each interface function as `<interface>#<function>`
+// (here `gravity:interface-exports/geometry@0.1.0#midpoint`).
+interface types {
+  record point { x: s32, y: s32 }
+}
+
+// Its own enum and record, and a type it uses from `types`.
+interface geometry {
+  use types.{point};
+
+  enum quadrant { origin, first, second, third, fourth, axis }
+  record segment { start: point, end: point }
+
+  quadrant-of: func(p: point) -> quadrant;
+  midpoint: func(s: segment) -> point;
+  length-squared: func(s: segment) -> u64;
+}
+
+// Calls back into the host while exported.
+interface greeter {
+  greet: func(name: string) -> string;
+}
+
+interface log {
+  info: func(msg: string);
+}
+
+world interface-exports {
+  import log;
+
+  export geometry;
+  export greeter;
+  export version: func() -> string;
+}

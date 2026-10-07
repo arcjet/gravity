@@ -1,3 +1,9 @@
 [workspace]
 resolver = "3"
 members = ["cmd/*", "examples/*"]
+# The examples are wasm guests. Built for the host, a guest that exports a
+# versioned interface does not link: its export names
+# (`ns:pkg/iface@1.0.0#func`) are not valid in a linker version script. A
+# bare `cargo build` builds the tool; `-p example-<name> --target
+# wasm32-unknown-unknown` builds a guest.
+default-members = ["cmd/*"]

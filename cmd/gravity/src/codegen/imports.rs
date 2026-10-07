@@ -19,7 +19,7 @@ use crate::{
     },
     go::{
         GoIdentifier, GoResult, GoType,
-        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
+        imports::{CONTEXT_CONTEXT, FMT_SPRINTF, WAZERO_API_MODULE},
     },
     resolve_param_type, resolve_type, resolve_wasm_type,
 };
@@ -94,15 +94,13 @@ impl<'a> ImportAnalyzer<'a> {
         let go_interface_name =
             GoIdentifier::public(format!("i-{}-{}", self.world.name, interface_name));
 
-        let wazero_module_name = if let Some(package_id) = interface.package {
-            let package = &self.resolve.packages[package_id];
-            format!(
-                "{}:{}/{}",
-                package.name.namespace, package.name.name, interface_name
-            )
-        } else {
-            interface_name.to_string()
-        };
+        // The module the guest imports from: the interface's full id, which
+        // carries the package version when there is one
+        // (`example:pkg/types@0.1.0`).
+        let wazero_module_name = self
+            .resolve
+            .id_of(interface_id)
+            .unwrap_or_else(|| interface_name.to_string());
 
         AnalyzedInterface {
             name: interface_name.clone(),
@@ -139,7 +137,7 @@ impl<'a> ImportAnalyzer<'a> {
         }
     }
 
-    fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
+    pub(crate) fn analyze_type(&self, type_id: TypeId) -> Option<AnalyzedType> {
         let type_def = &self.resolve.types[type_id];
         let qualified = crate::qualified_type_name(type_id, self.resolve);
         let go_type_name = GoIdentifier::public(&qualified);
@@ -287,7 +285,12 @@ impl<'a> ImportCodeGenerator<'a> {
     pub fn import_chains(&self) -> BTreeMap<String, Tokens<Go>> {
         let mut chains = BTreeMap::new();
 
+        // An interface with no functions (one a world imports only for its
+        // types) gets no host module: the guest imports nothing from it.
         for (i, interface) in self.analyzed.interfaces.iter().enumerate() {
+            if !interface.needs_host() {
+                continue;
+            }
             let err = &GoIdentifier::private(format!("err{i}"));
             let mut chain = quote! {
                 _, $err := wazeroRuntime.NewHostModuleBuilder($(quoted(&interface.wazero_module_name))).
@@ -321,7 +324,9 @@ impl FormatInto<Go> for ImportCodeGenerator<'_> {
     fn format_into(self, tokens: &mut Tokens<Go>) {
         // Generate interface type definitions
         for interface in &self.analyzed.interfaces {
-            self.generate_interface_type(interface, tokens);
+            if interface.needs_host() {
+                self.generate_interface_type(interface, tokens);
+            }
 
             for typ in &interface.types {
                 self.generate_type_definition(typ, tokens);
@@ -365,7 +370,7 @@ impl<'a> ImportCodeGenerator<'a> {
         }
     }
 
-    fn generate_type_definition(&self, typ: &AnalyzedType, tokens: &mut Tokens<Go>) {
+    pub(crate) fn generate_type_definition(&self, typ: &AnalyzedType, tokens: &mut Tokens<Go>) {
         match &typ.definition {
             TypeDefinition::Record { fields } => {
                 quote_in! { *tokens =>
@@ -381,7 +386,19 @@ impl<'a> ImportCodeGenerator<'a> {
                 let enum_type = &GoIdentifier::private(&typ.name);
                 let enum_interface = &typ.go_type_name;
                 let enum_function = &GoIdentifier::private(format!("is-{}", &typ.name));
-                let variants = cases.iter().map(GoIdentifier::public);
+                let variants = cases
+                    .iter()
+                    .map(|case| GoIdentifier::public(crate::enum_case_name(&typ.name, case)))
+                    .collect::<Vec<_>>();
+                // String answers the WIT spelling of the case, so a case
+                // prints, and a ResultError carrying one reads, as WIT wrote it.
+                let names = variants.iter().zip(cases).map(|(name, case)| {
+                    quote! {
+                        case $name:
+                            return $(quoted(case))
+                    }
+                });
+                let unknown = format!("{}(%d)", typ.name);
                 quote_in! { *tokens =>
                     $['\n']
                     type $(enum_interface) interface {
@@ -393,8 +410,15 @@ impl<'a> ImportCodeGenerator<'a> {
                     func ($(enum_type)) $enum_function() {}
                     $['\n']
                     const (
-                        $(for name in variants join ($['\r']) => $name $enum_type = iota)
+                        $(for name in &variants join ($['\r']) => $name $enum_type = iota)
                     )
+                    $['\n']
+                    func (e $(enum_type)) String() string {
+                        switch e {
+                        $(for arm in names join ($['\r']) => $arm)
+                        }
+                        return $FMT_SPRINTF($(quoted(unknown)), int(e))
+                    }
                     $['\n']
                 }
             }
@@ -939,5 +963,173 @@ mod tests {
             TypeDefinition::Alias { .. } => {}
             other => panic!("alias analyzed as: {other:?}"),
         }
+    }
+
+    /// Regression test: enum case constants are named for their enum. WIT
+    /// scopes a case to its enum, and unqualified constants made two enums
+    /// sharing a case name, or a case sharing a type's name, redeclare an
+    /// identifier.
+    #[test]
+    fn test_enum_case_constants_are_named_for_their_enum() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                enum via { peer-svid, anonymous }
+                enum credential-kind { peer-svid, bearer }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        for constant in [
+            "ViaPeerSvid via = iota",
+            "ViaAnonymous via = iota",
+            "CredentialKindPeerSvid credentialKind = iota",
+            "CredentialKindBearer credentialKind = iota",
+        ] {
+            assert!(
+                generated.contains(constant),
+                "expected `{constant}`, got:\n{generated}"
+            );
+        }
+        assert!(
+            !generated.contains("\n    PeerSvid "),
+            "no case constant may be unqualified, got:\n{generated}"
+        );
+    }
+
+    /// Regression test: a host import returning `result<T, E>` with a
+    /// non-string E recovers the E from the host's error with `errors.As`,
+    /// and traps on any other error.
+    #[test]
+    fn test_import_result_with_record_err() {
+        let fixture = host_fixture(
+            "record problem { code: u32 }
+            probe: func(n: u32) -> result<u32, problem>;",
+        );
+        let method = InterfaceMethod {
+            name: "probe".to_string(),
+            go_method_name: GoIdentifier::public("Probe"),
+            parameters: vec![],
+            return_type: None,
+            wit_function: fixture.function("host", "probe").clone(),
+        };
+
+        let code_str = host_function(&fixture, &method);
+        assert!(
+            code_str.contains("*ResultError[Problem]"),
+            "expected a *ResultError[Problem] target, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("errors.As("),
+            "expected errors.As to recover the err case, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("variantPayload := typed"),
+            "the err payload must be the recovered E, got:\n{code_str}"
+        );
+    }
+
+    /// An enum's private type answers its WIT case name from String.
+    #[test]
+    fn test_enum_string_answers_the_wit_case() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                enum refusal { no-credential, untyped-peer }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        assert!(
+            generated.contains("func (e refusal) String() string {"),
+            "got:\n{generated}"
+        );
+        for expected in [
+            "case RefusalUntypedPeer:",
+            "return \"untyped-peer\"",
+            "\"refusal(%d)\"",
+        ] {
+            assert!(
+                generated.contains(expected),
+                "expected `{expected}`, got:\n{generated}"
+            );
+        }
+    }
+
+    /// Regression test: a world that imports an interface only for its types
+    /// (here through `use`) needs no host for it. Gravity used to emit an
+    /// empty Go interface, a factory argument of that type and an empty host
+    /// module, so every caller passed a placeholder.
+    #[test]
+    fn test_types_only_interface_needs_no_host() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                record point { x: u32 }
+            }
+            world test-world {
+                use types.{point};
+                export f: func(p: point) -> point;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        assert_eq!(
+            analyzed.interfaces.len(),
+            1,
+            "types is an import of the world"
+        );
+        assert!(!analyzed.interfaces[0].needs_host());
+
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        assert!(
+            generator.import_chains().is_empty(),
+            "no host module for a types-only interface"
+        );
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+        assert!(generated.contains("type Point struct"), "got:\n{generated}");
+        assert!(
+            !generated.contains("ITestWorldTypes"),
+            "no Go interface for a types-only interface, got:\n{generated}"
+        );
+    }
+
+    /// Regression test: a guest built from a versioned package imports
+    /// `<namespace>:<package>/<interface>@<version>`. The host module was
+    /// named without the version, so instantiation failed:
+    /// "module[gravity:interface-exports/log@0.1.0] not instantiated".
+    #[test]
+    fn test_host_module_name_carries_the_package_version() {
+        let fixture = Fixture::parse(
+            "package test:fixture@1.2.3;
+            interface host {
+                ping: func();
+            }
+            world test-world {
+                import host;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let names: Vec<&str> = analyzed
+            .interfaces
+            .iter()
+            .map(|i| i.wazero_module_name.as_str())
+            .collect();
+        assert_eq!(names, ["test:fixture/host@1.2.3"]);
     }
 }
