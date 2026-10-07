@@ -8,4 +8,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wit-bindgen = "=0.62.0"
-wit-component = "=0.259.0"
+wit-component = "=0.260.0"
