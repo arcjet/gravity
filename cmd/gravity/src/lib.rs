@@ -149,15 +149,21 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 // single pointer composes in every position (param, return,
                 // record field, list element); the prior `(T, bool)`
                 // comma-ok shape didn't.
-                TypeDefKind::Option(value) => {
-                    GoType::Pointer(Box::new(resolve_type(value, resolve)))
-                }
+                TypeDefKind::Option(value) => GoType::Pointer(Box::new(resolve_nested_type(
+                    value,
+                    resolve,
+                    "an option payload",
+                ))),
 
                 // Various results, including specialised ones.
                 TypeDefKind::Result(Result_ {
                     ok: Some(ok),
                     err: Some(Type::String),
-                }) => GoType::ValueOrError(Box::new(resolve_type(ok, resolve))),
+                }) => GoType::ValueOrError(Box::new(resolve_nested_type(
+                    ok,
+                    resolve,
+                    "a result's ok type",
+                ))),
                 TypeDefKind::Result(Result_ {
                     ok: Some(_),
                     err: Some(_),
@@ -167,7 +173,7 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                 TypeDefKind::Result(Result_ {
                     ok: Some(ok),
                     err: None,
-                }) => resolve_type(ok, resolve),
+                }) => resolve_nested_type(ok, resolve, "a result's ok type"),
                 TypeDefKind::Result(Result_ {
                     ok: None,
                     err: Some(Type::String),
@@ -181,7 +187,11 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
                     err: None,
                 }) => GoType::Nothing,
 
-                TypeDefKind::List(inner) => GoType::Slice(Box::new(resolve_type(inner, resolve))),
+                TypeDefKind::List(inner) => GoType::Slice(Box::new(resolve_nested_type(
+                    inner,
+                    resolve,
+                    "a list element",
+                ))),
                 TypeDefKind::Future(_) => todo!("TODO(#4): implement future conversion"),
                 TypeDefKind::Stream(_) => todo!("TODO(#4): implement stream conversion"),
                 TypeDefKind::Type(_) => GoType::UserDefined(qualified_type_name(*id, resolve)),
@@ -193,6 +203,25 @@ pub fn resolve_type(typ: &Type, resolve: &Resolve) -> GoType {
             }
         }
     }
+}
+
+/// Resolves a WIT type that sits inside another type, such as a record field
+/// or a list element. `position` names where it sits, for the error message.
+///
+/// gravity represents a `result` with Go's multiple return values (`T,
+/// error`, or `error` alone), which only a function's results can carry, so a
+/// nested `result` is refused here rather than written out as Go that does not
+/// compile.
+pub fn resolve_nested_type(typ: &Type, resolve: &Resolve, position: &str) -> GoType {
+    if let Type::Id(id) = typ
+        && matches!(
+            resolve.types[dealias(resolve, *id)].kind,
+            TypeDefKind::Result(_)
+        )
+    {
+        todo!("TODO(#4): implement a nested result in {position}");
+    }
+    resolve_type(typ, resolve)
 }
 
 /// Like [`resolve_type`], but downgrades a top-level Variant to
