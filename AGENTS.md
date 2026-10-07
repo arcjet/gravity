@@ -4,6 +4,11 @@ Gravity is a host code generator for WebAssembly Components. It takes a Core
 Wasm file (with embedded WIT custom section) and generates Go bindings targeting
 [wazero](https://wazero.io/), a zero-dependency WebAssembly runtime for Go.
 
+## Pull Requests
+
+Keep no more than 3 pull requests open against gravity at once. This applies
+to agents and to human developers.
+
 ## Build & Run
 
 Every routine operation is a `just` recipe; `just --list` shows them all.
