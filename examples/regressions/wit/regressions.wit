@@ -26,10 +26,9 @@ interface pinger {
 // `validator-response`. Without interface-scoped name qualification, the
 // generated Go redeclares the same type twice.
 interface email-checker {
-  // Case names overlap intentionally with the bot-verifier enum below, but
-  // `maybe` is used in place of `unknown` so the case CONSTANTS don't
-  // collide with `checker.status.unknown` (constant qualification is out
-  // of scope for this regression).
+  // Case constants are named for their enum (EmailCheckerValidatorResponseYes),
+  // so they could not collide with `checker.status.unknown` even if this enum
+  // had an `unknown`; the enum-collisions example covers shared case names.
   enum validator-response {
     yes,
     no,
