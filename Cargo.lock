@@ -220,9 +220,9 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "genco"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ab846431e5d637791b3279e7242fe2b21e11c3d8b4cf6a99f645c5f16ba7c0"
+checksum = "8b9baa0af01aa73e334f1d5533ddd013a27d5451ea2bc2551fb84bd710cf9a95"
 dependencies = [
  "genco-macros",
  "relative-path",
@@ -231,9 +231,9 @@ dependencies = [
 
 [[package]]
 name = "genco-macros"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c42a1fe5a699c7f1d36ea6e04ed680a5c787cabff4b610ae3b8954ea3bcefec1"
+checksum = "bfc2f50e990ca43e548926a9b52545a21a2510ddda41d2422fab6e293784e200"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -414,9 +414,12 @@ dependencies = [
 
 [[package]]
 name = "relative-path"
-version = "1.9.3"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba39f3699c378cd8970968dcbff9c43159ea4cfbd88d43c00b22f2ef10a435d2"
+checksum = "f2a073568cd8b9c4825429d3e9fc5f52851b4f97cc1348800689408921e6b8f8"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "ryu"
