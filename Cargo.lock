@@ -165,6 +165,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-enum-discriminants"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-iface-method-returns-string"
 version = "0.0.2"
 dependencies = [
