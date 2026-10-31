@@ -2,7 +2,7 @@ use std::mem;
 
 use genco::prelude::*;
 use wit_bindgen_core::{
-    abi::{Bindgen, Instruction},
+    abi::{Bindgen, Instruction, WasmType},
     wit_parser::{Alignment, ArchitectureSize, Resolve, Result_, SizeAlign, Type},
 };
 
@@ -71,6 +71,21 @@ impl<'a> Func<'a> {
             block_storage: Vec::new(),
             blocks: Vec::new(),
             sizes,
+        }
+    }
+
+    /// The Go type of one flattened core-wasm value in this direction.
+    ///
+    /// On the export side a float is lowered by `CoreF32FromF32` /
+    /// `CoreF64FromF64` to its IEEE bits (`api.EncodeF32` / `api.EncodeF64`,
+    /// a `uint64`), because `api.Function.Call` takes `uint64`s. A temporary
+    /// that holds a flattened value must therefore be a `uint64` there, not
+    /// the `float32` / `float64` that `resolve_wasm_type` answers. The import
+    /// side carries plain Go floats.
+    fn flat_type(&self, typ: &WasmType) -> GoType {
+        match (&self.direction, typ) {
+            (Direction::Export, WasmType::F32 | WasmType::F64) => GoType::Uint64,
+            (_, typ) => resolve_wasm_type(typ),
         }
     }
 
@@ -802,7 +817,7 @@ impl Bindgen for Func<'_> {
                 let mut vars: Tokens<Go> = Tokens::new();
                 for i in 0..result_types.len() {
                     let variant = &format!("variant{tmp}_{i}");
-                    let typ = resolve_wasm_type(&result_types[i]);
+                    let typ = self.flat_type(&result_types[i]);
                     results.push(Operand::SingleValue(variant.into()));
 
                     quote_in! { vars =>
@@ -966,7 +981,7 @@ impl Bindgen for Func<'_> {
 
                 for (i, typ) in result_types.iter().enumerate() {
                     let variant_item = &format!("variant{tmp}_{i}");
-                    let typ = resolve_wasm_type(typ);
+                    let typ = self.flat_type(typ);
                     quote_in! { self.body =>
                         $['\r']
                         var $variant_item $typ
