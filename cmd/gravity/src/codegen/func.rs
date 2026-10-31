@@ -29,7 +29,6 @@ enum Direction<'a> {
         param_name: &'a GoIdentifier,
     },
     /// The function is exported from the world.
-    #[allow(dead_code, reason = "halfway through refactor of func bindings")]
     Export,
 }
 
@@ -46,7 +45,6 @@ pub struct Func<'a> {
 
 impl<'a> Func<'a> {
     /// Create a new exported function.
-    #[allow(dead_code, reason = "halfway through refactor of func bindings")]
     pub fn export(result: GoResult, sizes: &'a SizeAlign) -> Self {
         Self {
             direction: Direction::Export,
@@ -841,7 +839,7 @@ impl Bindgen for Func<'_> {
                 let operand = &operands[0];
                 for field in record.fields.iter() {
                     let struct_field = GoIdentifier::public(&field.name);
-                    let var = &GoIdentifier::local(format!("{}{tmp}", &field.name));
+                    let var = &GoIdentifier::local(format!("{}{tmp}", field.name));
                     quote_in! { self.body =>
                         $['\r']
                         $var := $operand.$struct_field
@@ -1232,7 +1230,7 @@ impl Bindgen for Func<'_> {
                     $['\r']
                     $(&value) := uint64($operand)
                 }
-                results.push(Operand::SingleValue(value.into()));
+                results.push(Operand::SingleValue(value));
             }
             Instruction::I64FromS64 => {
                 // Go's int64 -> uint64 conversion keeps the two's-complement
@@ -1244,7 +1242,7 @@ impl Bindgen for Func<'_> {
                     $['\r']
                     $(&value) := uint64($operand)
                 }
-                results.push(Operand::SingleValue(value.into()));
+                results.push(Operand::SingleValue(value));
             }
             // Go's integer conversion to uint32 sign-extends the signed types
             // and zero-extends the unsigned ones, which is how the canonical
@@ -1371,7 +1369,7 @@ impl Bindgen for Func<'_> {
                     $['\r']
                     $(&value) := uint64($operand)
                 }
-                results.push(Operand::SingleValue(value.into()));
+                results.push(Operand::SingleValue(value));
             }
             Instruction::CharFromI32 => {
                 // The canonical ABI rejects surrogates and values above
