@@ -10,6 +10,7 @@ Arguments:
 Options:
   -w, --world <world>    generate host bindings for the specified world [default: root]
       --inline-wasm      include the WebAssembly file as hex bytes in the output code
+      --gofmt            format the generated Go with gofmt ($GOFMT, else gofmt on PATH)
   -o, --output <output>  the file path where output generated code should be output
   -h, --help             Print help
   -V, --version          Print version

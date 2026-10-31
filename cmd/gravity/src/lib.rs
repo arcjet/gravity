@@ -1,5 +1,6 @@
 pub mod codegen;
 pub mod go;
+pub mod gofmt;
 
 use crate::go::GoType;
 use wit_bindgen_core::{
