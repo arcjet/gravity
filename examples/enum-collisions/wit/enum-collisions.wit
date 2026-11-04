@@ -1,0 +1,22 @@
+package gravity:enum-collisions;
+
+// WIT scopes a case name to its enum. Gravity used to emit every case as an
+// unqualified package constant, so these failed go vet:
+//
+//   - `via` and `credential-kind` share `peer-svid` and `signed-token`
+//     (PeerSvid redeclared);
+//   - `shape`'s case `point` is also a record's name (Point redeclared).
+interface types {
+  enum via { peer-svid, signed-token, anonymous }
+  enum credential-kind { peer-svid, signed-token, bearer }
+
+  record point { x: s32, y: s32 }
+  enum shape { point, line }
+}
+
+world enum-collisions {
+  use types.{via, credential-kind, point, shape};
+
+  export via-for: func(k: credential-kind) -> via;
+  export describe: func(s: shape, p: point) -> string;
+}

@@ -4,6 +4,7 @@ package regressions
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 
@@ -32,10 +33,34 @@ type status int
 func (status) isStatus() {}
 
 const (
-	Active status = iota
-	Inactive status = iota
-	Unknown status = iota
+	StatusActive status = iota
+	StatusInactive status = iota
+	StatusUnknown status = iota
 )
+
+func (e status) String() string {
+	switch e {
+	case StatusActive:
+		return "active"
+	case StatusInactive:
+		return "inactive"
+	case StatusUnknown:
+		return "unknown"
+	}
+	return fmt.Sprintf("status(%d)", int(e))
+}
+
+func ParseStatus(s string) (Status, bool) {
+	switch s {
+	case "active":
+		return StatusActive, true
+	case "inactive":
+		return StatusInactive, true
+	case "unknown":
+		return StatusUnknown, true
+	}
+	return nil, false
+}
 
 type IRegressionsProcessor interface {
 	Double(
@@ -66,10 +91,34 @@ type emailCheckerValidatorResponse int
 func (emailCheckerValidatorResponse) isEmailCheckerValidatorResponse() {}
 
 const (
-	Yes emailCheckerValidatorResponse = iota
-	No emailCheckerValidatorResponse = iota
-	Maybe emailCheckerValidatorResponse = iota
+	EmailCheckerValidatorResponseYes emailCheckerValidatorResponse = iota
+	EmailCheckerValidatorResponseNo emailCheckerValidatorResponse = iota
+	EmailCheckerValidatorResponseMaybe emailCheckerValidatorResponse = iota
 )
+
+func (e emailCheckerValidatorResponse) String() string {
+	switch e {
+	case EmailCheckerValidatorResponseYes:
+		return "yes"
+	case EmailCheckerValidatorResponseNo:
+		return "no"
+	case EmailCheckerValidatorResponseMaybe:
+		return "maybe"
+	}
+	return fmt.Sprintf("email-checker-validator-response(%d)", int(e))
+}
+
+func ParseEmailCheckerValidatorResponse(s string) (EmailCheckerValidatorResponse, bool) {
+	switch s {
+	case "yes":
+		return EmailCheckerValidatorResponseYes, true
+	case "no":
+		return EmailCheckerValidatorResponseNo, true
+	case "maybe":
+		return EmailCheckerValidatorResponseMaybe, true
+	}
+	return nil, false
+}
 
 type IRegressionsBotVerifier interface {
 	Verify(
@@ -87,10 +136,34 @@ type botVerifierValidatorResponse int
 func (botVerifierValidatorResponse) isBotVerifierValidatorResponse() {}
 
 const (
-	Verified botVerifierValidatorResponse = iota
-	Spoofed botVerifierValidatorResponse = iota
-	Unverifiable botVerifierValidatorResponse = iota
+	BotVerifierValidatorResponseVerified botVerifierValidatorResponse = iota
+	BotVerifierValidatorResponseSpoofed botVerifierValidatorResponse = iota
+	BotVerifierValidatorResponseUnverifiable botVerifierValidatorResponse = iota
 )
+
+func (e botVerifierValidatorResponse) String() string {
+	switch e {
+	case BotVerifierValidatorResponseVerified:
+		return "verified"
+	case BotVerifierValidatorResponseSpoofed:
+		return "spoofed"
+	case BotVerifierValidatorResponseUnverifiable:
+		return "unverifiable"
+	}
+	return fmt.Sprintf("bot-verifier-validator-response(%d)", int(e))
+}
+
+func ParseBotVerifierValidatorResponse(s string) (BotVerifierValidatorResponse, bool) {
+	switch s {
+	case "verified":
+		return BotVerifierValidatorResponseVerified, true
+	case "spoofed":
+		return BotVerifierValidatorResponseSpoofed, true
+	case "unverifiable":
+		return BotVerifierValidatorResponseUnverifiable, true
+	}
+	return nil, false
+}
 
 type IRegressionsIpSource interface {
 	Lookup(
@@ -131,11 +204,11 @@ func NewRegressionsFactory(
 		value1 := botVerifier.Verify(ctx, str0)
 		var enum2 uint32
 		switch value1 {
-		case Verified:
+		case BotVerifierValidatorResponseVerified:
 			enum2 = 0
-		case Spoofed:
+		case BotVerifierValidatorResponseSpoofed:
 			enum2 = 1
-		case Unverifiable:
+		case BotVerifierValidatorResponseUnverifiable:
 			enum2 = 2
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -185,11 +258,11 @@ func NewRegressionsFactory(
 		value1 := checker.GetStatus(ctx, str0)
 		var enum2 uint32
 		switch value1 {
-		case Active:
+		case StatusActive:
 			enum2 = 0
-		case Inactive:
+		case StatusInactive:
 			enum2 = 1
-		case Unknown:
+		case StatusUnknown:
 			enum2 = 2
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -217,11 +290,11 @@ func NewRegressionsFactory(
 		value1 := emailChecker.IsAllowed(ctx, str0)
 		var enum2 uint32
 		switch value1 {
-		case Yes:
+		case EmailCheckerValidatorResponseYes:
 			enum2 = 0
-		case No:
+		case EmailCheckerValidatorResponseNo:
 			enum2 = 1
-		case Maybe:
+		case EmailCheckerValidatorResponseMaybe:
 			enum2 = 2
 		default:
 			panic(errors.New("invalid enum type provided"))
