@@ -10,7 +10,7 @@ use crate::{
     go::{
         GoIdentifier, GoResult, GoType, Operand, comment,
         imports::{
-            ERRORS_NEW, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
+            ERRORS_AS, ERRORS_NEW, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64,
             WAZERO_API_ENCODE_F32, WAZERO_API_ENCODE_F64,
         },
     },
@@ -42,6 +42,10 @@ pub struct Func<'a> {
     block_storage: Vec<Tokens<Go>>,
     blocks: Vec<(Tokens<Go>, Vec<Operand>)>,
     sizes: &'a SizeAlign,
+    /// The core wasm export this function calls, when it is not the WIT
+    /// function's own name: a function exported from an interface is
+    /// exported as `<interface>#<function>`.
+    wasm_name: Option<String>,
 }
 
 impl<'a> Func<'a> {
@@ -57,10 +61,18 @@ impl<'a> Func<'a> {
             block_storage: Vec::new(),
             blocks: Vec::new(),
             sizes,
+            wasm_name: None,
         }
     }
 
-    /// Create a new exported function.
+    /// Calls the core wasm export `name` rather than the WIT function's own
+    /// name, and its `cabi_post_<name>` for cleanup.
+    pub fn with_wasm_name(mut self, name: String) -> Self {
+        self.wasm_name = Some(name);
+        self
+    }
+
+    /// Create a new imported function.
     pub fn import(param_name: &'a GoIdentifier, result: GoResult, sizes: &'a SizeAlign) -> Self {
         Self {
             direction: Direction::Import { param_name },
@@ -71,6 +83,7 @@ impl<'a> Func<'a> {
             block_storage: Vec::new(),
             blocks: Vec::new(),
             sizes,
+            wasm_name: None,
         }
     }
 
@@ -236,33 +249,34 @@ impl Bindgen for Func<'_> {
                 let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
                 let default = &format!("default{tmp}");
+                let name = self.wasm_name.as_deref().unwrap_or(name);
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
                 quote_in! { self.body =>
                     $['\r']
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $module_handle.ExportedFunction($(quoted(name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             if $err != nil {
                                 var $default $(typ.as_ref())
                                 return $default, $err
                             }
                         }
                         GoResult::Anon(GoType::Error) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $module_handle.ExportedFunction($(quoted(name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             if $err != nil {
                                 return $err
                             }
                         }
                         GoResult::Anon(_) => {
-                            $raw, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            $raw, $err := $module_handle.ExportedFunction($(quoted(name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
                             if $err != nil {
                                 panic($err)
                             }
                         }
                         GoResult::Empty => {
-                            _, $err := $module_handle.ExportedFunction($(quoted(*name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                            _, $err := $module_handle.ExportedFunction($(quoted(name))).Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
                             $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
                             if $err != nil {
                                 panic($err)
@@ -606,6 +620,69 @@ impl Bindgen for Func<'_> {
 
                 results.push(Operand::SingleValue(err.into()));
             }
+            // A result whose err case is not a string: the err payload is
+            // returned as a `*ResultError[E]`, so `errors.As` recovers it and a
+            // trap (any other error) stays distinguishable.
+            Instruction::ResultLift {
+                result:
+                    Result_ {
+                        ok,
+                        err: Some(err_typ),
+                    },
+                ..
+            } => {
+                let err_go = resolve_type(err_typ, resolve);
+                let (err_block, err_results) = self.pop_block();
+                assert_eq!(err_results.len(), 1);
+                let err_op = &err_results[0];
+
+                let (ok_block, ok_results) = self.pop_block();
+
+                let tmp = self.tmp();
+                let value = &format!("value{tmp}");
+                let err = &format!("err{tmp}");
+                let tag = &operands[0];
+                match ok {
+                    Some(ok_typ) => {
+                        assert_eq!(ok_results.len(), 1);
+                        let ok_op = &ok_results[0];
+                        let ok_go = resolve_type(ok_typ, resolve);
+                        quote_in! { self.body =>
+                            $['\r']
+                            var $value $ok_go
+                            var $err error
+                            switch $tag {
+                            case 0:
+                                $ok_block
+                                $value = $ok_op
+                            case 1:
+                                $err_block
+                                $err = &ResultError[$err_go]{Value: $err_op}
+                            default:
+                                $err = $ERRORS_NEW("invalid variant discriminant for expected")
+                            }
+                        };
+                        results.push(Operand::MultiValue((value.into(), err.into())));
+                    }
+                    None => {
+                        assert_eq!(ok_results.len(), 0);
+                        quote_in! { self.body =>
+                            $['\r']
+                            var $err error
+                            switch $tag {
+                            case 0:
+                                $ok_block
+                            case 1:
+                                $err_block
+                                $err = &ResultError[$err_go]{Value: $err_op}
+                            default:
+                                $err = $ERRORS_NEW("invalid variant discriminant for expected")
+                            }
+                        };
+                        results.push(Operand::SingleValue(err.into()));
+                    }
+                }
+            }
             Instruction::ResultLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Return { amt, .. } => {
                 if *amt != 0 {
@@ -764,6 +841,53 @@ impl Bindgen for Func<'_> {
                         $err
                     } else {
                         $ok
+                    }
+                };
+            }
+            // The host returns a `*ResultError[E]` for the err case of a
+            // result whose E is not a string. Any other error has no WIT
+            // representation, so it traps the guest, as a panic in a host
+            // function does.
+            Instruction::ResultLower {
+                result:
+                    Result_ {
+                        ok,
+                        err: Some(err_typ),
+                    },
+                ..
+            } => {
+                let err_go = resolve_type(err_typ, resolve);
+                let (err_block, _) = self.pop_block();
+                let (ok_block, _) = self.pop_block();
+                let tmp = self.tmp();
+                let typed = &format!("typed{tmp}");
+                let (ok_value, err) = match (ok, &operands[0]) {
+                    (Some(_), Operand::MultiValue((ok_value, err))) => {
+                        (Some(ok_value.clone()), err.clone())
+                    }
+                    (None, Operand::SingleValue(err)) => (None, err.clone()),
+                    (_, operand) => panic!(
+                        "impossible: a result lowers from (value, error) or error, got {operand:?}"
+                    ),
+                };
+                let ok_arm = match &ok_value {
+                    Some(ok_value) => quote! {
+                        variantPayload := $ok_value
+                        $ok_block
+                    },
+                    None => quote!($ok_block),
+                };
+                quote_in! { self.body =>
+                    $['\r']
+                    if $(&err) != nil {
+                        var $typed *ResultError[$err_go]
+                        if !$ERRORS_AS($(&err), &$typed) {
+                            panic($(&err))
+                        }
+                        variantPayload := $typed.Value
+                        $err_block
+                    } else {
+                        $ok_arm
                     }
                 };
             }
@@ -1048,14 +1172,15 @@ impl Bindgen for Func<'_> {
                     }
                 }
             }
-            Instruction::EnumLower { enum_, .. } => {
+            Instruction::EnumLower { enum_, ty, .. } => {
+                let name = crate::qualified_type_name(*ty, resolve);
                 let value = &operands[0];
                 let tmp = self.tmp();
                 let enum_tmp = &format!("enum{tmp}");
 
                 let mut cases: Tokens<Go> = Tokens::new();
                 for (i, case) in enum_.cases.iter().enumerate() {
-                    let case_name = GoIdentifier::public(case.name.clone());
+                    let case_name = GoIdentifier::public(crate::enum_case_name(&name, &case.name));
                     quote_in! { cases =>
                         $['\r']
                         case $case_name:
@@ -1498,7 +1623,7 @@ impl Bindgen for Func<'_> {
 
                 let mut cases: Tokens<Go> = Tokens::new();
                 for (i, case) in enum_.cases.iter().enumerate() {
-                    let case_name = GoIdentifier::public(case.name.clone());
+                    let case_name = GoIdentifier::public(crate::enum_case_name(&name, &case.name));
                     quote_in! { cases =>
                         $['\r']
                         case $i:

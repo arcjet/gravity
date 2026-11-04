@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use genco::{prelude::*, tokens::Tokens};
-use wit_bindgen_core::wit_parser::{Resolve, SizeAlign, World};
+use wit_bindgen_core::wit_parser::{Resolve, Result_, SizeAlign, Type, TypeDefKind, World};
 
 use crate::{
     codegen::{
@@ -56,7 +56,7 @@ impl<'a> Bindings<'a> {
     pub fn generate(&mut self) {
         let (imports, chains) = self.generate_imports();
         self.generate_factory(&imports, chains);
-        self.generate_exports(&imports.instance_name);
+        self.generate_exports(&imports);
     }
 
     /// Generates the imports for the bindings.
@@ -77,24 +77,35 @@ impl<'a> Bindings<'a> {
         analyzed_imports: &AnalyzedImports,
         import_chains: BTreeMap<String, Tokens<Go>>,
     ) {
+        let typed_result_errors = self.resolve.types.iter().any(|(_, def)| {
+            matches!(
+                def.kind,
+                TypeDefKind::Result(Result_ {
+                    err: Some(err),
+                    ..
+                }) if err != Type::String
+            )
+        });
         let config = FactoryConfig {
             analyzed_imports,
             import_chains,
             wasm_var_name: &self.raw_wasm_var,
+            typed_result_errors,
         };
         FactoryGenerator::new(config).format_into(&mut self.out)
     }
 
     /// Generates all exports for the world.
     ///
-    /// Note: for now this only generates functions; types and interfaces are
-    /// still TODO
-    fn generate_exports(&mut self, instance: &GoIdentifier) {
+    /// Functions the world exports become instance methods; an exported
+    /// interface becomes its types and a Go type holding its functions.
+    fn generate_exports(&mut self, imports: &AnalyzedImports) {
         let config = ExportConfig {
-            instance,
+            instance: &imports.instance_name,
             world: self.world,
             resolve: self.resolve,
             sizes: self.sizes,
+            analyzed_imports: imports,
         };
         ExportGenerator::new(config).format_into(&mut self.out)
     }
