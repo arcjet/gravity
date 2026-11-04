@@ -1048,14 +1048,15 @@ impl Bindgen for Func<'_> {
                     }
                 }
             }
-            Instruction::EnumLower { enum_, .. } => {
+            Instruction::EnumLower { enum_, ty, .. } => {
+                let name = crate::qualified_type_name(*ty, resolve);
                 let value = &operands[0];
                 let tmp = self.tmp();
                 let enum_tmp = &format!("enum{tmp}");
 
                 let mut cases: Tokens<Go> = Tokens::new();
                 for (i, case) in enum_.cases.iter().enumerate() {
-                    let case_name = GoIdentifier::public(case.name.clone());
+                    let case_name = GoIdentifier::public(crate::enum_case_name(&name, &case.name));
                     quote_in! { cases =>
                         $['\r']
                         case $case_name:
@@ -1498,7 +1499,7 @@ impl Bindgen for Func<'_> {
 
                 let mut cases: Tokens<Go> = Tokens::new();
                 for (i, case) in enum_.cases.iter().enumerate() {
-                    let case_name = GoIdentifier::public(case.name.clone());
+                    let case_name = GoIdentifier::public(crate::enum_case_name(&name, &case.name));
                     quote_in! { cases =>
                         $['\r']
                         case $i:
