@@ -236,9 +236,9 @@ func Test_EnumInput(t *testing.T) {
 	}
 	defer ins.Close(t.Context())
 
-	ins.EnumInput(t.Context(), One)
-	ins.EnumInput(t.Context(), Two)
-	ins.EnumInput(t.Context(), Three)
+	ins.EnumInput(t.Context(), EnumValuesOne)
+	ins.EnumInput(t.Context(), EnumValuesTwo)
+	ins.EnumInput(t.Context(), EnumValuesThree)
 }
 
 // Test_IndirectParams covers the indirect parameter path of the canonical ABI.

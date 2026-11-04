@@ -4,6 +4,7 @@ package instructions
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 
@@ -21,10 +22,22 @@ type enumValues int
 func (enumValues) isEnumValues() {}
 
 const (
-	One enumValues = iota
-	Two enumValues = iota
-	Three enumValues = iota
+	EnumValuesOne enumValues = iota
+	EnumValuesTwo enumValues = iota
+	EnumValuesThree enumValues = iota
 )
+
+func (e enumValues) String() string {
+	switch e {
+	case EnumValuesOne:
+		return "one"
+	case EnumValuesTwo:
+		return "two"
+	case EnumValuesThree:
+		return "three"
+	}
+	return fmt.Sprintf("enum-values(%d)", int(e))
+}
 
 type WideParams struct {
 	A uint32
@@ -258,11 +271,11 @@ func (i *InstructionsInstance) EnumInput(
 	arg0 := val
 	var enum0 uint32
 	switch arg0 {
-	case One:
+	case EnumValuesOne:
 		enum0 = 0
-	case Two:
+	case EnumValuesTwo:
 		enum0 = 1
-	case Three:
+	case EnumValuesThree:
 		enum0 = 2
 	default:
 		panic(errors.New("invalid enum type provided"))
