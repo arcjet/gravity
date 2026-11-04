@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 import "unicode/utf8"
 
 import _ "embed"
@@ -58,10 +59,43 @@ type IExampleRuntime interface {
 		msg string,
 	)
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type ExampleFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewExampleFactory(
@@ -69,6 +103,7 @@ func NewExampleFactory(
 	runtime IExampleRuntime,
 ) (*ExampleFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("arcjet:example/runtime").
 	NewFunctionBuilder().
@@ -79,7 +114,7 @@ func NewExampleFactory(
 	) {
 		value0 := runtime.Os(ctx, )
 		memory1 := mod.Memory()
-		realloc1 := mod.ExportedFunction("cabi_realloc")
+		realloc1 := gravityExportCache.lookup(mod, "cabi_realloc")
 		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
 		if err1 != nil {
 			panic(err1)
@@ -96,7 +131,7 @@ func NewExampleFactory(
 	) {
 		value0 := runtime.Arch(ctx, )
 		memory1 := mod.Memory()
-		realloc1 := mod.ExportedFunction("cabi_realloc")
+		realloc1 := gravityExportCache.lookup(mod, "cabi_realloc")
 		ptr1, len1, err1 := writeString(ctx, value0, memory1, realloc1)
 		if err1 != nil {
 			panic(err1)
@@ -244,26 +279,34 @@ func NewExampleFactory(
 	return &ExampleFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *ExampleFactory) Instantiate(ctx context.Context) (*ExampleInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &ExampleInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &ExampleInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *ExampleFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type ExampleInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *ExampleInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -298,7 +341,7 @@ func writeString(
 func (i *ExampleInstance) Hello(
 	ctx context.Context,
 ) (string, error) {
-	raw0, err0 := i.module.ExportedFunction("hello").Call(ctx, )
+	raw0, err0 := i.exports.get("hello").Call(ctx, )
 	if err0 != nil {
 		var default0 string
 		return default0, err0
@@ -308,7 +351,7 @@ func (i *ExampleInstance) Hello(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_hello"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_hello"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from
@@ -372,7 +415,7 @@ func (i *ExampleInstance) Hello(
 func (i *ExampleInstance) CallGetU32(
 	ctx context.Context,
 ) uint32 {
-	raw0, err0 := i.module.ExportedFunction("call-get-u32").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-u32").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -386,7 +429,7 @@ func (i *ExampleInstance) CallGetU32(
 func (i *ExampleInstance) CallGetU8(
 	ctx context.Context,
 ) uint8 {
-	raw0, err0 := i.module.ExportedFunction("call-get-u8").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-u8").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -400,7 +443,7 @@ func (i *ExampleInstance) CallGetU8(
 func (i *ExampleInstance) CallGetS8(
 	ctx context.Context,
 ) int8 {
-	raw0, err0 := i.module.ExportedFunction("call-get-s8").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-s8").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -414,7 +457,7 @@ func (i *ExampleInstance) CallGetS8(
 func (i *ExampleInstance) CallGetU16(
 	ctx context.Context,
 ) uint16 {
-	raw0, err0 := i.module.ExportedFunction("call-get-u16").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-u16").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -428,7 +471,7 @@ func (i *ExampleInstance) CallGetU16(
 func (i *ExampleInstance) CallGetS16(
 	ctx context.Context,
 ) int16 {
-	raw0, err0 := i.module.ExportedFunction("call-get-s16").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-s16").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -442,7 +485,7 @@ func (i *ExampleInstance) CallGetS16(
 func (i *ExampleInstance) CallGetS32(
 	ctx context.Context,
 ) int32 {
-	raw0, err0 := i.module.ExportedFunction("call-get-s32").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-s32").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -456,7 +499,7 @@ func (i *ExampleInstance) CallGetS32(
 func (i *ExampleInstance) CallGetU64(
 	ctx context.Context,
 ) uint64 {
-	raw0, err0 := i.module.ExportedFunction("call-get-u64").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-u64").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -470,7 +513,7 @@ func (i *ExampleInstance) CallGetU64(
 func (i *ExampleInstance) CallGetS64(
 	ctx context.Context,
 ) int64 {
-	raw0, err0 := i.module.ExportedFunction("call-get-s64").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-s64").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -484,7 +527,7 @@ func (i *ExampleInstance) CallGetS64(
 func (i *ExampleInstance) CallGetF32(
 	ctx context.Context,
 ) float32 {
-	raw0, err0 := i.module.ExportedFunction("call-get-f32").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-f32").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -498,7 +541,7 @@ func (i *ExampleInstance) CallGetF32(
 func (i *ExampleInstance) CallGetF64(
 	ctx context.Context,
 ) float64 {
-	raw0, err0 := i.module.ExportedFunction("call-get-f64").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-f64").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -512,7 +555,7 @@ func (i *ExampleInstance) CallGetF64(
 func (i *ExampleInstance) CallGetChar(
 	ctx context.Context,
 ) rune {
-	raw0, err0 := i.module.ExportedFunction("call-get-char").Call(ctx, )
+	raw0, err0 := i.exports.get("call-get-char").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)

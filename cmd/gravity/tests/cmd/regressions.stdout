@@ -6,6 +6,7 @@ import "context"
 import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
+import "sync"
 
 import _ "embed"
 
@@ -98,10 +99,43 @@ type IRegressionsIpSource interface {
 		ip string,
 	) *string
 }
+// exportedFunctions memoizes api.Module.ExportedFunction for one module
+// instance. Like the instance, it is not safe for concurrent use.
+type exportedFunctions struct {
+	module api.Module
+	byName map[string]api.Function
+}
+
+func newExportedFunctions(module api.Module) *exportedFunctions {
+	return &exportedFunctions{module: module, byName: map[string]api.Function{}}
+}
+
+func (e *exportedFunctions) get(name string) api.Function {
+	if f, ok := e.byName[name]; ok {
+		return f
+	}
+	f := e.module.ExportedFunction(name)
+	e.byName[name] = f
+	return f
+}
+
+// exportedFunctionCache finds the memo of the module a host function was
+// called from.
+type exportedFunctionCache struct {
+	byModule sync.Map
+}
+
+func (c *exportedFunctionCache) lookup(module api.Module, name string) api.Function {
+	if e, ok := c.byModule.Load(module); ok {
+		return e.(*exportedFunctions).get(name)
+	}
+	return module.ExportedFunction(name)
+}
 
 type RegressionsFactory struct {
 	runtime wazero.Runtime
 	module wazero.CompiledModule
+	exports *exportedFunctionCache
 }
 
 func NewRegressionsFactory(
@@ -114,6 +148,7 @@ func NewRegressionsFactory(
 	ipSource IRegressionsIpSource,
 ) (*RegressionsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
+	gravityExportCache := &exportedFunctionCache{}
 
 	_, err4 := wazeroRuntime.NewHostModuleBuilder("gravity:regressions/bot-verifier").
 	NewFunctionBuilder().
@@ -254,7 +289,7 @@ func NewRegressionsFactory(
 			variantPayload := *value1
 			mod.Memory().WriteByte(arg2+0, uint8(1))
 			memory2 := mod.Memory()
-			realloc2 := mod.ExportedFunction("cabi_realloc")
+			realloc2 := gravityExportCache.lookup(mod, "cabi_realloc")
 			ptr2, len2, err2 := writeString(ctx, variantPayload, memory2, realloc2)
 			if err2 != nil {
 				panic(err2)
@@ -315,26 +350,34 @@ func NewRegressionsFactory(
 	return &RegressionsFactory{
 		runtime: wazeroRuntime,
 		module: module,
+		exports: gravityExportCache,
 	}, nil
 }
 
 func (f *RegressionsFactory) Instantiate(ctx context.Context) (*RegressionsInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig())
+	if err != nil {
 		return nil, err
-	} else {
-		return &RegressionsInstance{module}, nil
 	}
+	exports := newExportedFunctions(module)
+	f.exports.byModule.Store(module, exports)
+	return &RegressionsInstance{module: module, exports: exports, cache: f.exports}, nil
 }
 
 func (f *RegressionsFactory) Close(ctx context.Context) {
 	f.runtime.Close(ctx)
 }
 
+// An instance is one guest module. It is not safe for concurrent use:
+// instantiate one per goroutine.
 type RegressionsInstance struct {
 	module api.Module
+	exports *exportedFunctions
+	cache *exportedFunctionCache
 }
 
 func (i *RegressionsInstance) Close(ctx context.Context) error {
+	i.cache.byModule.Delete(i.module)
 	if err := i.module.Close(ctx); err != nil {
 		return err
 	}
@@ -372,13 +415,13 @@ func (i *RegressionsInstance) CheckEnabled(
 ) bool {
 	arg0 := key
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("check-enabled").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("check-enabled").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -395,13 +438,13 @@ func (i *RegressionsInstance) CheckStatus(
 ) uint32 {
 	arg0 := key
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("check-status").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("check-status").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -418,7 +461,7 @@ func (i *RegressionsInstance) DoubleValue(
 ) uint32 {
 	arg0 := value
 	result0 := uint32(arg0)
-	raw1, err1 := i.module.ExportedFunction("double-value").Call(ctx, uint64(result0))
+	raw1, err1 := i.exports.get("double-value").Call(ctx, uint64(result0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -432,7 +475,7 @@ func (i *RegressionsInstance) DoubleValue(
 func (i *RegressionsInstance) RunPing(
 	ctx context.Context,
 ) bool {
-	raw0, err0 := i.module.ExportedFunction("run-ping").Call(ctx, )
+	raw0, err0 := i.exports.get("run-ping").Call(ctx, )
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
@@ -449,13 +492,13 @@ func (i *RegressionsInstance) CheckEmailAllowed(
 ) uint32 {
 	arg0 := email
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("check-email-allowed").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("check-email-allowed").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -472,13 +515,13 @@ func (i *RegressionsInstance) CheckBotVerified(
 ) uint32 {
 	arg0 := botId
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("check-bot-verified").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("check-bot-verified").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -495,13 +538,13 @@ func (i *RegressionsInstance) RunIpLookup(
 ) string {
 	arg0 := ip
 	memory0 := i.module.Memory()
-	realloc0 := i.module.ExportedFunction("cabi_realloc")
+	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
 		panic(err0)
 	}
-	raw1, err1 := i.module.ExportedFunction("run-ip-lookup").Call(ctx, uint64(ptr0), uint64(len0))
+	raw1, err1 := i.exports.get("run-ip-lookup").Call(ctx, uint64(ptr0), uint64(len0))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
@@ -511,7 +554,7 @@ func (i *RegressionsInstance) RunIpLookup(
 	// deferring this, we ensure that no memory is corrupted before the function
 	// is done accessing it.
 	defer func() {
-		if postFn := i.module.ExportedFunction("cabi_post_run-ip-lookup"); postFn != nil {
+		if postFn := i.exports.get("cabi_post_run-ip-lookup"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
 				// If we get an error during cleanup, something really bad is
 				// going on, so we panic. Also, you can't return the error from

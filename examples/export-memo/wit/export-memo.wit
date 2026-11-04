@@ -1,0 +1,16 @@
+package gravity:export-memo;
+
+// Every string and list the canonical ABI lowers asks the guest for
+// cabi_realloc. Each of these calls lowers dozens of them: the export's
+// list<string> parameter on the export side, and the host's list<string>
+// result on the import side.
+interface host {
+  words: func(n: u32) -> list<string>;
+}
+
+world export-memo {
+  import host;
+
+  export join: func(parts: list<string>, sep: string) -> string;
+  export host-words: func(n: u32) -> u32;
+}
