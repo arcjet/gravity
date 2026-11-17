@@ -1336,6 +1336,37 @@ mod tests {
         }
     }
 
+    /// A types-only interface declares no Go interface, so a WIT type may
+    /// take the name that interface would have had.
+    #[test]
+    fn test_types_only_interface_leaves_its_go_name_free() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                record point { x: u32 }
+            }
+            world test-world {
+                use types.{point};
+                record i-test-world-types { p: point }
+                export f: func(p: i-test-world-types) -> point;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+        assert_eq!(
+            generated.matches("ITestWorldTypes ").count(),
+            1,
+            "ITestWorldTypes must be declared once, as the record, got:\n{generated}"
+        );
+        assert!(
+            generated.contains("type ITestWorldTypes struct"),
+            "got:\n{generated}"
+        );
+    }
+
     /// Regression test: a world that imports an interface only for its types
     /// (here through `use`) needs no host for it. Gravity used to emit an
     /// empty Go interface, a factory argument of that type and an empty host
