@@ -27,7 +27,7 @@ n := NORMAL
 # snapshot tests
 [doc('run the full CI gate')]
 [group('ci')]
-check: lint build test test-go test-cli
+check: lint check-wit build test test-go test-cli
 
 # install the toolchain, components and targets pinned in rust-toolchain.toml
 [group('setup')]
@@ -51,6 +51,16 @@ lint:
     @cargo fmt --all --check
     @echo '{{ h }}lint: justfile{{ n }}'
     @just --fmt --check
+
+# fail when Cargo.lock holds two versions of wit-parser or wit-component, after
+# testing that check against lockfile fixtures. See scripts/check-wit.sh.
+[doc('check that Cargo.lock holds one version of each wit crate')]
+[group('ci')]
+[group('lint')]
+check-wit:
+    @echo '{{ h }}lint: one version of each wit crate{{ n }}'
+    @bash scripts/check-wit-test.sh
+    @bash scripts/check-wit.sh
 
 # lint with clippy. Not part of `check`, because CI does not run clippy.
 [doc('lint with clippy (not part of the CI gate)')]

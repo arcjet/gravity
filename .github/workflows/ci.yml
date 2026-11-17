@@ -61,6 +61,14 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --all --check
 
+      # Each wit-bindgen release requires one wit-component minor, and a build
+      # that mixes two wit-parser versions fails with mismatched Resolve types.
+      # Mirrors `just check-wit`.
+      - name: one version of each wit crate
+        run: |
+          bash scripts/check-wit-test.sh
+          bash scripts/check-wit.sh
+
       - name: cargo build
         run: cargo build --locked --verbose
         env:
