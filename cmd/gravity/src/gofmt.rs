@@ -11,6 +11,7 @@ use std::{
     ffi::OsString,
     io::Write,
     process::{Command, Stdio},
+    thread,
 };
 
 /// The formatter to run: `$GOFMT` when set, else `gofmt` from `PATH`.
@@ -20,8 +21,12 @@ pub fn program() -> OsString {
 
 /// Runs `program` with `source` on stdin and answers its stdout.
 ///
-/// An error names the program and carries its stderr, so a syntax error in
-/// generated code reads as gofmt's own diagnostic.
+/// `source` is written from a separate thread while stdout and stderr are
+/// read, so a formatter that writes before it has read all of its input
+/// cannot block on a full pipe. An error names the program and carries its
+/// stderr, so a syntax error in generated code reads as gofmt's own
+/// diagnostic; a formatter that fails is reported by its exit status even
+/// when it exited before reading all of `source`.
 pub fn format(source: &str, program: &OsString) -> Result<String, String> {
     let name = program.to_string_lossy();
     let mut child = Command::new(program)
@@ -30,15 +35,16 @@ pub fn format(source: &str, program: &OsString) -> Result<String, String> {
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|err| format!("could not run {name}: {err}"))?;
-    child
-        .stdin
-        .take()
-        .expect("stdin is piped")
-        .write_all(source.as_bytes())
-        .map_err(|err| format!("could not write to {name}: {err}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|err| format!("{name} did not finish: {err}"))?;
+    let mut stdin = child.stdin.take().expect("stdin is piped");
+    let (written, output) = thread::scope(|scope| {
+        let writer = scope.spawn(move || stdin.write_all(source.as_bytes()));
+        let output = child.wait_with_output();
+        (
+            writer.join().expect("the stdin writer does not panic"),
+            output,
+        )
+    });
+    let output = output.map_err(|err| format!("{name} did not finish: {err}"))?;
     if !output.status.success() {
         return Err(format!(
             "{name} failed ({}): {}",
@@ -46,6 +52,7 @@ pub fn format(source: &str, program: &OsString) -> Result<String, String> {
             String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
+    written.map_err(|err| format!("could not write to {name}: {err}"))?;
     String::from_utf8(output.stdout).map_err(|err| format!("{name} wrote invalid UTF-8: {err}"))
 }
 
@@ -62,9 +69,26 @@ mod tests {
         assert_eq!(out, "package x\n");
     }
 
+    /// Input larger than a pipe buffer reaches a formatter that writes as it
+    /// reads, without either side blocking on a full pipe.
+    #[test]
+    fn test_format_streams_input_larger_than_a_pipe_buffer() {
+        let source = "x".repeat(1 << 20);
+        let out = format(&source, &OsString::from("cat")).expect("cat should run");
+        assert_eq!(out, source);
+    }
+
     #[test]
     fn test_format_reports_a_failing_formatter() {
         let err = format("package x\n", &OsString::from("false")).unwrap_err();
+        assert!(err.starts_with("false failed"), "got: {err}");
+    }
+
+    /// A formatter that exits without reading all of its input is reported by
+    /// its exit status, not by the write it cut short.
+    #[test]
+    fn test_format_reports_a_formatter_that_exits_before_reading() {
+        let err = format(&"x".repeat(1 << 20), &OsString::from("false")).unwrap_err();
         assert!(err.starts_with("false failed"), "got: {err}");
     }
 
