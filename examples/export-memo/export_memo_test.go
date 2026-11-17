@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// Before the fix, every guest export the bindings reached — the export
-// itself, its cabi_post_*, and cabi_realloc once per string or list lowered —
-// was looked up with api.Module.ExportedFunction, which builds a new call
-// engine each time. These tests bound the bytes a call allocates: measured
-// unmemoized, Join allocated 427 KB per call and HostWords 404 KB.
+// api.Module.ExportedFunction builds a new call engine each time it is
+// called, and a call reaches several guest exports: the export itself, its
+// cabi_post_*, and cabi_realloc once per string or list lowered. The bindings
+// look each one up once per instance. These tests bound the bytes a call
+// allocates, which a lookup per reach would exceed many times over.
 
 type Host struct{}
 
