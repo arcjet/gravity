@@ -6,7 +6,7 @@ use wit_bindgen_core::wit_parser::SizeAlign;
 
 use arcjet_gravity::{
     codegen::{Bindings, WasmData},
-    go_package_name,
+    go_package_name, gofmt,
 };
 
 // `wit_component::decode` uses `root` as an arbitrary name for the primary
@@ -43,6 +43,14 @@ fn main() -> Result<ExitCode, ()> {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("gofmt")
+                .long("gofmt")
+                .help(
+                    "format the generated Go with gofmt from PATH, or with the program at $GOFMT (run with no arguments)",
+                )
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("file")
                 .help("the WebAssembly file to process")
                 .required(true),
@@ -72,6 +80,7 @@ fn main() -> Result<ExitCode, ()> {
         .get_one::<String>("file")
         .expect("should have a file");
     let inline_wasm = matches.get_flag("inline-wasm");
+    let run_gofmt = matches.get_flag("gofmt");
     let output = matches.get_one::<String>("output");
 
     // Load the file specified as the `file` arg to clap
@@ -125,6 +134,16 @@ fn main() -> Result<ExitCode, ()> {
         .out
         .format_file(&mut w.as_formatter(&fmt), &config)
         .unwrap();
+    let mut source = w.into_inner();
+    if run_gofmt {
+        source = match gofmt::format(&source, &gofmt::program()) {
+            Ok(formatted) => formatted,
+            Err(err) => {
+                eprintln!("{err}");
+                return Ok(ExitCode::FAILURE);
+            }
+        };
+    }
 
     match output {
         Some(outpath) => {
@@ -138,7 +157,7 @@ fn main() -> Result<ExitCode, ()> {
                     }
                 }
             }
-            match fs::write(outpath, w.into_inner()) {
+            match fs::write(outpath, &source) {
                 Ok(_) => Ok(ExitCode::SUCCESS),
                 Err(_) => {
                     eprintln!("failed to create file: {outpath}");
@@ -147,7 +166,13 @@ fn main() -> Result<ExitCode, ()> {
             }
         }
         None => {
-            println!("{}", w.into_inner());
+            // Formatted output is printed byte for byte, so it stays
+            // gofmt-clean when redirected to a file.
+            if run_gofmt {
+                print!("{source}");
+            } else {
+                println!("{source}");
+            }
             Ok(ExitCode::SUCCESS)
         }
     }

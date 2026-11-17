@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--gofmt --world basic ../../target/wasm32-unknown-unknown/release/example_basic.wasm"
