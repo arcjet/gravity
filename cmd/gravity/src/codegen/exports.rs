@@ -5,10 +5,7 @@ use wit_bindgen_core::wit_parser::{
 };
 
 use crate::{
-    codegen::{
-        imports::{ImportAnalyzer, ImportCodeGenerator},
-        ir::AnalyzedImports,
-    },
+    codegen::{imports::ImportCodeGenerator, ir::AnalyzedImports},
     go::{GoIdentifier, GoResult, GoType, comment, imports::CONTEXT_CONTEXT},
 };
 
@@ -17,8 +14,18 @@ pub struct ExportConfig<'a> {
     pub world: &'a World,
     pub resolve: &'a Resolve,
     pub sizes: &'a SizeAlign,
-    /// The analyzed imports, whose type generation exported interfaces share.
+    /// The analyzed imports, which also hold the exported interfaces' names
+    /// and types.
     pub analyzed_imports: &'a AnalyzedImports,
+}
+
+/// The name an exported interface's Go identifiers are derived from: the
+/// interface's own name, or the world's key for an inline interface.
+pub fn interface_name(resolve: &Resolve, key: &WorldKey, id: InterfaceId) -> String {
+    match &resolve.interfaces[id].name {
+        Some(name) => name.clone(),
+        None => resolve.name_world_key(key),
+    }
 }
 
 pub struct ExportGenerator<'a> {
@@ -113,16 +120,6 @@ impl<'a> ExportGenerator<'a> {
         )
     }
 
-    /// The name an exported interface's Go identifiers are derived from: the
-    /// interface's own name, or the world's key for an inline interface.
-    fn interface_name(&self, key: &WorldKey, id: InterfaceId) -> String {
-        let resolve = self.config.resolve;
-        match &resolve.interfaces[id].name {
-            Some(name) => name.clone(),
-            None => resolve.name_world_key(key),
-        }
-    }
-
     /// Generate an exported interface: its types, a Go type holding its
     /// functions, and the instance method that answers it.
     ///
@@ -133,25 +130,18 @@ impl<'a> ExportGenerator<'a> {
     fn generate_interface(&self, key: &WorldKey, id: InterfaceId, tokens: &mut Tokens<Go>) {
         let resolve = self.config.resolve;
         let interface = &resolve.interfaces[id];
-        let name = self.interface_name(key, id);
+        let analyzed = self
+            .config
+            .analyzed_imports
+            .exported_interfaces
+            .iter()
+            .find(|analyzed| analyzed.id == id)
+            .expect("every exported interface is analyzed");
+        let name = interface_name(resolve, key, id);
         let accessor = GoIdentifier::public(&name);
-        let exports = GoIdentifier::public(format!("{}-{name}-exports", self.config.world.name));
+        let exports = &analyzed.go_exports_name;
         let accessor_name = String::from(&accessor);
-        let wit_name = resolve.name_world_key(key);
-        for (other_key, item) in &self.config.world.exports {
-            if let WorldItem::Interface { id: other, .. } = item
-                && other_key != key
-                && String::from(GoIdentifier::public(self.interface_name(other_key, *other)))
-                    == accessor_name
-            {
-                panic!(
-                    "exported interfaces `{wit_name}` and `{}` would both be answered by \
-                     {accessor_name}; gravity names an exported interface's Go type and \
-                     accessor for the interface's name alone",
-                    resolve.name_world_key(other_key)
-                );
-            }
-        }
+        let wit_name = &analyzed.wit_name;
         let taken = self
             .config
             .world
@@ -170,17 +160,14 @@ impl<'a> ExportGenerator<'a> {
             );
         }
 
-        let analyzer = ImportAnalyzer::new(resolve, self.config.world);
         let types =
             ImportCodeGenerator::new(resolve, self.config.analyzed_imports, self.config.sizes);
-        for type_id in interface.types.values() {
-            if let Some(typ) = analyzer.analyze_type(*type_id) {
-                types.generate_type_definition(&typ, tokens);
-            }
+        for typ in &analyzed.types {
+            types.generate_type_definition(typ, tokens);
         }
 
         let instance = self.config.instance;
-        let exports_name = String::from(&exports);
+        let exports_name = String::from(exports);
         let instance_name = String::from(instance);
         quote_in! { *tokens =>
             $['\n']
@@ -189,14 +176,14 @@ impl<'a> ExportGenerator<'a> {
                 format!("Get one with {instance_name}.{accessor_name}; like the instance, it is not safe"),
                 "for concurrent use.".to_string(),
             ]))
-            type $(&exports) $instance
+            type $exports $instance
             $['\n']
-            func (i *$instance) $(&accessor)() *$(&exports) {
-                return (*$(&exports))(i)
+            func (i *$instance) $(&accessor)() *$exports {
+                return (*$exports)(i)
             }
         }
         for func in interface.functions.values() {
-            self.generate_function(func, &exports, self.wasm_name(Some(key), func), tokens);
+            self.generate_function(func, exports, self.wasm_name(Some(key), func), tokens);
         }
     }
 }
@@ -588,6 +575,51 @@ mod tests {
                 interface api {
                     f: func() -> u32;
                 }
+            }",
+        );
+        generate_all(&fixture);
+    }
+
+    /// An exported interface's types share the package with every other
+    /// declaration, so its enum `color`'s case `red` and its record
+    /// `color-red` are refused like an imported pair.
+    #[test]
+    #[should_panic(
+        expected = "world `test-world`: enum `color`'s case `red` and record `color-red` would \
+                    both be declared as the Go identifier `ColorRed`"
+    )]
+    fn test_exported_interface_types_are_checked_for_collisions() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface api {
+                enum color { red }
+                record color-red { v: u32 }
+                paint: func(c: color) -> color-red;
+            }
+            world test-world {
+                export api;
+            }",
+        );
+        generate_all(&fixture);
+    }
+
+    /// The Go type holding an exported interface's functions is a
+    /// package-level declaration a WIT type can collide with.
+    #[test]
+    #[should_panic(
+        expected = "world `test-world`: exported interface `test:fixture/api` and record \
+                    `test-world-api-exports` would both be declared as the Go identifier \
+                    `TestWorldApiExports`"
+    )]
+    fn test_exported_interface_go_type_is_checked_for_collisions() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface api {
+                record test-world-api-exports { v: u32 }
+                get: func() -> test-world-api-exports;
+            }
+            world test-world {
+                export api;
             }",
         );
         generate_all(&fixture);

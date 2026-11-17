@@ -160,6 +160,22 @@ mod tests {
         ));
     }
 
+    #[test]
+    #[should_panic(expected = "the WIT record `result-error` is named ResultError in Go")]
+    fn test_result_error_exported_interface_type_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            interface api {
+                record result-error { x: u32 }
+                enum refusal { a, b }
+                get: func() -> result<result-error, refusal>;
+            }
+            world test-world {
+                export api;
+            }",
+        ));
+    }
+
     /// A WIT type may be named `result-error` when no function needs
     /// `ResultError`.
     #[test]

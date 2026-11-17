@@ -13,8 +13,9 @@ use crate::{
     codegen::{
         func::Func,
         ir::{
-            AnalyzedFunction, AnalyzedImports, AnalyzedInterface, AnalyzedType, CaseDispatch,
-            InterfaceMethod, Parameter, TypeDefinition, VariantCase, WitReturn,
+            AnalyzedExportedInterface, AnalyzedFunction, AnalyzedImports, AnalyzedInterface,
+            AnalyzedType, CaseDispatch, InterfaceMethod, Parameter, TypeDefinition, VariantCase,
+            WitReturn,
         },
     },
     go::{
@@ -69,9 +70,53 @@ impl<'a> ImportAnalyzer<'a> {
             factory_name,
             instance_name,
             constructor_name,
+            exported_interfaces: self.analyze_exported_interfaces(),
         };
         self.check_identifiers_are_distinct(&analyzed);
         analyzed
+    }
+
+    /// Analyzes each interface the world exports. Panics if two of them would
+    /// be answered by one accessor, as `api` and `test:other/api@2.0.0`
+    /// would.
+    fn analyze_exported_interfaces(&self) -> Vec<AnalyzedExportedInterface> {
+        let mut analyzed: Vec<(String, AnalyzedExportedInterface)> = Vec::new();
+        for (key, item) in &self.world.exports {
+            let WorldItem::Interface { id, .. } = item else {
+                continue;
+            };
+            let name = crate::codegen::exports::interface_name(self.resolve, key, *id);
+            let accessor = String::from(GoIdentifier::public(&name));
+            let wit_name = self.resolve.name_world_key(key);
+            if let Some((_, first)) = analyzed.iter().find(|(other, _)| *other == accessor) {
+                panic!(
+                    "exported interfaces `{}` and `{wit_name}` would both be answered by \
+                     {accessor}; gravity names an exported interface's Go type and accessor \
+                     for the interface's name alone",
+                    first.wit_name
+                );
+            }
+            let types = self.resolve.interfaces[*id]
+                .types
+                .values()
+                .filter_map(|type_id| self.analyze_type(*type_id))
+                .collect();
+            let go_exports_name =
+                GoIdentifier::public(format!("{}-{name}-exports", self.world.name));
+            analyzed.push((
+                accessor,
+                AnalyzedExportedInterface {
+                    id: *id,
+                    wit_name,
+                    go_exports_name,
+                    types,
+                },
+            ));
+        }
+        analyzed
+            .into_iter()
+            .map(|(_, interface)| interface)
+            .collect()
     }
 
     /// Panics if two of the exported Go identifiers that `analyzed` declares
@@ -607,6 +652,7 @@ mod tests {
             standalone_types: vec![],
             factory_name: GoIdentifier::public("TestFactory"),
             constructor_name: GoIdentifier::public("NewTestFactory"),
+            exported_interfaces: vec![],
         }
     }
 
