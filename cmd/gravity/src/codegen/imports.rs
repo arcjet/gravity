@@ -19,7 +19,7 @@ use crate::{
     },
     go::{
         GoIdentifier, GoResult, GoType,
-        imports::{CONTEXT_CONTEXT, WAZERO_API_MODULE},
+        imports::{CONTEXT_CONTEXT, FMT_SPRINTF, WAZERO_API_MODULE},
     },
     resolve_nested_type, resolve_param_type, resolve_type, resolve_wasm_type,
 };
@@ -81,67 +81,8 @@ impl<'a> ImportAnalyzer<'a> {
     /// `c`.
     fn check_identifiers_are_distinct(&self, analyzed: &AnalyzedImports) {
         let world = &self.world.name;
-        let mut declared: Vec<(GoIdentifier, String)> = vec![
-            (
-                analyzed.factory_name.clone(),
-                format!("world `{world}`'s factory"),
-            ),
-            (
-                analyzed.instance_name.clone(),
-                format!("world `{world}`'s instance"),
-            ),
-            (
-                analyzed.constructor_name.clone(),
-                format!("world `{world}`'s factory constructor"),
-            ),
-        ];
-        for interface in &analyzed.interfaces {
-            declared.push((
-                interface.go_interface_name.clone(),
-                format!("interface `{}`", interface.name),
-            ));
-        }
-        let types = analyzed
-            .interfaces
-            .iter()
-            .flat_map(|interface| &interface.types)
-            .chain(&analyzed.standalone_types);
-        for typ in types {
-            let name = &typ.name;
-            match &typ.definition {
-                TypeDefinition::Record { .. } => {
-                    declared.push((typ.go_type_name.clone(), format!("record `{name}`")));
-                }
-                TypeDefinition::Alias { .. } => {
-                    declared.push((typ.go_type_name.clone(), format!("type `{name}`")));
-                }
-                TypeDefinition::Primitive => {}
-                TypeDefinition::Enum { cases } => {
-                    declared.push((typ.go_type_name.clone(), format!("enum `{name}`")));
-                    for case in cases {
-                        declared.push((
-                            GoIdentifier::public(crate::enum_case_name(name, case)),
-                            format!("enum `{name}`'s case `{case}`"),
-                        ));
-                    }
-                }
-                TypeDefinition::Variant { cases } => {
-                    declared.push((typ.go_type_name.clone(), format!("variant `{name}`")));
-                    for case in cases {
-                        if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
-                            declared.push((
-                                wrapper_name.clone(),
-                                format!("variant `{name}`'s case `{}`", case.name),
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-
         let mut seen: BTreeMap<String, String> = BTreeMap::new();
-        for (identifier, source) in declared {
-            let spelled = String::from(&identifier);
+        for (spelled, source) in analyzed.declared_identifiers(world) {
             if let Some(first) = seen.get(&spelled) {
                 panic!(
                     "world `{world}`: {first} and {source} would both be declared as the \
@@ -467,7 +408,17 @@ impl<'a> ImportCodeGenerator<'a> {
                 let enum_function = &GoIdentifier::private(format!("is-{}", typ.name));
                 let variants = cases
                     .iter()
-                    .map(|case| GoIdentifier::public(crate::enum_case_name(&typ.name, case)));
+                    .map(|case| GoIdentifier::public(crate::enum_case_name(&typ.name, case)))
+                    .collect::<Vec<_>>();
+                // String answers the WIT spelling of the case, so a case
+                // prints, and a ResultError carrying one reads, as WIT wrote it.
+                let names = variants.iter().zip(cases).map(|(name, case)| {
+                    quote! {
+                        case $name:
+                            return $(quoted(case))
+                    }
+                });
+                let unknown = format!("{}(%d)", typ.name);
                 quote_in! { *tokens =>
                     $['\n']
                     type $(enum_interface) interface {
@@ -479,8 +430,15 @@ impl<'a> ImportCodeGenerator<'a> {
                     func ($(enum_type)) $enum_function() {}
                     $['\n']
                     const (
-                        $(for name in variants join ($['\r']) => $name $enum_type = iota)
+                        $(for name in &variants join ($['\r']) => $name $enum_type = iota)
                     )
+                    $['\n']
+                    func (e $(enum_type)) String() string {
+                        switch e {
+                        $(for arm in names join ($['\r']) => $arm)
+                        }
+                        return $FMT_SPRINTF($(quoted(unknown)), int(e))
+                    }
                     $['\n']
                 }
             }
@@ -1117,6 +1075,25 @@ mod tests {
         analyze_types("record holder { e: result<_, string> }");
     }
 
+    /// gravity represents a result with Go's multiple return values, which a
+    /// host function's parameter cannot carry, whatever the err type.
+    #[test]
+    #[should_panic(expected = "implement a result as a function parameter")]
+    fn test_import_result_param_is_refused() {
+        let fixture = host_fixture(
+            "enum refusal { a, b }
+            g: func(r: result<u32, refusal>) -> u32;",
+        );
+        ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a result as a function parameter")]
+    fn test_import_string_err_result_param_is_refused() {
+        let fixture = host_fixture("g: func(r: result<u32, string>) -> u32;");
+        ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+    }
+
     /// A result in a function's own result is still supported.
     #[test]
     fn test_result_as_function_result_still_resolves() {
@@ -1284,5 +1261,71 @@ mod tests {
     )]
     fn test_enum_cases_spelled_alike_are_refused() {
         analyze_types("enum a { b-c } enum a-b { c }");
+    }
+
+    /// Regression test: a host import returning `result<T, E>` with a
+    /// non-string E recovers the E from the host's error with `errors.As`,
+    /// and traps on any other error.
+    #[test]
+    fn test_import_result_with_record_err() {
+        let fixture = host_fixture(
+            "record problem { code: u32 }
+            probe: func(n: u32) -> result<u32, problem>;",
+        );
+        let method = InterfaceMethod {
+            name: "probe".to_string(),
+            go_method_name: GoIdentifier::public("Probe"),
+            parameters: vec![],
+            return_type: None,
+            wit_function: fixture.function("host", "probe").clone(),
+        };
+
+        let code_str = host_function(&fixture, &method);
+        assert!(
+            code_str.contains("*ResultError[Problem]"),
+            "expected a *ResultError[Problem] target, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("errors.As("),
+            "expected errors.As to recover the err case, got:\n{code_str}"
+        );
+        assert!(
+            code_str.contains("variantPayload := typed"),
+            "the err payload must be the recovered E, got:\n{code_str}"
+        );
+    }
+
+    /// An enum's private type answers its WIT case name from String.
+    #[test]
+    fn test_enum_string_answers_the_wit_case() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                enum refusal { no-credential, untyped-peer }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        assert!(
+            generated.contains("func (e refusal) String() string {"),
+            "got:\n{generated}"
+        );
+        for expected in [
+            "case RefusalUntypedPeer:",
+            "return \"untyped-peer\"",
+            "\"refusal(%d)\"",
+        ] {
+            assert!(
+                generated.contains(expected),
+                "expected `{expected}`, got:\n{generated}"
+            );
+        }
     }
 }

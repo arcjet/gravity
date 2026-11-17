@@ -4,6 +4,7 @@ package enum_discriminants
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
@@ -42,6 +43,22 @@ const (
 	LevelWarn level = iota
 	LevelFatal level = iota
 )
+
+func (e level) String() string {
+	switch e {
+	case LevelTrace:
+		return "trace"
+	case LevelDebug:
+		return "debug"
+	case LevelInfo:
+		return "info"
+	case LevelWarn:
+		return "warn"
+	case LevelFatal:
+		return "fatal"
+	}
+	return fmt.Sprintf("level(%d)", int(e))
+}
 
 type Entry struct {
 	At Level
