@@ -113,23 +113,45 @@ impl<'a> ExportGenerator<'a> {
         )
     }
 
+    /// The name an exported interface's Go identifiers are derived from: the
+    /// interface's own name, or the world's key for an inline interface.
+    fn interface_name(&self, key: &WorldKey, id: InterfaceId) -> String {
+        let resolve = self.config.resolve;
+        match &resolve.interfaces[id].name {
+            Some(name) => name.clone(),
+            None => resolve.name_world_key(key),
+        }
+    }
+
     /// Generate an exported interface: its types, a Go type holding its
     /// functions, and the instance method that answers it.
     ///
     /// The Go type is a defined type over the instance's struct, so the
-    /// accessor is a pointer conversion (no allocation) and its methods use
-    /// the instance's module and export memo; the instance's own methods do
-    /// not carry over to it.
+    /// accessor is a pointer conversion (no allocation) and its methods call
+    /// the guest through the instance's module; the instance's own methods
+    /// do not carry over to it.
     fn generate_interface(&self, key: &WorldKey, id: InterfaceId, tokens: &mut Tokens<Go>) {
         let resolve = self.config.resolve;
         let interface = &resolve.interfaces[id];
-        let name = match &interface.name {
-            Some(name) => name.clone(),
-            None => resolve.name_world_key(key),
-        };
+        let name = self.interface_name(key, id);
         let accessor = GoIdentifier::public(&name);
         let exports = GoIdentifier::public(format!("{}-{name}-exports", self.config.world.name));
         let accessor_name = String::from(&accessor);
+        let wit_name = resolve.name_world_key(key);
+        for (other_key, item) in &self.config.world.exports {
+            if let WorldItem::Interface { id: other, .. } = item
+                && other_key != key
+                && String::from(GoIdentifier::public(self.interface_name(other_key, *other)))
+                    == accessor_name
+            {
+                panic!(
+                    "exported interfaces `{wit_name}` and `{}` would both be answered by \
+                     {accessor_name}; gravity names an exported interface's Go type and \
+                     accessor for the interface's name alone",
+                    resolve.name_world_key(other_key)
+                );
+            }
+        }
         let taken = self
             .config
             .world
@@ -158,7 +180,6 @@ impl<'a> ExportGenerator<'a> {
         }
 
         let instance = self.config.instance;
-        let wit_name = resolve.name_world_key(key);
         let exports_name = String::from(&exports);
         let instance_name = String::from(instance);
         quote_in! { *tokens =>
@@ -541,6 +562,32 @@ mod tests {
             world test-world {
                 export status;
                 export status: func() -> u32;
+            }",
+        );
+        generate_all(&fixture);
+    }
+
+    /// Two exported interfaces that share a name, from different packages,
+    /// are refused at generation, naming both.
+    #[test]
+    #[should_panic(
+        expected = "exported interfaces `test:fixture/api` and `test:other/api@2.0.0` would \
+                    both be answered by Api"
+    )]
+    fn test_exported_interfaces_with_one_name_clash() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface api {
+                f: func() -> u32;
+            }
+            world test-world {
+                export api;
+                export test:other/api@2.0.0;
+            }
+            package test:other@2.0.0 {
+                interface api {
+                    f: func() -> u32;
+                }
             }",
         );
         generate_all(&fixture);
