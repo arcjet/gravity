@@ -160,6 +160,12 @@ pub fn enum_case_name(enum_name: &str, case: &str) -> String {
     format!("{enum_name}-{case}")
 }
 
+/// The kebab-case name of the Go function that parses a case name of the
+/// enum named `enum_name` (its `qualified_type_name`).
+pub fn enum_parse_name(enum_name: &str) -> String {
+    format!("parse-{enum_name}")
+}
+
 /// Resolves a Wasm type to a Go type.
 pub fn resolve_wasm_type(typ: &WasmType) -> GoType {
     match typ {

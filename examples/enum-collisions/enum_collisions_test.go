@@ -2,6 +2,8 @@ package enum_collisions
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -48,4 +50,35 @@ func TestCaseNamedLikeAType(t *testing.T) {
 	if got := ins.Describe(t.Context(), ShapeLine, p); got != "line to (3, -4)" {
 		t.Errorf("Describe(ShapeLine) = %q", got)
 	}
+}
+
+// checkParse checks that parse returns each case, and true, for the name
+// its String returns, and (nil, false) for anything that is not exactly a
+// WIT case name.
+func checkParse[E comparable](t *testing.T, parse func(string) (E, bool), cases ...E) {
+	t.Helper()
+	var none E
+	for _, c := range cases {
+		name := any(c).(fmt.Stringer).String()
+		if got, ok := parse(name); !ok || got != c {
+			t.Errorf("parse(%q) = %v, %v; want %v, true", name, got, ok, c)
+		}
+		for _, wrong := range []string{strings.ToUpper(name), " " + name, name + " "} {
+			if got, ok := parse(wrong); ok || got != none {
+				t.Errorf("parse(%q) = %v, %v; want nil, false", wrong, got, ok)
+			}
+		}
+	}
+	for _, unknown := range []string{"", "unknown", "PeerSvid"} {
+		if got, ok := parse(unknown); ok || got != none {
+			t.Errorf("parse(%q) = %v, %v; want nil, false", unknown, got, ok)
+		}
+	}
+}
+
+func TestParseInvertsString(t *testing.T) {
+	checkParse[Via](t, ParseVia, ViaPeerSvid, ViaSignedToken, ViaAnonymous)
+	checkParse[CredentialKind](t, ParseCredentialKind,
+		CredentialKindPeerSvid, CredentialKindSignedToken, CredentialKindBearer)
+	checkParse[Shape](t, ParseShape, ShapePoint, ShapeLine)
 }

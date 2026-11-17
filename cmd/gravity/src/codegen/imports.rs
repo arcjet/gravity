@@ -19,7 +19,7 @@ use crate::{
         },
     },
     go::{
-        GoIdentifier, GoResult, GoType,
+        GoIdentifier, GoResult, GoType, comment,
         imports::{CONTEXT_CONTEXT, FMT_SPRINTF, WAZERO_API_MODULE},
     },
     resolve_nested_type, resolve_param_type, resolve_type, resolve_wasm_type,
@@ -470,7 +470,15 @@ impl<'a> ImportCodeGenerator<'a> {
                 });
                 // Parse is String's inverse; it answers the enum interface so
                 // a caller never names the private type.
-                let parse_function = &GoIdentifier::public(format!("parse-{}", typ.name));
+                let parse_function = &GoIdentifier::public(crate::enum_parse_name(&typ.name));
+                let parse_doc = [
+                    format!(
+                        "{} returns the case whose String is s, its WIT case name, and true.",
+                        String::from(parse_function)
+                    ),
+                    "Any other s returns (nil, false): the match is exact and case-sensitive."
+                        .to_string(),
+                ];
                 let parsed = variants.iter().zip(cases).map(|(name, case)| {
                     quote! {
                         case $(quoted(case)):
@@ -499,6 +507,7 @@ impl<'a> ImportCodeGenerator<'a> {
                         return $FMT_SPRINTF($(quoted(unknown)), int(e))
                     }
                     $['\n']
+                    $(comment(&parse_doc))
                     func $parse_function(s string) ($(enum_interface), bool) {
                         switch s {
                         $(for arm in parsed join ($['\r']) => $arm)
@@ -1487,5 +1496,53 @@ mod tests {
             .map(|i| i.wazero_module_name.as_str())
             .collect();
         assert_eq!(names, ["test:fixture/host@1.2.3"]);
+    }
+
+    /// Parse maps each WIT case name String returns back to its case, and
+    /// anything else to (nil, false).
+    #[test]
+    fn test_enum_parse_inverts_string() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            interface types {
+                enum refusal { no-credential, untyped-peer }
+            }
+            world test-world {
+                import types;
+            }",
+        );
+        let analyzed = ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+        let generator = ImportCodeGenerator::new(&fixture.resolve, &analyzed, &fixture.sizes);
+        let mut tokens = Tokens::new();
+        generator.format_into(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+
+        assert!(
+            generated.contains("func ParseRefusal(s string) (Refusal, bool) {"),
+            "got:\n{generated}"
+        );
+        assert!(
+            generated.contains(
+                "// ParseRefusal returns the case whose String is s, its WIT case name, and true.\n"
+            ),
+            "Parse must carry a doc comment, got:\n{generated}"
+        );
+        for (constant, wit_name) in [
+            ("RefusalNoCredential", "no-credential"),
+            ("RefusalUntypedPeer", "untyped-peer"),
+        ] {
+            let string_arm = format!("case {constant}:\n        return \"{wit_name}\"\n");
+            let parse_arm = format!("case \"{wit_name}\":\n        return {constant}, true\n");
+            for arm in [string_arm, parse_arm] {
+                assert!(
+                    generated.contains(&arm),
+                    "expected `{arm}`, got:\n{generated}"
+                );
+            }
+        }
+        assert!(
+            generated.contains("    }\n    return nil, false\n}"),
+            "got:\n{generated}"
+        );
     }
 }

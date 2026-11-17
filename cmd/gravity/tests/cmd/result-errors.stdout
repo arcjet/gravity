@@ -43,6 +43,8 @@ func (e refusal) String() string {
 	return fmt.Sprintf("refusal(%d)", int(e))
 }
 
+// ParseRefusal returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
 func ParseRefusal(s string) (Refusal, bool) {
 	switch s {
 	case "no-credential":

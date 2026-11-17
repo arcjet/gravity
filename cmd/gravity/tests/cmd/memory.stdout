@@ -48,6 +48,8 @@ func (e color) String() string {
 	return fmt.Sprintf("color(%d)", int(e))
 }
 
+// ParseColor returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
 func ParseColor(s string) (Color, bool) {
 	switch s {
 	case "red":

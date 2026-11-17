@@ -40,6 +40,8 @@ func (e enumValues) String() string {
 	return fmt.Sprintf("enum-values(%d)", int(e))
 }
 
+// ParseEnumValues returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
 func ParseEnumValues(s string) (EnumValues, bool) {
 	switch s {
 	case "one":
