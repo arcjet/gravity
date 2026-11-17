@@ -6,9 +6,8 @@ import (
 	"testing"
 )
 
-// Before the fix every host function parameter was declared uint32, so the
-// lifted u64/s64/f32/f64 arguments did not fit their Go types and the
-// bindings did not compile.
+// Each host function parameter takes its core wasm type's Go width, so the
+// lifted u64/s64/f32/f64 arguments fit their Go types.
 
 type wideArgs struct {
 	a uint64

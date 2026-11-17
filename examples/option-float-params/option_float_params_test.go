@@ -6,13 +6,9 @@ import (
 	"testing"
 )
 
-// Before the fix, the generated Go for an export with an option<f64> or
-// option<f32> parameter did not compile:
-//
-//	cannot use result1 (variable of type uint64) as float64 value in assignment
-//
-// because the flattened payload's temporary was declared float64 while the
-// lowering produced api.EncodeF64's uint64.
+// An export with an option<f64> or option<f32> parameter flattens the
+// payload into a uint64 temporary, the type api.EncodeF64 and api.EncodeF32
+// produce, so the generated Go compiles and the value round-trips.
 
 func newInstance(t *testing.T) *OptionFloatParamsInstance {
 	t.Helper()
