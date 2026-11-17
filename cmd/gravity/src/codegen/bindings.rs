@@ -9,7 +9,7 @@ use crate::{
         exports::ExportConfig,
         factory::FactoryConfig,
         imports::{ImportAnalyzer, ImportCodeGenerator},
-        ir::AnalyzedImports,
+        ir::{AnalyzedImports, TypeDefinition},
         wasm::{Wasm, WasmData},
     },
     go::GoIdentifier,
@@ -63,6 +63,18 @@ impl<'a> Bindings<'a> {
     fn generate_imports(&mut self) -> (AnalyzedImports, BTreeMap<String, Tokens<Go>>) {
         let analyzer = ImportAnalyzer::new(self.resolve, self.world);
         let analyzed = analyzer.analyze();
+        for typ in analyzed.types() {
+            if matches!(typ.definition, TypeDefinition::Enum { .. }) {
+                let parse_function =
+                    String::from(GoIdentifier::public(crate::enum_parse_name(&typ.name)));
+                refuse_collision(
+                    &analyzed,
+                    &self.world.name,
+                    &parse_function,
+                    &format!("to parse a case name of enum `{}`", typ.name),
+                );
+            }
+        }
 
         let generator = ImportCodeGenerator::new(self.resolve, &analyzed, self.sizes);
         let import_chains = generator.import_chains();
@@ -86,15 +98,12 @@ impl<'a> Bindings<'a> {
                 }) if err != Type::String
             )
         });
-        if typed_result_errors
-            && let Some((_, wit_item)) = analyzed_imports
-                .declared_identifiers(&self.world.name)
-                .into_iter()
-                .find(|(go_name, _)| go_name == "ResultError")
-        {
-            panic!(
-                "the WIT {wit_item} is named ResultError in Go, which gravity declares for the \
-                 err case of a result whose err type is not a string; rename the WIT item"
+        if typed_result_errors {
+            refuse_collision(
+                analyzed_imports,
+                &self.world.name,
+                "ResultError",
+                "for the err case of a result whose err type is not a string",
             );
         }
         let config = FactoryConfig {
@@ -119,6 +128,21 @@ impl<'a> Bindings<'a> {
             analyzed_imports: imports,
         };
         ExportGenerator::new(config).format_into(&mut self.out)
+    }
+}
+
+/// Panics when a WIT item's Go identifier is `go_name`, which the bindings
+/// also declare `declared_for`, so the generated Go would redeclare it.
+fn refuse_collision(analyzed: &AnalyzedImports, world: &str, go_name: &str, declared_for: &str) {
+    if let Some((_, wit_item)) = analyzed
+        .declared_identifiers(world)
+        .into_iter()
+        .find(|(name, _)| name == go_name)
+    {
+        panic!(
+            "the WIT {wit_item} is named {go_name} in Go, which gravity declares \
+             {declared_for}; rename the WIT item"
+        );
     }
 }
 
@@ -172,6 +196,55 @@ mod tests {
             }
             world test-world {
                 export api;
+            }",
+        ));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT record `parse-color` is named ParseColor in Go, which gravity \
+                    declares to parse a case name of enum `color`"
+    )]
+    fn test_parse_function_type_name_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                enum color { red }
+                record parse-color { x: u32 }
+                export f: func(c: color) -> parse-color;
+            }",
+        ));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `parse`'s case `color` is named ParseColor in Go, which gravity \
+                    declares to parse a case name of enum `color`"
+    )]
+    fn test_parse_function_enum_case_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                enum color { red }
+                enum parse { color }
+                export f: func(c: color) -> parse;
+            }",
+        ));
+    }
+
+    /// The factory is named for the world, so a world `parse-x` and an enum
+    /// `x-factory` would both declare ParseXFactory.
+    #[test]
+    #[should_panic(
+        expected = "the WIT world `parse-x`'s factory is named ParseXFactory in Go, which gravity \
+                    declares to parse a case name of enum `x-factory`"
+    )]
+    fn test_parse_function_factory_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            world parse-x {
+                enum x-factory { a }
+                export f: func(c: x-factory) -> u32;
             }",
         ));
     }
