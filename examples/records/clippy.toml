@@ -1,0 +1,6 @@
+# wit-bindgen's generate! expands, at this crate's root, the core-wasm export
+# glue for `modify-foo`: one parameter per flattened value of `foo`, which is
+# ten. The canonical ABI passes up to 16 flat values directly, so that is the
+# arity the generated glue may legitimately have; the default of 7 would flag
+# code this crate does not write.
+too-many-arguments-threshold = 16
