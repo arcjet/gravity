@@ -45,7 +45,9 @@ fn main() -> Result<ExitCode, ()> {
         .arg(
             Arg::new("gofmt")
                 .long("gofmt")
-                .help("format the generated Go with gofmt ($GOFMT, else gofmt on PATH)")
+                .help(
+                    "format the generated Go with gofmt from PATH, or with the program at $GOFMT (run with no arguments)",
+                )
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -164,7 +166,13 @@ fn main() -> Result<ExitCode, ()> {
             }
         }
         None => {
-            println!("{source}");
+            // Formatted output is printed byte for byte, so it stays
+            // gofmt-clean when redirected to a file.
+            if run_gofmt {
+                print!("{source}");
+            } else {
+                println!("{source}");
+            }
             Ok(ExitCode::SUCCESS)
         }
     }
