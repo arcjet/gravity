@@ -31,8 +31,9 @@ impl AnalyzedImports {
 
     /// The exported Go identifiers the bindings for world `world` declare at
     /// package level, each paired with a description of the WIT item it
-    /// comes from: the factory, instance and factory constructor, each
-    /// imported interface's Go interface, and every type's identifiers.
+    /// comes from: the factory, instance and factory constructor, the Go
+    /// interface of each imported interface the host implements, and every
+    /// type's identifiers.
     pub fn declared_identifiers(&self, world: &str) -> Vec<(String, String)> {
         let mut identifiers = vec![
             (
@@ -48,7 +49,7 @@ impl AnalyzedImports {
                 format!("world `{world}`'s factory constructor"),
             ),
         ];
-        for interface in &self.interfaces {
+        for interface in self.interfaces.iter().filter(|i| i.needs_host()) {
             identifiers.push((
                 String::from(&interface.go_interface_name),
                 format!("interface `{}`", interface.name),
@@ -97,6 +98,16 @@ pub struct AnalyzedInterface {
     ///
     /// E.g. the `argjet:basic/logger` in `wazeroRuntime.NewHostModuleBuilder("argjet:basic/logger")`
     pub wazero_module_name: String,
+}
+
+impl AnalyzedInterface {
+    /// Whether the host must implement this interface. A world that imports
+    /// an interface only for its types (`use types.{...}`, or an exported
+    /// interface's dependencies) imports no function from it, so it needs
+    /// no Go interface, no factory argument and no host module.
+    pub fn needs_host(&self) -> bool {
+        !self.methods.is_empty()
+    }
 }
 
 /// Method signature for an interface

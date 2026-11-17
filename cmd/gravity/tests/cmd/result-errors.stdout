@@ -14,8 +14,6 @@ import _ "embed"
 //go:embed result_errors.wasm
 var wasmFileResultErrors []byte
 
-type IResultErrorsTypes interface {}
-
 type Refusal interface {
 	isRefusal()
 }
@@ -136,7 +134,6 @@ type ResultErrorsFactory struct {
 // separate goroutines.
 func NewResultErrorsFactory(
 	ctx context.Context,
-	types IResultErrorsTypes,
 	host IResultErrorsHost,
 ) (*ResultErrorsFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
@@ -298,11 +295,6 @@ func NewResultErrorsFactory(
 	Instantiate(ctx)
 	if err1 != nil {
 		return nil, err1
-	}
-	_, err0 := wazeroRuntime.NewHostModuleBuilder("gravity:result-errors/types").
-	Instantiate(ctx)
-	if err0 != nil {
-		return nil, err0
 	}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
