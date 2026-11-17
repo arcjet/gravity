@@ -1,9 +1,8 @@
 package gravity:enum-discriminants;
 
 // Every case of a five-case enum crosses every position an enum can take, in
-// both directions. Stock gravity 0.0.3 (2dc1000) stored an enum into guest
-// memory with a 0/1 switch written for bool, and panicked on any case of 2 or
-// more ("invalid int8 value encountered").
+// both directions, so each discriminant from 0 to 4 must survive every
+// lowering, lifting and store into guest memory.
 interface host {
   enum level { trace, debug, info, warn, fatal }
 

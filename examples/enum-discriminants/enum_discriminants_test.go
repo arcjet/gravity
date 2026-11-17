@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// Every case of the five-case Level crosses every position an enum can take.
-// Stock gravity 0.0.3 (2dc1000) panicked storing any case of 2 or more into
-// guest memory: "invalid int8 value encountered".
+// Every case of the five-case Level crosses every position an enum can take,
+// in both directions, so each discriminant from 0 to 4 must survive every
+// lowering, lifting and store into guest memory.
 
 var levels = []Level{LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelFatal}
 
@@ -22,6 +22,14 @@ func (*Host) Pass(_ context.Context, l Level) Level { return l }
 func (h *Host) Entries(context.Context) []Entry { return h.entries }
 
 func (*Host) Maybe(_ context.Context, l *Level) *Level { return l }
+
+// show formats an optional Level for a failure message.
+func show(l *Level) string {
+	if l == nil {
+		return "nil"
+	}
+	return fmt.Sprint(*l)
+}
 
 func newInstance(t *testing.T, h *Host) *EnumDiscriminantsInstance {
 	t.Helper()
@@ -51,21 +59,21 @@ func TestEveryCaseInEveryPosition(t *testing.T) {
 				t.Errorf("EchoEntry: got %+v", got)
 			}
 			if got := ins.EchoOption(ctx, &l); got == nil || *got != l {
-				t.Errorf("EchoOption: got %v, want %v", got, l)
+				t.Errorf("EchoOption: got %s, want %v", show(got), l)
 			}
 			if got := ins.ViaHost(ctx, l); got != l {
 				t.Errorf("ViaHost: got %v, want %v", got, l)
 			}
 			if got := ins.ViaHostOption(ctx, &l); got == nil || *got != l {
-				t.Errorf("ViaHostOption: got %v, want %v", got, l)
+				t.Errorf("ViaHostOption: got %s, want %v", show(got), l)
 			}
 		})
 	}
 	if got := ins.EchoOption(t.Context(), nil); got != nil {
-		t.Errorf("EchoOption(nil): got %v", got)
+		t.Errorf("EchoOption(nil): got %s", show(got))
 	}
 	if got := ins.ViaHostOption(t.Context(), nil); got != nil {
-		t.Errorf("ViaHostOption(nil): got %v", got)
+		t.Errorf("ViaHostOption(nil): got %s", show(got))
 	}
 }
 
