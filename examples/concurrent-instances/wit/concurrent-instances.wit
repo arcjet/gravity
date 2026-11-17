@@ -1,8 +1,17 @@
 package gravity:concurrent-instances;
 
+// Returning a string lowers it with the calling instance's cabi_realloc, so
+// each call looks the instance up in its factory's registry.
+interface host {
+  name: func(n: u32) -> string;
+}
+
 // One factory, an instance per goroutine. wazero refuses a second module of
 // the same name in one runtime ("has already been instantiated"), so
 // Factory.Instantiate makes every instance anonymous.
 world concurrent-instances {
+  import host;
+
   export join: func(parts: list<string>, sep: string) -> string;
+  export greet: func(n: u32) -> string;
 }

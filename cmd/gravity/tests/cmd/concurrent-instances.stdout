@@ -12,6 +12,13 @@ import _ "embed"
 
 //go:embed concurrent_instances.wasm
 var wasmFileConcurrentInstances []byte
+
+type IConcurrentInstancesHost interface {
+	Name(
+		ctx context.Context,
+		n uint32,
+	) string
+}
 // exportedFunctions memoizes api.Module.ExportedFunction for one module
 // instance. Like the instance, it is not safe for concurrent use.
 type exportedFunctions struct {
@@ -51,11 +58,41 @@ type ConcurrentInstancesFactory struct {
 	exports *exportedFunctionCache
 }
 
+// NewConcurrentInstancesFactory returns a factory for instances of the guest.
+// Every instance the factory creates shares the host-interface implementations
+// passed here, so they must be safe for concurrent use when instances run on
+// separate goroutines.
 func NewConcurrentInstancesFactory(
 	ctx context.Context,
+	host IConcurrentInstancesHost,
 ) (*ConcurrentInstancesFactory, error) {
 	wazeroRuntime := wazero.NewRuntime(ctx)
 	gravityExportCache := &exportedFunctionCache{}
+
+	_, err0 := wazeroRuntime.NewHostModuleBuilder("gravity:concurrent-instances/host").
+	NewFunctionBuilder().
+	WithFunc(func(
+		ctx context.Context,
+		mod api.Module,
+		arg0 uint32,
+		arg1 uint32,
+	) {
+		result0 := uint32(arg0)
+		value1 := host.Name(ctx, result0)
+		memory2 := mod.Memory()
+		realloc2 := gravityExportCache.lookup(mod, "cabi_realloc")
+		ptr2, len2, err2 := writeString(ctx, value1, memory2, realloc2)
+		if err2 != nil {
+			panic(err2)
+		}
+		mod.Memory().WriteUint32Le(arg1+4, uint32(len2))
+		mod.Memory().WriteUint32Le(arg1+0, uint32(ptr2))
+	}).
+	Export("name").
+	Instantiate(ctx)
+	if err0 != nil {
+		return nil, err0
+	}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
 	// onto it with the Runtime
@@ -203,5 +240,51 @@ func (i *ConcurrentInstancesInstance) Join(
 	}
 	str6 := string(buf6)
 	return str6
+}
+
+func (i *ConcurrentInstancesInstance) Greet(
+	ctx context.Context,
+	n uint32,
+) string {
+	arg0 := n
+	result0 := uint32(arg0)
+	raw1, err1 := i.exports.get("greet").Call(ctx, uint64(result0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if err1 != nil {
+		panic(err1)
+	}
+
+	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
+	// deferring this, we ensure that no memory is corrupted before the function
+	// is done accessing it.
+	defer func() {
+		if postFn := i.exports.get("cabi_post_greet"); postFn != nil {
+			if _, err := postFn.Call(ctx, raw1...); err != nil {
+				// If we get an error during cleanup, something really bad is
+				// going on, so we panic. Also, you can't return the error from
+				// the `defer`
+				panic(errors.New("failed to cleanup"))
+			}
+		}
+	}()
+
+	results1 := raw1[0]
+	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok2 {
+		panic(errors.New("failed to read pointer from memory"))
+	}
+	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok3 {
+		panic(errors.New("failed to read length from memory"))
+	}
+	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !ok4 {
+		panic(errors.New("failed to read bytes from memory"))
+	}
+	str4 := string(buf4)
+	return str4
 }
 
