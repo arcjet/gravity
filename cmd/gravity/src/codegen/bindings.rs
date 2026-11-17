@@ -249,6 +249,27 @@ mod tests {
         ));
     }
 
+    /// An exported interface's enums get a Parse function too, so its types
+    /// are checked against those names like the world's own.
+    #[test]
+    #[should_panic(
+        expected = "the WIT record `parse-color` is named ParseColor in Go, which gravity \
+                    declares to parse a case name of enum `color`"
+    )]
+    fn test_parse_function_exported_interface_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            interface api {
+                enum color { red }
+                record parse-color { x: u32 }
+                paint: func(c: color) -> parse-color;
+            }
+            world test-world {
+                export api;
+            }",
+        ));
+    }
+
     /// A WIT type may be named `result-error` when no function needs
     /// `ResultError`.
     #[test]
