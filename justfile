@@ -27,7 +27,7 @@ n := NORMAL
 # snapshot tests
 [doc('run the full CI gate')]
 [group('ci')]
-check: lint build test test-go test-cli
+check: lint check-wit build test test-go test-cli
 
 # install the toolchain, components and targets pinned in rust-toolchain.toml
 [group('setup')]
@@ -51,6 +51,26 @@ lint:
     @cargo fmt --all --check
     @echo '{{ h }}lint: justfile{{ n }}'
     @just --fmt --check
+
+# fail when Cargo.lock holds two versions of wit-parser or wit-component. Each
+# wit-bindgen release requires one wit-component minor, and a build that mixes
+# two wit-parser versions fails with mismatched Resolve types.
+[doc('check that Cargo.lock holds one version of each wit crate')]
+[group('ci')]
+[group('lint')]
+[script('bash')]
+check-wit:
+    set -euo pipefail
+    echo '{{ h }}lint: one version of each wit crate{{ n }}'
+    status=0
+    for crate in wit-parser wit-component; do
+      versions=$(awk -v name="\"$crate\"" '$1 == "name" && $3 == name { found = 1; next } found && $1 == "version" { print $3; found = 0 }' Cargo.lock | tr -d '"' | sort -u | paste -sd ' ' -)
+      if [[ "$versions" == *" "* ]]; then
+        echo "{{ style("error") }}error:{{ n }} Cargo.lock holds $crate $versions. wit-bindgen, wit-bindgen-core and wit-component move as one set (see AGENTS.md): pin wit-component to the minor this wit-bindgen release requires." >&2
+        status=1
+      fi
+    done
+    exit $status
 
 # lint with clippy. Not part of `check`, because CI does not run clippy.
 [doc('lint with clippy (not part of the CI gate)')]

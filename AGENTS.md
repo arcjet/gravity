@@ -43,8 +43,9 @@ just run --world <world-name> --output <output.go> <input.wasm>
 ## Testing
 
 `just check` runs the same steps as `.github/workflows/ci.yml`, in the same
-order: format check, build, unit tests, the Go example tests and the CLI
-snapshot tests. Each step is also its own recipe, described below.
+order: format check, a check that `Cargo.lock` holds one version of each wit
+crate, build, unit tests, the Go example tests and the CLI snapshot tests.
+Each step is also its own recipe, described below.
 
 ### Unit Tests
 
@@ -207,7 +208,10 @@ load manifest"; `just clean-examples` removes them.
 `wit-bindgen` release requires exactly one `wit-parser`/`wit-component` minor
 (read `wit-bindgen-rust`'s dependencies on crates.io), and two `wit-parser`
 versions in one build fail to compile with mismatched `Resolve`/`World` types.
-Bump every example's pins with them.
+Bump every example's pins with them. Dependabot's `wit` group picks each
+crate's latest version independently, so it can propose a `wit-component`
+one minor ahead of what the new `wit-bindgen` requires; `just check-wit`, and
+the matching CI step, fail on such an update before the build does.
 
 ## Style & Conventions
 
