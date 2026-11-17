@@ -7,9 +7,34 @@ import (
 	"testing"
 )
 
-// One factory serves an instance per goroutine. Before the fix the second
-// live instance failed: "module[example_concurrent_instances.wasm] has
-// already been instantiated".
+// One factory holds two live instances at once, and each answers calls. wazero
+// refuses a second module of the same name in one runtime, so this fails with
+// "has already been instantiated" unless every instance is anonymous.
+func TestTwoLiveInstancesFromOneFactory(t *testing.T) {
+	fac, err := NewConcurrentInstancesFactory(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fac.Close(context.Background())
+	first, err := fac.Instantiate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close(context.Background())
+	second, err := fac.Instantiate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Close(context.Background())
+	if s := first.Join(t.Context(), []string{"a", "b"}, "-"); s != "a-b" {
+		t.Errorf("first.Join = %q, want %q", s, "a-b")
+	}
+	if s := second.Join(t.Context(), []string{"c", "d"}, "+"); s != "c+d" {
+		t.Errorf("second.Join = %q, want %q", s, "c+d")
+	}
+}
+
+// One factory serves an instance per goroutine.
 func TestInstancesOnSeparateGoroutines(t *testing.T) {
 	fac, err := NewConcurrentInstancesFactory(t.Context())
 	if err != nil {
