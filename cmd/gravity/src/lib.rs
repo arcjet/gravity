@@ -124,9 +124,11 @@ const GO_KEYWORDS: [&str; 25] = [
 ///
 /// Without `--package` it is the world's name in snake case. An explicit
 /// name decouples the package from the world, so a consumer can import
-/// `identity` for a world called `identity-core`. It must be a name Go will
-/// compile: an ASCII letter or underscore, then letters, digits and
-/// underscores, not `_` alone and not a keyword.
+/// `identity` for a world called `identity-core`. Gravity accepts an explicit
+/// name only when it is an ASCII Go identifier (an ASCII letter or underscore,
+/// then ASCII letters, digits and underscores) that is not `_` and not a
+/// keyword. Go also accepts Unicode letters in a package name; gravity does
+/// not.
 pub fn go_package_name(world: &str, package: Option<&str>) -> Result<String, String> {
     let Some(name) = package else {
         return Ok(world.replace('-', "_"));
@@ -137,7 +139,9 @@ pub fn go_package_name(world: &str, package: Option<&str>) -> Result<String, Str
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
     let rest = chars.all(|c| c.is_ascii_alphanumeric() || c == '_');
     if !starts || !rest || name == "_" || GO_KEYWORDS.contains(&name) {
-        return Err(format!("{name:?} is not a Go package name"));
+        return Err(format!(
+            "{name:?} cannot be the package name: --package takes an ASCII Go identifier that is not a keyword or \"_\""
+        ));
     }
     Ok(name.to_owned())
 }
@@ -319,9 +323,10 @@ mod tests {
         assert_eq!(go_package_name("w", Some("_x9")).unwrap(), "_x9");
     }
 
-    /// A name that is not a Go package name is refused, naming the offender.
+    /// A name that is not an ASCII Go identifier, or is `_` or a keyword, is
+    /// refused, naming the offender.
     #[test]
-    fn test_package_flag_refuses_what_go_would_not_compile() {
+    fn test_package_flag_refuses_names_outside_gravitys_rule() {
         for bad in [
             "",
             "9lives",

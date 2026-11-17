@@ -1,1 +1,1 @@
-"has-dash" is not a Go package name
+"has-dash" cannot be the package name: --package takes an ASCII Go identifier that is not a keyword or "_"
