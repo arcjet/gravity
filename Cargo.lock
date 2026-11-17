@@ -181,6 +181,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-enum-discriminants"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-export-memo"
 version = "0.0.2"
 dependencies = [

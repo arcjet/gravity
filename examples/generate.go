@@ -12,6 +12,7 @@ package examples
 //go:generate cargo build -p example-concurrent-instances --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-export-memo --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-enum-collisions --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-enum-discriminants --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -25,3 +26,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world concurrent-instances --output ./concurrent-instances/concurrent_instances.go ../target/wasm32-unknown-unknown/release/example_concurrent_instances.wasm
 //go:generate cargo run --bin gravity -- --world export-memo --output ./export-memo/export_memo.go ../target/wasm32-unknown-unknown/release/example_export_memo.wasm
 //go:generate cargo run --bin gravity -- --world enum-collisions --output ./enum-collisions/enum_collisions.go ../target/wasm32-unknown-unknown/release/example_enum_collisions.wasm
+//go:generate cargo run --bin gravity -- --world enum-discriminants --output ./enum-discriminants/enum_discriminants.go ../target/wasm32-unknown-unknown/release/example_enum_discriminants.wasm
