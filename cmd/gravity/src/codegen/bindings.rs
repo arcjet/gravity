@@ -86,6 +86,17 @@ impl<'a> Bindings<'a> {
                 }) if err != Type::String
             )
         });
+        if typed_result_errors
+            && let Some((_, wit_item)) = analyzed_imports
+                .type_identifiers()
+                .into_iter()
+                .find(|(go_name, _)| go_name == "ResultError")
+        {
+            panic!(
+                "the WIT {wit_item} is named ResultError in Go, which gravity declares for the \
+                 err case of a result whose err type is not a string; rename the WIT item"
+            );
+        }
         let config = FactoryConfig {
             analyzed_imports,
             import_chains,
@@ -107,5 +118,65 @@ impl<'a> Bindings<'a> {
             sizes: self.sizes,
         };
         ExportGenerator::new(config).format_into(&mut self.out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::codegen::test_wit::Fixture;
+
+    use super::Bindings;
+
+    /// Generates the bindings for `fixture`'s world.
+    fn generate(fixture: &Fixture) -> String {
+        let mut bindings = Bindings::new(&fixture.resolve, fixture.world(), &fixture.sizes);
+        bindings.generate();
+        bindings.out.to_string().unwrap()
+    }
+
+    #[test]
+    #[should_panic(expected = "the WIT type `result-error` is named ResultError in Go")]
+    fn test_result_error_type_name_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                record result-error { x: u32 }
+                enum refusal { a, b }
+                export f: func(r: result-error) -> result<u32, refusal>;
+            }",
+        ));
+    }
+
+    #[test]
+    #[should_panic(expected = "the WIT case `error` of enum `result` is named ResultError in Go")]
+    fn test_result_error_enum_case_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                enum %result { ok, error }
+                export f: func(r: %result) -> result<u32, %result>;
+            }",
+        ));
+    }
+
+    /// A WIT type may be named `result-error` when no function needs
+    /// `ResultError`.
+    #[test]
+    fn test_result_error_type_name_without_typed_result() {
+        let generated = generate(&Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                record result-error { x: u32 }
+                export f: func(r: result-error) -> result<u32, string>;
+            }",
+        ));
+        assert!(
+            generated.contains("type ResultError struct"),
+            "got:\n{generated}"
+        );
+        assert!(
+            !generated.contains("type ResultError[E any] struct"),
+            "got:\n{generated}"
+        );
     }
 }

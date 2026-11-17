@@ -20,6 +20,51 @@ pub struct AnalyzedImports {
     pub constructor_name: GoIdentifier,
 }
 
+impl AnalyzedImports {
+    /// The package-level Go identifiers the bindings declare for the
+    /// imported WIT types, each paired with a description of the WIT item it
+    /// comes from: every type's name, every enum case constant and every
+    /// variant case wrapper.
+    pub fn type_identifiers(&self) -> Vec<(String, String)> {
+        let types = self
+            .interfaces
+            .iter()
+            .flat_map(|interface| &interface.types)
+            .chain(&self.standalone_types);
+        let mut identifiers = Vec::new();
+        for typ in types {
+            identifiers.push((
+                String::from(&typ.go_type_name),
+                format!("type `{}`", typ.name),
+            ));
+            match &typ.definition {
+                TypeDefinition::Enum { cases } => {
+                    for case in cases {
+                        identifiers.push((
+                            String::from(GoIdentifier::public(crate::enum_case_name(
+                                &typ.name, case,
+                            ))),
+                            format!("case `{case}` of enum `{}`", typ.name),
+                        ));
+                    }
+                }
+                TypeDefinition::Variant { cases } => {
+                    for case in cases {
+                        if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
+                            identifiers.push((
+                                String::from(wrapper_name),
+                                format!("case `{}` of variant `{}`", case.name, typ.name),
+                            ));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        identifiers
+    }
+}
+
 /// An analyzed WIT interface with all its metadata.
 ///
 /// A WIT interface looks like this:
