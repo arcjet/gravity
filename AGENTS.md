@@ -130,6 +130,9 @@ examples/
   regressions/           # Regression tests for import codegen edge cases
 
 justfile                 # Recipes for building, testing and the CI gate
+scripts/
+  check-wit.sh           # Fails when Cargo.lock holds two versions of a wit crate
+  check-wit-test.sh      # Runs check-wit.sh against lockfile fixtures
 ```
 
 **Note on generated files**: `examples/.gitignore` ignores all `*/*.go` files

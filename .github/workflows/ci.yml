@@ -66,15 +66,8 @@ jobs:
       # Mirrors `just check-wit`.
       - name: one version of each wit crate
         run: |
-          status=0
-          for crate in wit-parser wit-component; do
-            versions=$(awk -v name="\"$crate\"" '$1 == "name" && $3 == name { found = 1; next } found && $1 == "version" { print $3; found = 0 }' Cargo.lock | tr -d '"' | sort -u | paste -sd ' ' -)
-            if [[ "$versions" == *" "* ]]; then
-              echo "::error file=Cargo.lock::Cargo.lock holds $crate $versions. wit-bindgen, wit-bindgen-core and wit-component move as one set (see AGENTS.md): pin wit-component to the minor this wit-bindgen release requires."
-              status=1
-            fi
-          done
-          exit $status
+          bash scripts/check-wit-test.sh
+          bash scripts/check-wit.sh
 
       - name: cargo build
         run: cargo build --locked --verbose
