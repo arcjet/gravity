@@ -11,7 +11,7 @@ import (
 // Stock gravity 0.0.3 (2dc1000) panicked storing any case of 2 or more into
 // guest memory: "invalid int8 value encountered".
 
-var levels = []Level{Trace, Debug, Info, Warn, Fatal}
+var levels = []Level{LevelTrace, LevelDebug, LevelInfo, LevelWarn, LevelFatal}
 
 // Host answers the guest with exactly what it was given, so a lost or
 // reordered discriminant shows on the way back.
@@ -73,7 +73,7 @@ func TestEveryCaseInLists(t *testing.T) {
 	h := &Host{}
 	ins := newInstance(t, h)
 	// Reversed, so an index mistaken for a discriminant shows.
-	want := []Level{Fatal, Warn, Info, Debug, Trace, Fatal}
+	want := []Level{LevelFatal, LevelWarn, LevelInfo, LevelDebug, LevelTrace, LevelFatal}
 	if got := ins.EchoList(t.Context(), want); !reflect.DeepEqual(got, want) {
 		t.Errorf("EchoList: got %v, want %v", got, want)
 	}

@@ -36,11 +36,11 @@ type level int
 func (level) isLevel() {}
 
 const (
-	Trace level = iota
-	Debug level = iota
-	Info level = iota
-	Warn level = iota
-	Fatal level = iota
+	LevelTrace level = iota
+	LevelDebug level = iota
+	LevelInfo level = iota
+	LevelWarn level = iota
+	LevelFatal level = iota
 )
 
 type Entry struct {
@@ -107,15 +107,15 @@ func NewEnumDiscriminantsFactory(
 		var enum0 Level
 		switch arg0 {
 		case 0:
-			enum0 = Trace
+			enum0 = LevelTrace
 		case 1:
-			enum0 = Debug
+			enum0 = LevelDebug
 		case 2:
-			enum0 = Info
+			enum0 = LevelInfo
 		case 3:
-			enum0 = Warn
+			enum0 = LevelWarn
 		case 4:
-			enum0 = Fatal
+			enum0 = LevelFatal
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid level discriminant"))
@@ -123,15 +123,15 @@ func NewEnumDiscriminantsFactory(
 		value1 := host.Pass(ctx, enum0)
 		var enum2 uint32
 		switch value1 {
-		case Trace:
+		case LevelTrace:
 			enum2 = 0
-		case Debug:
+		case LevelDebug:
 			enum2 = 1
-		case Info:
+		case LevelInfo:
 			enum2 = 2
-		case Warn:
+		case LevelWarn:
 			enum2 = 3
-		case Fatal:
+		case LevelFatal:
 			enum2 = 4
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -161,15 +161,15 @@ func NewEnumDiscriminantsFactory(
 			msg1 := e.Msg
 			var enum2 uint32
 			switch at1 {
-			case Trace:
+			case LevelTrace:
 				enum2 = 0
-			case Debug:
+			case LevelDebug:
 				enum2 = 1
-			case Info:
+			case LevelInfo:
 				enum2 = 2
-			case Warn:
+			case LevelWarn:
 				enum2 = 3
-			case Fatal:
+			case LevelFatal:
 				enum2 = 4
 			default:
 				panic(errors.New("invalid enum type provided"))
@@ -201,15 +201,15 @@ func NewEnumDiscriminantsFactory(
 			var enum0 Level
 			switch arg1 {
 			case 0:
-				enum0 = Trace
+				enum0 = LevelTrace
 			case 1:
-				enum0 = Debug
+				enum0 = LevelDebug
 			case 2:
-				enum0 = Info
+				enum0 = LevelInfo
 			case 3:
-				enum0 = Warn
+				enum0 = LevelWarn
 			case 4:
-				enum0 = Fatal
+				enum0 = LevelFatal
 			default:
 				// The return type doesn't contain an error so we panic if one is encountered
 				panic(errors.New("invalid level discriminant"))
@@ -225,15 +225,15 @@ func NewEnumDiscriminantsFactory(
 			mod.Memory().WriteByte(arg2+0, uint8(1))
 			var enum3 uint32
 			switch variantPayload {
-			case Trace:
+			case LevelTrace:
 				enum3 = 0
-			case Debug:
+			case LevelDebug:
 				enum3 = 1
-			case Info:
+			case LevelInfo:
 				enum3 = 2
-			case Warn:
+			case LevelWarn:
 				enum3 = 3
-			case Fatal:
+			case LevelFatal:
 				enum3 = 4
 			default:
 				panic(errors.New("invalid enum type provided"))
@@ -327,15 +327,15 @@ func (i *EnumDiscriminantsInstance) Echo(
 	arg0 := l
 	var enum0 uint32
 	switch arg0 {
-	case Trace:
+	case LevelTrace:
 		enum0 = 0
-	case Debug:
+	case LevelDebug:
 		enum0 = 1
-	case Info:
+	case LevelInfo:
 		enum0 = 2
-	case Warn:
+	case LevelWarn:
 		enum0 = 3
-	case Fatal:
+	case LevelFatal:
 		enum0 = 4
 	default:
 		panic(errors.New("invalid enum type provided"))
@@ -364,15 +364,15 @@ func (i *EnumDiscriminantsInstance) Echo(
 	var enum2 Level
 	switch results1 {
 	case 0:
-		enum2 = Trace
+		enum2 = LevelTrace
 	case 1:
-		enum2 = Debug
+		enum2 = LevelDebug
 	case 2:
-		enum2 = Info
+		enum2 = LevelInfo
 	case 3:
-		enum2 = Warn
+		enum2 = LevelWarn
 	case 4:
-		enum2 = Fatal
+		enum2 = LevelFatal
 	default:
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(errors.New("invalid level discriminant"))
@@ -398,15 +398,15 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		base := uint32(ptr1 + uint64(idx) * uint64(1))
 		var enum0 uint32
 		switch e {
-		case Trace:
+		case LevelTrace:
 			enum0 = 0
-		case Debug:
+		case LevelDebug:
 			enum0 = 1
-		case Info:
+		case LevelInfo:
 			enum0 = 2
-		case Warn:
+		case LevelWarn:
 			enum0 = 3
-		case Fatal:
+		case LevelFatal:
 			enum0 = 4
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -457,15 +457,15 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		var enum6 Level
 		switch value5 {
 		case 0:
-			enum6 = Trace
+			enum6 = LevelTrace
 		case 1:
-			enum6 = Debug
+			enum6 = LevelDebug
 		case 2:
-			enum6 = Info
+			enum6 = LevelInfo
 		case 3:
-			enum6 = Warn
+			enum6 = LevelWarn
 		case 4:
-			enum6 = Fatal
+			enum6 = LevelFatal
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid level discriminant"))
@@ -484,15 +484,15 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	msg0 := arg0.Msg
 	var enum1 uint32
 	switch at0 {
-	case Trace:
+	case LevelTrace:
 		enum1 = 0
-	case Debug:
+	case LevelDebug:
 		enum1 = 1
-	case Info:
+	case LevelInfo:
 		enum1 = 2
-	case Warn:
+	case LevelWarn:
 		enum1 = 3
-	case Fatal:
+	case LevelFatal:
 		enum1 = 4
 	default:
 		panic(errors.New("invalid enum type provided"))
@@ -533,15 +533,15 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	var enum5 Level
 	switch value4 {
 	case 0:
-		enum5 = Trace
+		enum5 = LevelTrace
 	case 1:
-		enum5 = Debug
+		enum5 = LevelDebug
 	case 2:
-		enum5 = Info
+		enum5 = LevelInfo
 	case 3:
-		enum5 = Warn
+		enum5 = LevelWarn
 	case 4:
-		enum5 = Fatal
+		enum5 = LevelFatal
 	default:
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(errors.New("invalid level discriminant"))
@@ -583,15 +583,15 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 		variantPayload := *arg0
 		var enum0 uint32
 		switch variantPayload {
-		case Trace:
+		case LevelTrace:
 			enum0 = 0
-		case Debug:
+		case LevelDebug:
 			enum0 = 1
-		case Info:
+		case LevelInfo:
 			enum0 = 2
-		case Warn:
+		case LevelWarn:
 			enum0 = 3
-		case Fatal:
+		case LevelFatal:
 			enum0 = 4
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -635,15 +635,15 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 		var enum5 Level
 		switch value4 {
 		case 0:
-			enum5 = Trace
+			enum5 = LevelTrace
 		case 1:
-			enum5 = Debug
+			enum5 = LevelDebug
 		case 2:
-			enum5 = Info
+			enum5 = LevelInfo
 		case 3:
-			enum5 = Warn
+			enum5 = LevelWarn
 		case 4:
-			enum5 = Fatal
+			enum5 = LevelFatal
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid level discriminant"))
@@ -661,15 +661,15 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	arg0 := l
 	var enum0 uint32
 	switch arg0 {
-	case Trace:
+	case LevelTrace:
 		enum0 = 0
-	case Debug:
+	case LevelDebug:
 		enum0 = 1
-	case Info:
+	case LevelInfo:
 		enum0 = 2
-	case Warn:
+	case LevelWarn:
 		enum0 = 3
-	case Fatal:
+	case LevelFatal:
 		enum0 = 4
 	default:
 		panic(errors.New("invalid enum type provided"))
@@ -698,15 +698,15 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	var enum2 Level
 	switch results1 {
 	case 0:
-		enum2 = Trace
+		enum2 = LevelTrace
 	case 1:
-		enum2 = Debug
+		enum2 = LevelDebug
 	case 2:
-		enum2 = Info
+		enum2 = LevelInfo
 	case 3:
-		enum2 = Warn
+		enum2 = LevelWarn
 	case 4:
-		enum2 = Fatal
+		enum2 = LevelFatal
 	default:
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(errors.New("invalid level discriminant"))
@@ -761,15 +761,15 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 		var enum4 Level
 		switch value3 {
 		case 0:
-			enum4 = Trace
+			enum4 = LevelTrace
 		case 1:
-			enum4 = Debug
+			enum4 = LevelDebug
 		case 2:
-			enum4 = Info
+			enum4 = LevelInfo
 		case 3:
-			enum4 = Warn
+			enum4 = LevelWarn
 		case 4:
-			enum4 = Fatal
+			enum4 = LevelFatal
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid level discriminant"))
@@ -813,15 +813,15 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 		variantPayload := *arg0
 		var enum0 uint32
 		switch variantPayload {
-		case Trace:
+		case LevelTrace:
 			enum0 = 0
-		case Debug:
+		case LevelDebug:
 			enum0 = 1
-		case Info:
+		case LevelInfo:
 			enum0 = 2
-		case Warn:
+		case LevelWarn:
 			enum0 = 3
-		case Fatal:
+		case LevelFatal:
 			enum0 = 4
 		default:
 			panic(errors.New("invalid enum type provided"))
@@ -865,15 +865,15 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 		var enum5 Level
 		switch value4 {
 		case 0:
-			enum5 = Trace
+			enum5 = LevelTrace
 		case 1:
-			enum5 = Debug
+			enum5 = LevelDebug
 		case 2:
-			enum5 = Info
+			enum5 = LevelInfo
 		case 3:
-			enum5 = Warn
+			enum5 = LevelWarn
 		case 4:
-			enum5 = Fatal
+			enum5 = LevelFatal
 		default:
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(errors.New("invalid level discriminant"))
