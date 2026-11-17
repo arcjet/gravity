@@ -60,6 +60,24 @@ func (e level) String() string {
 	return fmt.Sprintf("level(%d)", int(e))
 }
 
+// ParseLevel returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseLevel(s string) (Level, bool) {
+	switch s {
+	case "trace":
+		return LevelTrace, true
+	case "debug":
+		return LevelDebug, true
+	case "info":
+		return LevelInfo, true
+	case "warn":
+		return LevelWarn, true
+	case "fatal":
+		return LevelFatal, true
+	}
+	return nil, false
+}
+
 type Entry struct {
 	At Level
 	Msg string

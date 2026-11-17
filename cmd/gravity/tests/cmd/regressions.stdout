@@ -51,6 +51,20 @@ func (e status) String() string {
 	return fmt.Sprintf("status(%d)", int(e))
 }
 
+// ParseStatus returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseStatus(s string) (Status, bool) {
+	switch s {
+	case "active":
+		return StatusActive, true
+	case "inactive":
+		return StatusInactive, true
+	case "unknown":
+		return StatusUnknown, true
+	}
+	return nil, false
+}
+
 type IRegressionsProcessor interface {
 	Double(
 		ctx context.Context,
@@ -97,6 +111,20 @@ func (e emailCheckerValidatorResponse) String() string {
 	return fmt.Sprintf("email-checker-validator-response(%d)", int(e))
 }
 
+// ParseEmailCheckerValidatorResponse returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseEmailCheckerValidatorResponse(s string) (EmailCheckerValidatorResponse, bool) {
+	switch s {
+	case "yes":
+		return EmailCheckerValidatorResponseYes, true
+	case "no":
+		return EmailCheckerValidatorResponseNo, true
+	case "maybe":
+		return EmailCheckerValidatorResponseMaybe, true
+	}
+	return nil, false
+}
+
 type IRegressionsBotVerifier interface {
 	Verify(
 		ctx context.Context,
@@ -128,6 +156,20 @@ func (e botVerifierValidatorResponse) String() string {
 		return "unverifiable"
 	}
 	return fmt.Sprintf("bot-verifier-validator-response(%d)", int(e))
+}
+
+// ParseBotVerifierValidatorResponse returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseBotVerifierValidatorResponse(s string) (BotVerifierValidatorResponse, bool) {
+	switch s {
+	case "verified":
+		return BotVerifierValidatorResponseVerified, true
+	case "spoofed":
+		return BotVerifierValidatorResponseSpoofed, true
+	case "unverifiable":
+		return BotVerifierValidatorResponseUnverifiable, true
+	}
+	return nil, false
 }
 
 type IRegressionsIpSource interface {

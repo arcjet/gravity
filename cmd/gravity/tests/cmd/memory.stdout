@@ -48,6 +48,20 @@ func (e color) String() string {
 	return fmt.Sprintf("color(%d)", int(e))
 }
 
+// ParseColor returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseColor(s string) (Color, bool) {
+	switch s {
+	case "red":
+		return ColorRed, true
+	case "green":
+		return ColorGreen, true
+	case "blue":
+		return ColorBlue, true
+	}
+	return nil, false
+}
+
 type Everything struct {
 	AU8 uint8
 	AS8 int8
