@@ -1,0 +1,3 @@
+bin.name = "gravity"
+args = "--world basic --package has-dash ../../target/wasm32-unknown-unknown/release/example_basic.wasm"
+status.code = 1
