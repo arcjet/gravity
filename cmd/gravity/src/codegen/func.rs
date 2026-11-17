@@ -887,7 +887,8 @@ impl Bindgen for Func<'_> {
                     }
                     (None, Operand::SingleValue(err)) => (None, err.clone()),
                     (_, operand) => panic!(
-                        "impossible: a result lowers from (value, error) or error, got {operand:?}"
+                        "a result lowers only from a host function's (value, error) or error \
+                         return, got {operand:?}"
                     ),
                 };
                 let ok_arm = match &ok_value {

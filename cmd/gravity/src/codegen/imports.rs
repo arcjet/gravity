@@ -1134,6 +1134,25 @@ mod tests {
         analyze_types("record holder { e: result<_, string> }");
     }
 
+    /// gravity represents a result with Go's multiple return values, which a
+    /// host function's parameter cannot carry, whatever the err type.
+    #[test]
+    #[should_panic(expected = "implement a result as a function parameter")]
+    fn test_import_result_param_is_refused() {
+        let fixture = host_fixture(
+            "enum refusal { a, b }
+            g: func(r: result<u32, refusal>) -> u32;",
+        );
+        ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+    }
+
+    #[test]
+    #[should_panic(expected = "implement a result as a function parameter")]
+    fn test_import_string_err_result_param_is_refused() {
+        let fixture = host_fixture("g: func(r: result<u32, string>) -> u32;");
+        ImportAnalyzer::new(&fixture.resolve, fixture.world()).analyze();
+    }
+
     /// A result in a function's own result is still supported.
     #[test]
     fn test_result_as_function_result_still_resolves() {

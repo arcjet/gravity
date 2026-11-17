@@ -331,4 +331,19 @@ mod tests {
             "got:\n{only_err}"
         );
     }
+
+    /// gravity represents a result with Go's multiple return values, which an
+    /// export's parameter cannot carry.
+    #[test]
+    #[should_panic(expected = "implement a result as a function parameter")]
+    fn test_export_result_param_is_refused() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                enum refusal { a, b }
+                export f: func(r: result<u32, refusal>) -> u32;
+            }",
+        );
+        generate(&fixture, "f");
+    }
 }

@@ -306,11 +306,16 @@ pub fn resolve_nested_type(typ: &Type, resolve: &Resolve, position: &str) -> GoT
 ///
 /// Variants nested inside records, lists, or returns stay typed so
 /// generated record fields remain strongly typed.
+///
+/// A `result` parameter is refused: gravity represents a `result` with Go's
+/// multiple return values, which a parameter cannot carry.
 pub fn resolve_param_type(typ: &Type, resolve: &Resolve) -> GoType {
     if let Type::Id(id) = typ {
         let def = &resolve.types[dealias(resolve, *id)];
-        if matches!(def.kind, TypeDefKind::Variant(_)) {
-            return GoType::Interface;
+        match def.kind {
+            TypeDefKind::Variant(_) => return GoType::Interface,
+            TypeDefKind::Result(_) => todo!("TODO(#4): implement a result as a function parameter"),
+            _ => {}
         }
     }
     resolve_type(typ, resolve)
