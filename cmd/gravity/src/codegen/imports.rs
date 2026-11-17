@@ -62,13 +62,93 @@ impl<'a> ImportAnalyzer<'a> {
         let instance_name = GoIdentifier::public(format!("{}-instance", self.world.name));
         let constructor_name = GoIdentifier::public(format!("new-{}-factory", self.world.name));
 
-        AnalyzedImports {
+        let analyzed = AnalyzedImports {
             interfaces,
             standalone_types,
             standalone_functions,
             factory_name,
             instance_name,
             constructor_name,
+        };
+        self.check_identifiers_are_distinct(&analyzed);
+        analyzed
+    }
+
+    /// Panics if two of the exported Go identifiers that `analyzed` declares
+    /// at package level are spelled the same. Distinct WIT names can meet in
+    /// one Go name: enum `color`'s case `red` and record `color-red` both
+    /// become `ColorRed`, as do enum `a`'s case `b-c` and enum `a-b`'s case
+    /// `c`.
+    fn check_identifiers_are_distinct(&self, analyzed: &AnalyzedImports) {
+        let world = &self.world.name;
+        let mut declared: Vec<(GoIdentifier, String)> = vec![
+            (
+                analyzed.factory_name.clone(),
+                format!("world `{world}`'s factory"),
+            ),
+            (
+                analyzed.instance_name.clone(),
+                format!("world `{world}`'s instance"),
+            ),
+            (
+                analyzed.constructor_name.clone(),
+                format!("world `{world}`'s factory constructor"),
+            ),
+        ];
+        for interface in &analyzed.interfaces {
+            declared.push((
+                interface.go_interface_name.clone(),
+                format!("interface `{}`", interface.name),
+            ));
+        }
+        let types = analyzed
+            .interfaces
+            .iter()
+            .flat_map(|interface| &interface.types)
+            .chain(&analyzed.standalone_types);
+        for typ in types {
+            let name = &typ.name;
+            match &typ.definition {
+                TypeDefinition::Record { .. } => {
+                    declared.push((typ.go_type_name.clone(), format!("record `{name}`")));
+                }
+                TypeDefinition::Alias { .. } => {
+                    declared.push((typ.go_type_name.clone(), format!("type `{name}`")));
+                }
+                TypeDefinition::Primitive => {}
+                TypeDefinition::Enum { cases } => {
+                    declared.push((typ.go_type_name.clone(), format!("enum `{name}`")));
+                    for case in cases {
+                        declared.push((
+                            GoIdentifier::public(crate::enum_case_name(name, case)),
+                            format!("enum `{name}`'s case `{case}`"),
+                        ));
+                    }
+                }
+                TypeDefinition::Variant { cases } => {
+                    declared.push((typ.go_type_name.clone(), format!("variant `{name}`")));
+                    for case in cases {
+                        if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
+                            declared.push((
+                                wrapper_name.clone(),
+                                format!("variant `{name}`'s case `{}`", case.name),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut seen: BTreeMap<String, String> = BTreeMap::new();
+        for (identifier, source) in declared {
+            let spelled = String::from(&identifier);
+            if let Some(first) = seen.get(&spelled) {
+                panic!(
+                    "world `{world}`: {first} and {source} would both be declared as the \
+                     Go identifier `{spelled}`; rename one of them in the WIT"
+                );
+            }
+            seen.insert(spelled, source);
         }
     }
 
@@ -1186,5 +1266,23 @@ mod tests {
             !generated.contains("\n    PeerSvid "),
             "no case constant may be unqualified, got:\n{generated}"
         );
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "world `test-world`: enum `color`'s case `red` and record `color-red` would \
+                    both be declared as the Go identifier `ColorRed`"
+    )]
+    fn test_enum_case_named_like_a_type_is_refused() {
+        analyze_types("enum color { red, green } record color-red { v: u32 }");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "world `test-world`: enum `a`'s case `b-c` and enum `a-b`'s case `c` would \
+                    both be declared as the Go identifier `ABC`"
+    )]
+    fn test_enum_cases_spelled_alike_are_refused() {
+        analyze_types("enum a { b-c } enum a-b { c }");
     }
 }
