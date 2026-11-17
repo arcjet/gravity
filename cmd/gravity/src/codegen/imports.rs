@@ -1367,10 +1367,9 @@ mod tests {
         );
     }
 
-    /// Regression test: a world that imports an interface only for its types
-    /// (here through `use`) needs no host for it. Gravity used to emit an
-    /// empty Go interface, a factory argument of that type and an empty host
-    /// module, so every caller passed a placeholder.
+    /// A world that imports an interface only for its types (here through
+    /// `use`) needs no host for it: the bindings declare no Go interface,
+    /// factory argument or host module for it.
     #[test]
     fn test_types_only_interface_needs_no_host() {
         let fixture = Fixture::parse(
