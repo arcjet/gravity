@@ -28,19 +28,19 @@ var cases = map[string]Everything{
 	"min": {
 		AU8: 0, AS8: math.MinInt8, AU16: 0, AS16: math.MinInt16,
 		AU32: 0, AS32: math.MinInt32, AU64: 0, AS64: math.MinInt64,
-		AF64: -math.MaxFloat64, ABool: false, AChar: 0, AColor: Red,
+		AF64: -math.MaxFloat64, ABool: false, AChar: 0, AColor: ColorRed,
 		AOpt: nil, AStr: "", AF32: -math.MaxFloat32,
 	},
 	"max": {
 		AU8: math.MaxUint8, AS8: math.MaxInt8, AU16: math.MaxUint16, AS16: math.MaxInt16,
 		AU32: math.MaxUint32, AS32: math.MaxInt32, AU64: math.MaxUint64, AS64: math.MaxInt64,
-		AF64: math.MaxFloat64, ABool: true, AChar: 0x10FFFF, AColor: Blue,
+		AF64: math.MaxFloat64, ABool: true, AChar: 0x10FFFF, AColor: ColorBlue,
 		AOpt: ptr[uint8](math.MaxUint8), AStr: "hello, world", AF32: math.MaxFloat32,
 	},
 	"mixed": {
 		AU8: 200, AS8: -5, AU16: 65000, AS16: -30000,
 		AU32: 4_000_000_000, AS32: -42, AU64: 1 << 40, AS64: -(1 << 40),
-		AF64: -2.25, ABool: true, AChar: 'λ', AColor: Green,
+		AF64: -2.25, ABool: true, AChar: 'λ', AColor: ColorGreen,
 		AOpt: ptr[uint8](0), AStr: "λ😀", AF32: 1.5,
 	},
 }
