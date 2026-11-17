@@ -88,7 +88,7 @@ impl<'a> Bindings<'a> {
         });
         if typed_result_errors
             && let Some((_, wit_item)) = analyzed_imports
-                .type_identifiers()
+                .declared_identifiers(&self.world.name)
                 .into_iter()
                 .find(|(go_name, _)| go_name == "ResultError")
         {
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the WIT type `result-error` is named ResultError in Go")]
+    #[should_panic(expected = "the WIT record `result-error` is named ResultError in Go")]
     fn test_result_error_type_name_collision_is_refused() {
         generate(&Fixture::parse(
             "package test:fixture;
@@ -148,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the WIT case `error` of enum `result` is named ResultError in Go")]
+    #[should_panic(expected = "the WIT enum `result`'s case `error` is named ResultError in Go")]
     fn test_result_error_enum_case_collision_is_refused() {
         generate(&Fixture::parse(
             "package test:fixture;

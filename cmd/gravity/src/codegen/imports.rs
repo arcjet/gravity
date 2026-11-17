@@ -81,67 +81,8 @@ impl<'a> ImportAnalyzer<'a> {
     /// `c`.
     fn check_identifiers_are_distinct(&self, analyzed: &AnalyzedImports) {
         let world = &self.world.name;
-        let mut declared: Vec<(GoIdentifier, String)> = vec![
-            (
-                analyzed.factory_name.clone(),
-                format!("world `{world}`'s factory"),
-            ),
-            (
-                analyzed.instance_name.clone(),
-                format!("world `{world}`'s instance"),
-            ),
-            (
-                analyzed.constructor_name.clone(),
-                format!("world `{world}`'s factory constructor"),
-            ),
-        ];
-        for interface in &analyzed.interfaces {
-            declared.push((
-                interface.go_interface_name.clone(),
-                format!("interface `{}`", interface.name),
-            ));
-        }
-        let types = analyzed
-            .interfaces
-            .iter()
-            .flat_map(|interface| &interface.types)
-            .chain(&analyzed.standalone_types);
-        for typ in types {
-            let name = &typ.name;
-            match &typ.definition {
-                TypeDefinition::Record { .. } => {
-                    declared.push((typ.go_type_name.clone(), format!("record `{name}`")));
-                }
-                TypeDefinition::Alias { .. } => {
-                    declared.push((typ.go_type_name.clone(), format!("type `{name}`")));
-                }
-                TypeDefinition::Primitive => {}
-                TypeDefinition::Enum { cases } => {
-                    declared.push((typ.go_type_name.clone(), format!("enum `{name}`")));
-                    for case in cases {
-                        declared.push((
-                            GoIdentifier::public(crate::enum_case_name(name, case)),
-                            format!("enum `{name}`'s case `{case}`"),
-                        ));
-                    }
-                }
-                TypeDefinition::Variant { cases } => {
-                    declared.push((typ.go_type_name.clone(), format!("variant `{name}`")));
-                    for case in cases {
-                        if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
-                            declared.push((
-                                wrapper_name.clone(),
-                                format!("variant `{name}`'s case `{}`", case.name),
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-
         let mut seen: BTreeMap<String, String> = BTreeMap::new();
-        for (identifier, source) in declared {
-            let spelled = String::from(&identifier);
+        for (spelled, source) in analyzed.declared_identifiers(world) {
             if let Some(first) = seen.get(&spelled) {
                 panic!(
                     "world `{world}`: {first} and {source} would both be declared as the \

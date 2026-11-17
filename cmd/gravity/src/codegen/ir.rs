@@ -21,45 +21,41 @@ pub struct AnalyzedImports {
 }
 
 impl AnalyzedImports {
-    /// The package-level Go identifiers the bindings declare for the
-    /// imported WIT types, each paired with a description of the WIT item it
-    /// comes from: every type's name, every enum case constant and every
-    /// variant case wrapper.
-    pub fn type_identifiers(&self) -> Vec<(String, String)> {
-        let types = self
-            .interfaces
+    /// Every analyzed type, from the imported interfaces and the world.
+    pub fn types(&self) -> impl Iterator<Item = &AnalyzedType> {
+        self.interfaces
             .iter()
             .flat_map(|interface| &interface.types)
-            .chain(&self.standalone_types);
-        let mut identifiers = Vec::new();
-        for typ in types {
+            .chain(&self.standalone_types)
+    }
+
+    /// The exported Go identifiers the bindings for world `world` declare at
+    /// package level, each paired with a description of the WIT item it
+    /// comes from: the factory, instance and factory constructor, each
+    /// imported interface's Go interface, and every type's identifiers.
+    pub fn declared_identifiers(&self, world: &str) -> Vec<(String, String)> {
+        let mut identifiers = vec![
+            (
+                String::from(&self.factory_name),
+                format!("world `{world}`'s factory"),
+            ),
+            (
+                String::from(&self.instance_name),
+                format!("world `{world}`'s instance"),
+            ),
+            (
+                String::from(&self.constructor_name),
+                format!("world `{world}`'s factory constructor"),
+            ),
+        ];
+        for interface in &self.interfaces {
             identifiers.push((
-                String::from(&typ.go_type_name),
-                format!("type `{}`", typ.name),
+                String::from(&interface.go_interface_name),
+                format!("interface `{}`", interface.name),
             ));
-            match &typ.definition {
-                TypeDefinition::Enum { cases } => {
-                    for case in cases {
-                        identifiers.push((
-                            String::from(GoIdentifier::public(crate::enum_case_name(
-                                &typ.name, case,
-                            ))),
-                            format!("case `{case}` of enum `{}`", typ.name),
-                        ));
-                    }
-                }
-                TypeDefinition::Variant { cases } => {
-                    for case in cases {
-                        if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
-                            identifiers.push((
-                                String::from(wrapper_name),
-                                format!("case `{}` of variant `{}`", case.name, typ.name),
-                            ));
-                        }
-                    }
-                }
-                _ => {}
-            }
+        }
+        for typ in self.types() {
+            identifiers.extend(typ.declared_identifiers());
         }
         identifiers
     }
@@ -151,6 +147,44 @@ pub struct AnalyzedType {
     pub go_type_name: GoIdentifier,
     /// The definition of the type.
     pub definition: TypeDefinition,
+}
+
+impl AnalyzedType {
+    /// The exported Go identifiers the bindings declare at package level for
+    /// this type, each paired with a description of the WIT item it comes
+    /// from: the type's name, every enum case constant and every wrapped
+    /// variant case's struct. A primitive declares none.
+    pub fn declared_identifiers(&self) -> Vec<(String, String)> {
+        let name = &self.name;
+        let type_name = String::from(&self.go_type_name);
+        match &self.definition {
+            TypeDefinition::Record { .. } => vec![(type_name, format!("record `{name}`"))],
+            TypeDefinition::Alias { .. } => vec![(type_name, format!("type `{name}`"))],
+            TypeDefinition::Primitive => vec![],
+            TypeDefinition::Enum { cases } => {
+                let mut identifiers = vec![(type_name, format!("enum `{name}`"))];
+                for case in cases {
+                    identifiers.push((
+                        String::from(GoIdentifier::public(crate::enum_case_name(name, case))),
+                        format!("enum `{name}`'s case `{case}`"),
+                    ));
+                }
+                identifiers
+            }
+            TypeDefinition::Variant { cases } => {
+                let mut identifiers = vec![(type_name, format!("variant `{name}`"))];
+                for case in cases {
+                    if let CaseDispatch::Wrapped { wrapper_name } = &case.dispatch {
+                        identifiers.push((
+                            String::from(wrapper_name),
+                            format!("variant `{name}`'s case `{}`", case.name),
+                        ));
+                    }
+                }
+                identifiers
+            }
+        }
+    }
 }
 
 /// The definition of a WIT type.
