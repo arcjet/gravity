@@ -63,6 +63,15 @@ impl<'a> Bindings<'a> {
     fn generate_imports(&mut self) -> (AnalyzedImports, BTreeMap<String, Tokens<Go>>) {
         let analyzer = ImportAnalyzer::new(self.resolve, self.world);
         let analyzed = analyzer.analyze();
+        for (helper, declared_for) in super::factory::HELPERS {
+            refuse_collision(&analyzed, &self.world.name, helper, declared_for);
+        }
+        refuse_collision(
+            &analyzed,
+            &self.world.name,
+            &String::from(&self.raw_wasm_var),
+            "for the embedded Wasm module",
+        );
         for typ in analyzed.types() {
             if matches!(typ.definition, TypeDefinition::Enum { .. }) {
                 let parse_function =
@@ -287,6 +296,78 @@ mod tests {
         );
         assert!(
             !generated.contains("type ResultError[E any] struct"),
+            "got:\n{generated}"
+        );
+    }
+
+    /// Generates the bindings for a world `test-world` with one enum named
+    /// `name`.
+    fn generate_with_enum(name: &str) -> String {
+        generate(&Fixture::parse(&format!(
+            "package test:fixture;
+            world test-world {{
+                enum {name} {{ a, b }}
+                export f: func(x: {name}) -> u32;
+            }}"
+        )))
+    }
+
+    /// An enum declares an unexported Go type named for it, which must not
+    /// take the name of a helper every set of bindings declares.
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `write-string` is named writeString in Go, which gravity declares"
+    )]
+    fn test_enum_named_like_write_string_is_refused() {
+        generate_with_enum("write-string");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `exported-functions` is named exportedFunctions in Go, which gravity declares"
+    )]
+    fn test_enum_named_like_exported_functions_is_refused() {
+        generate_with_enum("exported-functions");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `new-exported-functions` is named newExportedFunctions in Go, which gravity declares"
+    )]
+    fn test_enum_named_like_new_exported_functions_is_refused() {
+        generate_with_enum("new-exported-functions");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `exported-function-cache` is named exportedFunctionCache in Go, which gravity declares"
+    )]
+    fn test_enum_named_like_exported_function_cache_is_refused() {
+        generate_with_enum("exported-function-cache");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the WIT enum `wasm-file-test-world` is named wasmFileTestWorld in Go, which gravity declares"
+    )]
+    fn test_enum_named_like_the_embedded_wasm_is_refused() {
+        generate_with_enum("wasm-file-test-world");
+    }
+
+    /// Every helper gravity reserves is one the bindings declare, so the
+    /// reserved names follow the templates that declare them.
+    #[test]
+    fn test_reserved_helpers_are_declared() {
+        let generated = generate_with_enum("ordinary");
+        for (name, _) in crate::codegen::factory::HELPERS {
+            assert!(
+                generated.contains(&format!("func {name}("))
+                    || generated.contains(&format!("type {name} struct")),
+                "`{name}` is reserved but not declared, got:\n{generated}"
+            );
+        }
+        assert!(
+            generated.contains("CompileModule(ctx, wasmFileTestWorld)"),
             "got:\n{generated}"
         );
     }

@@ -14,6 +14,21 @@ use crate::{
     },
 };
 
+/// The package-level helpers every set of bindings declares, each with what
+/// it is for, so no WIT item may take one of their names.
+pub(crate) const HELPERS: [(&str, &str); 4] = [
+    ("writeString", "to write a string into guest memory"),
+    ("exportedFunctions", "for an instance's export memo"),
+    (
+        "newExportedFunctions",
+        "to create an instance's export memo",
+    ),
+    (
+        "exportedFunctionCache",
+        "to find the export memo of a calling module",
+    ),
+];
+
 /// Configuration for factory generation
 pub struct FactoryConfig<'a> {
     pub analyzed_imports: &'a AnalyzedImports,

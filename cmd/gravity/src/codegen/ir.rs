@@ -39,8 +39,8 @@ impl AnalyzedImports {
             )
     }
 
-    /// The exported Go identifiers the bindings for world `world` declare at
-    /// package level, each paired with a description of the WIT item it
+    /// The Go identifiers the WIT items of world `world` declare at package
+    /// level, each paired with a description of the WIT item it
     /// comes from: the factory, instance and factory constructor, the Go
     /// interface of each imported interface the host implements, the Go
     /// type holding each exported interface's functions, and every type's
@@ -193,10 +193,11 @@ pub struct AnalyzedType {
 }
 
 impl AnalyzedType {
-    /// The exported Go identifiers the bindings declare at package level for
-    /// this type, each paired with a description of the WIT item it comes
-    /// from: the type's name, every enum case constant and every wrapped
-    /// variant case's struct. A primitive declares none.
+    /// The Go identifiers the bindings declare at package level for this type,
+    /// each paired with a description of the WIT item it comes from: the
+    /// type's name, an enum's unexported concrete type and every case
+    /// constant, and every wrapped variant case's struct. A primitive
+    /// declares none.
     pub fn declared_identifiers(&self) -> Vec<(String, String)> {
         let name = &self.name;
         let type_name = String::from(&self.go_type_name);
@@ -205,7 +206,13 @@ impl AnalyzedType {
             TypeDefinition::Alias { .. } => vec![(type_name, format!("type `{name}`"))],
             TypeDefinition::Primitive => vec![],
             TypeDefinition::Enum { cases } => {
-                let mut identifiers = vec![(type_name, format!("enum `{name}`"))];
+                let mut identifiers = vec![
+                    (type_name, format!("enum `{name}`")),
+                    (
+                        String::from(GoIdentifier::private(name)),
+                        format!("enum `{name}`"),
+                    ),
+                ];
                 for case in cases {
                     identifiers.push((
                         String::from(GoIdentifier::public(crate::enum_case_name(name, case))),
