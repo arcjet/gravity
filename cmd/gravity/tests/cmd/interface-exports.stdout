@@ -247,6 +247,26 @@ func (e quadrant) String() string {
 	return fmt.Sprintf("quadrant(%d)", int(e))
 }
 
+// ParseQuadrant returns the case whose String is s, its WIT case name, and true.
+// Any other s returns (nil, false): the match is exact and case-sensitive.
+func ParseQuadrant(s string) (Quadrant, bool) {
+	switch s {
+	case "origin":
+		return QuadrantOrigin, true
+	case "first":
+		return QuadrantFirst, true
+	case "second":
+		return QuadrantSecond, true
+	case "third":
+		return QuadrantThird, true
+	case "fourth":
+		return QuadrantFourth, true
+	case "axis":
+		return QuadrantAxis, true
+	}
+	return nil, false
+}
+
 type Segment struct {
 	Start Point
 	End Point
