@@ -55,7 +55,9 @@ func NewOptionFloatParamsFactory(
 }
 
 func (f *OptionFloatParamsFactory) Instantiate(ctx context.Context) (*OptionFloatParamsInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	// An anonymous module: wazero refuses a second module of the same name
+	// in one runtime, and every instance of this factory is the same module.
+	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig().WithName("")); err != nil {
 		return nil, err
 	} else {
 		return &OptionFloatParamsInstance{module}, nil

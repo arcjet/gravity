@@ -80,6 +80,16 @@ impl<'a> FactoryGenerator<'a> {
         let wasm_var_name = self.config.wasm_var_name;
         // Build the parameter list
         let params = self.build_parameters();
+        let has_host_interfaces = !self.config.analyzed_imports.interfaces.is_empty();
+        let constructor_doc = [
+            format!(
+                "{} returns a factory for instances of the guest.",
+                String::from(constructor_name)
+            ),
+            "Every instance the factory creates shares the host-interface implementations".into(),
+            "passed here, so they must be safe for concurrent use when instances run on".into(),
+            "separate goroutines.".into(),
+        ];
         quote_in! { *tokens =>
             $['\n']
             type $factory_name struct {
@@ -87,6 +97,7 @@ impl<'a> FactoryGenerator<'a> {
                 module  $WAZERO_COMPILED_MODULE
             }
             $['\n']
+            $(if has_host_interfaces => $(comment(&constructor_doc)))
             func $constructor_name(
                 $['\r']
                 $params
@@ -114,7 +125,11 @@ impl<'a> FactoryGenerator<'a> {
             }
             $['\n']
             func (f *$factory_name) Instantiate(ctx $CONTEXT_CONTEXT) (*$instance_name, error) {
-                if module, err := f.runtime.InstantiateModule(ctx, f.module, $WAZERO_NEW_MODULE_CONFIG()); err != nil {
+                $(comment(&[
+                    "An anonymous module: wazero refuses a second module of the same name",
+                    "in one runtime, and every instance of this factory is the same module.",
+                ]))
+                if module, err := f.runtime.InstantiateModule(ctx, f.module, $WAZERO_NEW_MODULE_CONFIG().WithName("")); err != nil {
                     return nil, err
                 } else {
                     return &$instance_name{module}, nil
@@ -200,5 +215,31 @@ mod tests {
         generator.generate_write_string(&mut tokens);
 
         assert!(tokens.to_string().unwrap().contains("func writeString"));
+    }
+
+    /// Each instance is anonymous, so one factory can hold many at once.
+    #[test]
+    fn test_instances_are_anonymous() {
+        let analyzed_imports = &AnalyzedImports {
+            interfaces: vec![],
+            standalone_types: vec![],
+            standalone_functions: vec![],
+            factory_name: GoIdentifier::public("test-factory"),
+            instance_name: GoIdentifier::public("test-instance"),
+            constructor_name: GoIdentifier::public("test-constructor"),
+        };
+        let config = FactoryConfig {
+            analyzed_imports,
+            import_chains: Default::default(),
+            wasm_var_name: &GoIdentifier::public("test-wasm"),
+        };
+        let generator = FactoryGenerator::new(config);
+        let mut tokens = Tokens::new();
+        generator.generate_factory(&mut tokens);
+        let generated = tokens.to_string().unwrap();
+        assert!(
+            generated.contains("wazero.NewModuleConfig().WithName(\"\")"),
+            "got:\n{generated}"
+        );
     }
 }

@@ -33,6 +33,10 @@ type ImportParamWidthsFactory struct {
 	module wazero.CompiledModule
 }
 
+// NewImportParamWidthsFactory returns a factory for instances of the guest.
+// Every instance the factory creates shares the host-interface implementations
+// passed here, so they must be safe for concurrent use when instances run on
+// separate goroutines.
 func NewImportParamWidthsFactory(
 	ctx context.Context,
 	host IImportParamWidthsHost,
@@ -98,7 +102,9 @@ func NewImportParamWidthsFactory(
 }
 
 func (f *ImportParamWidthsFactory) Instantiate(ctx context.Context) (*ImportParamWidthsInstance, error) {
-	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig()); err != nil {
+	// An anonymous module: wazero refuses a second module of the same name
+	// in one runtime, and every instance of this factory is the same module.
+	if module, err := f.runtime.InstantiateModule(ctx, f.module, wazero.NewModuleConfig().WithName("")); err != nil {
 		return nil, err
 	} else {
 		return &ImportParamWidthsInstance{module}, nil
