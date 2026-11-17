@@ -96,6 +96,20 @@ func (IpSource) Lookup(_ context.Context, ip string) *string {
 	return nil
 }
 
+// Scheduler and Archiver — regression 6 (cross-interface record collision).
+// Each receives its own interface's `job` type.
+type Scheduler struct{}
+
+func (Scheduler) Submit(_ context.Context, j SchedulerJob) uint32 {
+	return j.Id
+}
+
+type Archiver struct{}
+
+func (Archiver) Store(_ context.Context, j ArchiverJob) uint32 {
+	return uint32(len(j.Name))
+}
+
 func newInstance(t *testing.T) *RegressionsInstance {
 	t.Helper()
 	fac, err := NewRegressionsFactory(
@@ -106,6 +120,8 @@ func newInstance(t *testing.T) *RegressionsInstance {
 		EmailChecker{},
 		BotVerifier{},
 		IpSource{},
+		Scheduler{},
+		Archiver{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -258,5 +274,16 @@ func TestImportCallbackOptionString(t *testing.T) {
 	}
 	if got := ins.RunIpLookup(t.Context(), "0.0.0.0"); got != "absent" {
 		t.Errorf("RunIpLookup(\"0.0.0.0\") = %q, want \"absent\"", got)
+	}
+}
+
+// TestCrossInterfaceRecordCollision tests regression 6: two imported
+// interfaces both declare `record job`. The guest passes one to each host,
+// and each host reads a field only its own interface's record has.
+func TestCrossInterfaceRecordCollision(t *testing.T) {
+	ins := newInstance(t)
+
+	if got := ins.RunJobs(t.Context(), 40, "ab"); got != 42 {
+		t.Errorf("RunJobs(40, \"ab\") = %d, want 42", got)
 	}
 }
