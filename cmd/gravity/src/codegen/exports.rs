@@ -125,8 +125,8 @@ impl<'a> ExportGenerator<'a> {
     ///
     /// The Go type is a defined type over the instance's struct, so the
     /// accessor is a pointer conversion (no allocation) and its methods call
-    /// the guest through the instance's module; the instance's own methods
-    /// do not carry over to it.
+    /// the guest through the instance's export memo, as the world's own
+    /// exports do; the instance's own methods do not carry over to it.
     fn generate_interface(&self, key: &WorldKey, id: InterfaceId, tokens: &mut Tokens<Go>) {
         let resolve = self.config.resolve;
         let interface = &resolve.interfaces[id];
@@ -482,7 +482,8 @@ mod tests {
 
     /// A world that exports an interface generates the interface's types, a
     /// Go type holding its functions, and the instance method answering it;
-    /// each function calls the guest's `<interface>#<function>` export.
+    /// each function calls the guest's `<interface>#<function>` export, and
+    /// every export it reaches, through the instance's memo.
     #[test]
     fn test_exported_interface() {
         let fixture = Fixture::parse(
@@ -507,6 +508,7 @@ mod tests {
             "func (i *TestWorldApiExports) Run(",
             "i.exports.get(\"test:fixture/api@1.0.0#run\")",
             "i.exports.get(\"cabi_post_test:fixture/api@1.0.0#run\")",
+            "i.exports.get(\"cabi_realloc\")",
             "func (i *TestInstance) Version(",
             "i.exports.get(\"version\")",
         ] {
@@ -515,6 +517,10 @@ mod tests {
                 "expected `{expected}`, got:\n{generated}"
             );
         }
+        assert!(
+            !generated.contains("ExportedFunction("),
+            "export lookups must not call api.Module.ExportedFunction directly, got:\n{generated}"
+        );
     }
 
     /// An exported interface whose accessor would shadow an instance method
