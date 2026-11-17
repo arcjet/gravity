@@ -480,11 +480,9 @@ mod tests {
         tokens.to_string().unwrap()
     }
 
-    /// Regression test: a world that exports an interface generates the
-    /// interface's types, a Go type holding its functions, and the instance
-    /// method answering it; each function calls the guest's
-    /// `<interface>#<function>` export. Gravity used to panic: "not yet
-    /// implemented: generate interface exports".
+    /// A world that exports an interface generates the interface's types, a
+    /// Go type holding its functions, and the instance method answering it;
+    /// each function calls the guest's `<interface>#<function>` export.
     #[test]
     fn test_exported_interface() {
         let fixture = Fixture::parse(
