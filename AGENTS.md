@@ -96,9 +96,11 @@ just test-go
 
 ```text
 cmd/gravity/
+  build.rs               # Embeds the git commit in `gravity --version`
   src/
     main.rs              # CLI entry point (clap argument parsing)
     lib.rs               # Library entry point
+    gofmt.rs             # Runs gofmt (or $GOFMT) on the output for --gofmt
     codegen/
       mod.rs             # Codegen module root
       bindings.rs        # Top-level bindings generation (file structure, wasm embed)
@@ -108,6 +110,7 @@ cmd/gravity/
       func.rs            # Instruction handler (canonical ABI instruction → Go code)
       ir.rs              # Intermediate representation types
       wasm.rs            # Wasm file processing and optimization
+      test_wit.rs        # Unit-test fixtures parsed from WIT text
     go/
       mod.rs             # Go type representations module root
       type.rs            # Go type system (GoType enum, resolve_wasm_type)
@@ -124,10 +127,11 @@ cmd/gravity/
 examples/
   generate.go            # go:generate directives for building examples
   .gitignore             # Ignores generated *.go and *.wasm; keeps *_test.go
-  basic/                 # Simple world with basic types
-  iface-method-returns-string/  # Interface method returning a string
-  instructions/          # Tests various canonical ABI instructions
-  regressions/           # Regression tests for import codegen edge cases
+  <name>/                # One example per feature or fix, named for it
+    Cargo.toml           # A wasm guest crate (`crate-type = ["cdylib"]`)
+    wit/<name>.wit       # The world the guest exports and imports
+    src/lib.rs           # The guest's implementation
+    <name>_test.go       # Go tests of the generated bindings, run with wazero
 
 justfile                 # Recipes for building, testing and the CI gate
 scripts/
