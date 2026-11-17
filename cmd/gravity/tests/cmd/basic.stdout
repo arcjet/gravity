@@ -48,6 +48,10 @@ type BasicFactory struct {
 	module wazero.CompiledModule
 }
 
+// NewBasicFactory returns a factory for instances of the guest.
+// Every instance the factory creates shares the host-interface implementations
+// passed here, so they must be safe for concurrent use when instances run on
+// separate goroutines.
 func NewBasicFactory(
 	ctx context.Context,
 	logger IBasicLogger,

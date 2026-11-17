@@ -80,6 +80,16 @@ impl<'a> FactoryGenerator<'a> {
         let wasm_var_name = self.config.wasm_var_name;
         // Build the parameter list
         let params = self.build_parameters();
+        let has_host_interfaces = !self.config.analyzed_imports.interfaces.is_empty();
+        let constructor_doc = [
+            format!(
+                "{} returns a factory for instances of the guest.",
+                String::from(constructor_name)
+            ),
+            "Every instance the factory creates shares the host-interface implementations".into(),
+            "passed here, so they must be safe for concurrent use when instances run on".into(),
+            "separate goroutines.".into(),
+        ];
         quote_in! { *tokens =>
             $['\n']
             type $factory_name struct {
@@ -87,6 +97,7 @@ impl<'a> FactoryGenerator<'a> {
                 module  $WAZERO_COMPILED_MODULE
             }
             $['\n']
+            $(if has_host_interfaces => $(comment(&constructor_doc)))
             func $constructor_name(
                 $['\r']
                 $params

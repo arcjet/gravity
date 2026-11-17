@@ -76,6 +76,10 @@ type MemoryFactory struct {
 	module wazero.CompiledModule
 }
 
+// NewMemoryFactory returns a factory for instances of the guest.
+// Every instance the factory creates shares the host-interface implementations
+// passed here, so they must be safe for concurrent use when instances run on
+// separate goroutines.
 func NewMemoryFactory(
 	ctx context.Context,
 	host IMemoryHost,

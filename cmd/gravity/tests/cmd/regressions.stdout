@@ -126,6 +126,10 @@ type RegressionsFactory struct {
 	module wazero.CompiledModule
 }
 
+// NewRegressionsFactory returns a factory for instances of the guest.
+// Every instance the factory creates shares the host-interface implementations
+// passed here, so they must be safe for concurrent use when instances run on
+// separate goroutines.
 func NewRegressionsFactory(
 	ctx context.Context,
 	checker IRegressionsChecker,
