@@ -79,11 +79,13 @@ impl<'a> FactoryGenerator<'a> {
     ///
     /// An instance owns the memo for its own module. A host function only
     /// receives the calling module, so the factory keeps a registry from
-    /// module to memo that `Instantiate` fills and `Close` empties; a module
-    /// the registry does not know (one instantiated outside the factory) is
-    /// answered without the memo. An `api.Function` is not safe for
-    /// concurrent calls, and neither is a guest instance: each memo is only
-    /// touched by the goroutine driving its module.
+    /// module to memo that `Instantiate` fills and `Close` empties. The
+    /// runtime is private to the factory, so every calling module comes from
+    /// `Instantiate`; the registry lacks it only while `InstantiateModule` is
+    /// still running, and a host call made then, such as from a start
+    /// function, is answered without the memo. An `api.Function` is not safe
+    /// for concurrent calls, and neither is a guest instance: each memo is
+    /// only touched by the goroutine driving its module.
     fn generate_export_cache(&self, tokens: &mut Tokens<Go>) {
         quote_in! { *tokens =>
             $(comment(&[
@@ -211,7 +213,10 @@ impl<'a> FactoryGenerator<'a> {
         quote_in! { *tokens =>
             $(comment(&[
                 "An instance is one guest module. It is not safe for concurrent use:",
-                "instantiate one per goroutine.",
+                "instantiate one per goroutine. A host implementation must not call back",
+                "into the instance that called it: the instance reuses one api.Function per",
+                "export, and wazero's Function.Call must not be called again until the",
+                "previous Call returns.",
             ]))
             type $instance_name struct {
                 module  $WAZERO_API_MODULE

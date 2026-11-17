@@ -152,7 +152,10 @@ func (f *VariantsFactory) Close(ctx context.Context) {
 }
 
 // An instance is one guest module. It is not safe for concurrent use:
-// instantiate one per goroutine.
+// instantiate one per goroutine. A host implementation must not call back
+// into the instance that called it: the instance reuses one api.Function per
+// export, and wazero's Function.Call must not be called again until the
+// previous Call returns.
 type VariantsInstance struct {
 	module api.Module
 	exports *exportedFunctions
