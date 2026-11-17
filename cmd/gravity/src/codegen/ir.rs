@@ -1,4 +1,4 @@
-use wit_bindgen_core::wit_parser::{Function, Type};
+use wit_bindgen_core::wit_parser::{Function, InterfaceId, Type};
 
 use crate::go::{GoIdentifier, GoType};
 
@@ -18,22 +18,33 @@ pub struct AnalyzedImports {
     pub instance_name: GoIdentifier,
     /// The name of the constructor for the factory type.
     pub constructor_name: GoIdentifier,
+
+    /// The interfaces the world exports. The bindings declare their types
+    /// beside the imported ones.
+    pub exported_interfaces: Vec<AnalyzedExportedInterface>,
 }
 
 impl AnalyzedImports {
-    /// Every analyzed type, from the imported interfaces and the world.
+    /// Every analyzed type, from the imported interfaces, the world and the
+    /// exported interfaces.
     pub fn types(&self) -> impl Iterator<Item = &AnalyzedType> {
         self.interfaces
             .iter()
             .flat_map(|interface| &interface.types)
             .chain(&self.standalone_types)
+            .chain(
+                self.exported_interfaces
+                    .iter()
+                    .flat_map(|interface| &interface.types),
+            )
     }
 
     /// The exported Go identifiers the bindings for world `world` declare at
     /// package level, each paired with a description of the WIT item it
     /// comes from: the factory, instance and factory constructor, the Go
-    /// interface of each imported interface the host implements, and every
-    /// type's identifiers.
+    /// interface of each imported interface the host implements, the Go
+    /// type holding each exported interface's functions, and every type's
+    /// identifiers.
     pub fn declared_identifiers(&self, world: &str) -> Vec<(String, String)> {
         let mut identifiers = vec![
             (
@@ -53,6 +64,12 @@ impl AnalyzedImports {
             identifiers.push((
                 String::from(&interface.go_interface_name),
                 format!("interface `{}`", interface.name),
+            ));
+        }
+        for interface in &self.exported_interfaces {
+            identifiers.push((
+                String::from(&interface.go_exports_name),
+                format!("exported interface `{}`", interface.wit_name),
             ));
         }
         for typ in self.types() {
@@ -108,6 +125,21 @@ impl AnalyzedInterface {
     pub fn needs_host(&self) -> bool {
         !self.methods.is_empty()
     }
+}
+
+/// An interface the world exports.
+#[derive(Debug, Clone)]
+pub struct AnalyzedExportedInterface {
+    /// The interface's id in the resolve.
+    pub id: InterfaceId,
+    /// The interface's name as the world exports it (e.g.
+    /// `test:fixture/api@1.0.0`).
+    pub wit_name: String,
+    /// The Go type holding the interface's functions (e.g.
+    /// `TestWorldApiExports`).
+    pub go_exports_name: GoIdentifier,
+    /// The types the interface declares.
+    pub types: Vec<AnalyzedType>,
 }
 
 /// Method signature for an interface

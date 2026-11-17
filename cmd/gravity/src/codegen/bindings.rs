@@ -56,7 +56,7 @@ impl<'a> Bindings<'a> {
     pub fn generate(&mut self) {
         let (imports, chains) = self.generate_imports();
         self.generate_factory(&imports, chains);
-        self.generate_exports(&imports.instance_name);
+        self.generate_exports(&imports);
     }
 
     /// Generates the imports for the bindings.
@@ -108,14 +108,15 @@ impl<'a> Bindings<'a> {
 
     /// Generates all exports for the world.
     ///
-    /// Note: for now this only generates functions; types and interfaces are
-    /// still TODO
-    fn generate_exports(&mut self, instance: &GoIdentifier) {
+    /// Functions the world exports become instance methods; an exported
+    /// interface becomes its types and a Go type holding its functions.
+    fn generate_exports(&mut self, imports: &AnalyzedImports) {
         let config = ExportConfig {
-            instance,
+            instance: &imports.instance_name,
             world: self.world,
             resolve: self.resolve,
             sizes: self.sizes,
+            analyzed_imports: imports,
         };
         ExportGenerator::new(config).format_into(&mut self.out)
     }
@@ -155,6 +156,22 @@ mod tests {
             world test-world {
                 enum %result { ok, error }
                 export f: func(r: %result) -> result<u32, %result>;
+            }",
+        ));
+    }
+
+    #[test]
+    #[should_panic(expected = "the WIT record `result-error` is named ResultError in Go")]
+    fn test_result_error_exported_interface_type_collision_is_refused() {
+        generate(&Fixture::parse(
+            "package test:fixture;
+            interface api {
+                record result-error { x: u32 }
+                enum refusal { a, b }
+                get: func() -> result<result-error, refusal>;
+            }
+            world test-world {
+                export api;
             }",
         ));
     }

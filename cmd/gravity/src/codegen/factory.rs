@@ -307,6 +307,7 @@ mod tests {
             factory_name: GoIdentifier::public("test-factory"),
             instance_name: GoIdentifier::public("test-instance"),
             constructor_name: GoIdentifier::public("test-constructor"),
+            exported_interfaces: vec![],
         };
         let config = FactoryConfig {
             analyzed_imports,
@@ -331,6 +332,7 @@ mod tests {
             factory_name: GoIdentifier::public("test-factory"),
             instance_name: GoIdentifier::public("test-instance"),
             constructor_name: GoIdentifier::public("test-constructor"),
+            exported_interfaces: vec![],
         };
         let config = FactoryConfig {
             analyzed_imports,
@@ -360,6 +362,7 @@ mod tests {
             factory_name: GoIdentifier::public("test-factory"),
             instance_name: GoIdentifier::public("test-instance"),
             constructor_name: GoIdentifier::public("test-constructor"),
+            exported_interfaces: vec![],
         };
         let config = FactoryConfig {
             analyzed_imports,
@@ -396,6 +399,7 @@ mod tests {
             factory_name: GoIdentifier::public("test-factory"),
             instance_name: GoIdentifier::public("test-instance"),
             constructor_name: GoIdentifier::public("test-constructor"),
+            exported_interfaces: vec![],
         };
         for typed_result_errors in [false, true] {
             let config = FactoryConfig {

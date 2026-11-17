@@ -224,7 +224,8 @@ Bump every example's pins with them.
 1. Create `examples/<name>/` with `Cargo.toml` (`crate-type = ["cdylib"]`),
    `wit/<name>.wit`, and `src/lib.rs`
 2. The workspace `Cargo.toml` uses `members = ["examples/*"]`, so new crates are
-   picked up automatically
+   picked up automatically. Its `default-members = ["cmd/*"]` keeps them out of
+   a bare `cargo build`; `go generate` builds them for wasm
 3. Add `//go:generate` directives to `examples/generate.go` (one for
    `cargo build`, one for `cargo run --bin gravity`)
 4. Write `examples/<name>/<name>_test.go` (this file IS committed)
