@@ -304,9 +304,8 @@ mod tests {
     }
 
     /// Regression test: an export returning `result<T, E>` with a non-string
-    /// E (here an enum) returns the err case as a `*ResultError[E]`. Gravity
-    /// used to panic generating it: "TODO(#4): implement remaining result
-    /// conversion".
+    /// E (here an enum) returns the err case as a `*ResultError[E]`, both
+    /// beside an ok value and as the only error return.
     #[test]
     fn test_export_result_with_enum_err() {
         let fixture = Fixture::parse(
