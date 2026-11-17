@@ -9,8 +9,7 @@ import (
 )
 
 // A result<T, E> whose E is not a string returns its err case as a
-// *ResultError[E]; errors.As recovers the E. Before the fix gravity panicked
-// generating these bindings: "TODO(#4): implement remaining result conversion".
+// *ResultError[E]; errors.As recovers the E.
 
 func refusalFor(n uint32) Refusal {
 	return []Refusal{RefusalNoCredential, RefusalMalformed, RefusalUntypedPeer, RefusalForeignDomain}[n%4]

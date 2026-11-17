@@ -1176,10 +1176,10 @@ mod tests {
         resolve_export_result("result<u32, string>");
     }
 
-    /// Regression test: every host function parameter used to be declared
-    /// `uint32`, whatever its core wasm type. wazero builds the host
-    /// function's wasm signature from the Go one, so a u64, s64, f32 or f64
-    /// parameter either failed to compile or linked the wrong signature.
+    /// Each host function parameter takes its core wasm type's Go width.
+    /// wazero builds the host function's wasm signature from the Go one, so
+    /// a u64, s64, f32 or f64 parameter declared `uint32` would fail to
+    /// compile or link the wrong signature.
     #[test]
     fn test_import_params_take_their_core_wasm_width() {
         let fixture = host_fixture("wide: func(a: u64, b: s64, c: f32, d: f64, e: u32, f: s8);");
@@ -1474,10 +1474,10 @@ mod tests {
         );
     }
 
-    /// Regression test: a guest built from a versioned package imports
-    /// `<namespace>:<package>/<interface>@<version>`. The host module was
-    /// named without the version, so instantiation failed:
-    /// "module[gravity:interface-exports/log@0.1.0] not instantiated".
+    /// A guest built from a versioned package imports
+    /// `<namespace>:<package>/<interface>@<version>`, so the host module
+    /// carries the version; wazero refuses to instantiate the guest against
+    /// a module named without it.
     #[test]
     fn test_host_module_name_carries_the_package_version() {
         let fixture = Fixture::parse(

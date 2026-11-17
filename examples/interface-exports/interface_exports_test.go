@@ -7,8 +7,7 @@ import (
 )
 
 // A world that exports interfaces: each becomes a Go type holding its
-// functions, answered by an instance method. Before the fix gravity panicked
-// generating these bindings: "not yet implemented: generate interface exports".
+// functions, answered by an instance method.
 
 type Log struct{ lines []string }
 
