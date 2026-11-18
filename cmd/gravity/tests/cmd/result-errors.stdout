@@ -8,6 +8,7 @@ import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -363,13 +364,18 @@ func (i *ResultErrorsInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -447,6 +453,10 @@ func (i *ResultErrorsInstance) Decide(
 		if !ok5 {
 			var default5 Decided
 			return default5, errors.New("failed to read bytes from memory")
+		}
+		if !utf8.Valid(buf5) {
+			var default5 Decided
+			return default5, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str5 := string(buf5)
 		value6, ok6 := i.module.Memory().ReadUint32Le(uint32(results1 + 12))
@@ -552,6 +562,10 @@ func (i *ResultErrorsInstance) Inspect(
 			var default9 uint32
 			return default9, errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf9) {
+			var default9 uint32
+			return default9, errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str9 := string(buf9)
 		value10 := Problem{
 			Code: result6,
@@ -615,6 +629,10 @@ func (i *ResultErrorsInstance) Classify(
 			var default5 string
 			return default5, errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf5) {
+			var default5 string
+			return default5, errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str5 := string(buf5)
 		value19 = str5
 	case 1:
@@ -668,6 +686,10 @@ func (i *ResultErrorsInstance) Classify(
 				var default13 string
 				return default13, errors.New("failed to read bytes from memory")
 			}
+			if !utf8.Valid(buf13) {
+				var default13 string
+				return default13, errors.New("invalid UTF-8 in string received from the guest")
+			}
 			str13 := string(buf13)
 			value14 := Problem{
 				Code: result10,
@@ -689,6 +711,10 @@ func (i *ResultErrorsInstance) Classify(
 			if !ok17 {
 				var default17 string
 				return default17, errors.New("failed to read bytes from memory")
+			}
+			if !utf8.Valid(buf17) {
+				var default17 string
+				return default17, errors.New("invalid UTF-8 in string received from the guest")
 			}
 			str17 := string(buf17)
 			value18 = FaultMessage{Value: str17}
@@ -882,6 +908,9 @@ func (i *ResultErrorsInstance) ViaProbe(
 		if !ok7 {
 			return errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf7) {
+			return errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str7 := string(buf7)
 		value8 := Problem{
 			Code: result4,
@@ -945,6 +974,10 @@ func (i *ResultErrorsInstance) ViaExplain(
 			var default5 string
 			return default5, errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf5) {
+			var default5 string
+			return default5, errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str5 := string(buf5)
 		value19 = str5
 	case 1:
@@ -998,6 +1031,10 @@ func (i *ResultErrorsInstance) ViaExplain(
 				var default13 string
 				return default13, errors.New("failed to read bytes from memory")
 			}
+			if !utf8.Valid(buf13) {
+				var default13 string
+				return default13, errors.New("invalid UTF-8 in string received from the guest")
+			}
 			str13 := string(buf13)
 			value14 := Problem{
 				Code: result10,
@@ -1019,6 +1056,10 @@ func (i *ResultErrorsInstance) ViaExplain(
 			if !ok17 {
 				var default17 string
 				return default17, errors.New("failed to read bytes from memory")
+			}
+			if !utf8.Valid(buf17) {
+				var default17 string
+				return default17, errors.New("invalid UTF-8 in string received from the guest")
 			}
 			str17 := string(buf17)
 			value18 = FaultMessage{Value: str17}

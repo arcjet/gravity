@@ -7,9 +7,9 @@ use crate::{
     go::{
         GoIdentifier, comment,
         imports::{
-            CONTEXT_CONTEXT, ERRORS_NEW, FMT_SPRINTF, SYNC_MAP, WAZERO_API_FUNCTION,
-            WAZERO_API_MEMORY, WAZERO_API_MODULE, WAZERO_COMPILED_MODULE, WAZERO_NEW_MODULE_CONFIG,
-            WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
+            CONTEXT_CONTEXT, ERRORS_NEW, FMT_SPRINTF, SYNC_MAP, UTF8_VALID_STRING,
+            WAZERO_API_FUNCTION, WAZERO_API_MEMORY, WAZERO_API_MODULE, WAZERO_COMPILED_MODULE,
+            WAZERO_NEW_MODULE_CONFIG, WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
         },
     },
 };
@@ -61,7 +61,9 @@ impl<'a> FactoryGenerator<'a> {
         quote_in! { *tokens =>
             $(comment(&[
                 "writeString will put a Go string into the Wasm memory following the Component",
-                "Model calling conventions, such as allocating memory with the realloc function",
+                "Model calling conventions, such as allocating memory with the realloc function.",
+                "The Component Model requires a string to be valid UTF-8, and a Go string can",
+                "hold any bytes, so writeString refuses one that is not.",
             ]))
             func writeString(
                 ctx $CONTEXT_CONTEXT,
@@ -69,6 +71,9 @@ impl<'a> FactoryGenerator<'a> {
                 memory $WAZERO_API_MEMORY,
                 realloc api.Function,
             ) (uint64, uint64, error) {
+                if !$UTF8_VALID_STRING(s) {
+                    return 1, 0, $ERRORS_NEW("invalid UTF-8 in string passed to the guest")
+                }
                 if len(s) == 0 {
                     return 1, 0, nil
                 }

@@ -7,6 +7,7 @@ import "errors"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -107,6 +108,9 @@ func NewBasicFactory(
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
 			}
+			if !utf8.Valid(buf0) {
+				panic(errors.New("invalid UTF-8 in string received from the guest"))
+			}
 			str0 := string(buf0)
 			logger.Debug(ctx, str0)
 		}).
@@ -121,6 +125,9 @@ func NewBasicFactory(
 			buf0, ok0 := mod.Memory().Read(arg0, arg1)
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
+			}
+			if !utf8.Valid(buf0) {
+				panic(errors.New("invalid UTF-8 in string received from the guest"))
 			}
 			str0 := string(buf0)
 			logger.Info(ctx, str0)
@@ -137,6 +144,9 @@ func NewBasicFactory(
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
 			}
+			if !utf8.Valid(buf0) {
+				panic(errors.New("invalid UTF-8 in string received from the guest"))
+			}
 			str0 := string(buf0)
 			logger.Warn(ctx, str0)
 		}).
@@ -151,6 +161,9 @@ func NewBasicFactory(
 			buf0, ok0 := mod.Memory().Read(arg0, arg1)
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
+			}
+			if !utf8.Valid(buf0) {
+				panic(errors.New("invalid UTF-8 in string received from the guest"))
 			}
 			str0 := string(buf0)
 			logger.Error(ctx, str0)
@@ -172,6 +185,9 @@ func NewBasicFactory(
 			buf0, ok0 := mod.Memory().Read(arg0, arg1)
 			if !ok0 {
 				panic(errors.New("failed to read bytes from memory"))
+			}
+			if !utf8.Valid(buf0) {
+				panic(errors.New("invalid UTF-8 in string received from the guest"))
 			}
 			str0 := string(buf0)
 			value1 := utils.Uppercase(ctx, str0)
@@ -240,13 +256,18 @@ func (i *BasicInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -311,6 +332,10 @@ func (i *BasicInstance) Hello(
 			var default4 string
 			return default4, errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf4) {
+			var default4 string
+			return default4, errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str4 := string(buf4)
 		value8 = str4
 	case 1:
@@ -328,6 +353,10 @@ func (i *BasicInstance) Hello(
 		if !ok7 {
 			var default7 string
 			return default7, errors.New("failed to read bytes from memory")
+		}
+		if !utf8.Valid(buf7) {
+			var default7 string
+			return default7, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str7 := string(buf7)
 		err8 = errors.New(str7)
@@ -454,6 +483,10 @@ func (i *BasicInstance) ResultPrimitive(
 			var default6 bool
 			return default6, errors.New("failed to read bytes from memory")
 		}
+		if !utf8.Valid(buf6) {
+			var default6 bool
+			return default6, errors.New("invalid UTF-8 in string received from the guest")
+		}
 		str6 := string(buf6)
 		err7 = errors.New(str6)
 	default:
@@ -529,6 +562,10 @@ func (i *BasicInstance) OptionalString(
 		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok6 {
 			panic(errors.New("failed to read bytes from memory"))
+		}
+		// The return type doesn't contain an error so we panic if one is encountered
+		if !utf8.Valid(buf6) {
+			panic(errors.New("invalid UTF-8 in string received from the guest"))
 		}
 		str6 := string(buf6)
 		someValue7 := str6

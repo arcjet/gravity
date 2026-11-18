@@ -1,0 +1,31 @@
+package gravity:utf8-strings;
+
+// The Component Model requires every string to be valid UTF-8, in both
+// directions. A Go string can hold any bytes, so the bindings check a string
+// before writing it to guest memory and after reading one from it.
+interface host {
+  // The host returns a string to the guest.
+  text: func() -> string;
+  // The guest passes a string to the host.
+  take: func(s: string);
+}
+
+world utf8-strings {
+  import host;
+
+  // The host passes a string to an export that can return an error.
+  export echo: func(s: string) -> result<string, string>;
+  // The host passes a string to an export that cannot return an error.
+  export byte-length: func(s: string) -> u32;
+  // The guest returns a string that is not valid UTF-8.
+  export invalid: func() -> result<string, string>;
+  // The guest returns an error message that is not valid UTF-8.
+  export invalid-error: func() -> result<_, string>;
+  // The guest returns a string that is not valid UTF-8, from an export that
+  // cannot return an error.
+  export invalid-plain: func() -> string;
+  // The guest passes host.text's string back, so the host writes it.
+  export from-host: func() -> result<string, string>;
+  // The guest passes a string that is not valid UTF-8 to host.take.
+  export to-host-invalid: func() -> result<_, string>;
+}

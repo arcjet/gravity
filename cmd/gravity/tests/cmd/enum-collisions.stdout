@@ -8,6 +8,7 @@ import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -233,13 +234,18 @@ func (i *EnumCollisionsInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -363,6 +369,10 @@ func (i *EnumCollisionsInstance) Describe(
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok7 {
 		panic(errors.New("failed to read bytes from memory"))
+	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf7) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
 	}
 	str7 := string(buf7)
 	return str7
