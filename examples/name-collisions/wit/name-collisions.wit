@@ -1,0 +1,37 @@
+package gravity:name-collisions;
+
+// WIT names that, as Go locals, would take a name the generated code uses:
+// Go keywords, predeclared identifiers, imported packages, the fixed names in
+// generated function bodies, and names that end in a digit, as every
+// numbered local does. The bindings add a trailing underscore to each.
+
+// The factory constructor takes a parameter named for this interface, and
+// every host function declares `mod`.
+interface mod {
+  echo: func(%type: string, ctx: u32, len: u32) -> string;
+}
+
+world name-collisions {
+  import mod;
+
+  // Each field is copied into a local before it is lowered. When the local
+  // was named for the field, `ptr1` with counter 1 became `ptr11`, the name of
+  // a later string's pointer, and the guest received t9's address in place
+  // of ptr1.
+  record r {
+    t0: string, t1: string, t2: string, t3: string, t4: string,
+    t5: string, t6: string, t7: string, t8: string, t9: string,
+    ptr1: u64,
+  }
+  export pick: func(v: r) -> u64;
+
+  // Go keywords and predeclared identifiers.
+  export keywords: func(%type: string, %func: u32, %string: u32, range: u32, nil: bool) -> string;
+  // An imported package and fixed names in the generated function body.
+  export fixed-names: func(len: u32, errors: string, ctx: u32, i: u32) -> string;
+  // Names that end in a digit, as every numbered local does, and a helper's.
+  export numbered: func(arg1: u32, ptr0: u32, write-string: string) -> string;
+
+  // Calls mod.echo.
+  export call-host: func(s: string) -> string;
+}

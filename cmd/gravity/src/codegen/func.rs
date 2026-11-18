@@ -1077,9 +1077,9 @@ impl Bindgen for Func<'_> {
             Instruction::RecordLower { record, .. } => {
                 let tmp = self.tmp();
                 let operand = &operands[0];
-                for field in record.fields.iter() {
+                for (i, field) in record.fields.iter().enumerate() {
                     let struct_field = GoIdentifier::public(&field.name);
-                    let var = &GoIdentifier::local(format!("{}{tmp}", field.name));
+                    let var = &format!("field{tmp}_{i}");
                     quote_in! { self.body =>
                         $['\r']
                         $var := $operand.$struct_field

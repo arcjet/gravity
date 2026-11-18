@@ -439,205 +439,205 @@ func (i *GuestLengthsInstance) Count(
 		} else {
 			variantPayload := *e
 			i.module.Memory().WriteByte(base+0, uint8(1))
-			a0 := variantPayload.A
-			b0 := variantPayload.B
-			c0 := variantPayload.C
-			d0 := variantPayload.D
-			e0 := variantPayload.E
-			f0 := variantPayload.F
-			g0 := variantPayload.G
-			h0 := variantPayload.H
-			a1 := a0.A
-			b1 := a0.B
-			c1 := a0.C
-			d1 := a0.D
-			e1 := a0.E
-			f1 := a0.F
-			g1 := a0.G
-			h1 := a0.H
-			value2 := uint64(a1)
+			field0_0 := variantPayload.A
+			field0_1 := variantPayload.B
+			field0_2 := variantPayload.C
+			field0_3 := variantPayload.D
+			field0_4 := variantPayload.E
+			field0_5 := variantPayload.F
+			field0_6 := variantPayload.G
+			field0_7 := variantPayload.H
+			field1_0 := field0_0.A
+			field1_1 := field0_0.B
+			field1_2 := field0_0.C
+			field1_3 := field0_0.D
+			field1_4 := field0_0.E
+			field1_5 := field0_0.F
+			field1_6 := field0_0.G
+			field1_7 := field0_0.H
+			value2 := uint64(field1_0)
 			i.module.Memory().WriteUint64Le(base+8, uint64(value2))
-			value3 := uint64(b1)
+			value3 := uint64(field1_1)
 			i.module.Memory().WriteUint64Le(base+16, uint64(value3))
-			value4 := uint64(c1)
+			value4 := uint64(field1_2)
 			i.module.Memory().WriteUint64Le(base+24, uint64(value4))
-			value5 := uint64(d1)
+			value5 := uint64(field1_3)
 			i.module.Memory().WriteUint64Le(base+32, uint64(value5))
-			value6 := uint64(e1)
+			value6 := uint64(field1_4)
 			i.module.Memory().WriteUint64Le(base+40, uint64(value6))
-			value7 := uint64(f1)
+			value7 := uint64(field1_5)
 			i.module.Memory().WriteUint64Le(base+48, uint64(value7))
-			value8 := uint64(g1)
+			value8 := uint64(field1_6)
 			i.module.Memory().WriteUint64Le(base+56, uint64(value8))
-			value9 := uint64(h1)
+			value9 := uint64(field1_7)
 			i.module.Memory().WriteUint64Le(base+64, uint64(value9))
-			a10 := b0.A
-			b10 := b0.B
-			c10 := b0.C
-			d10 := b0.D
-			e10 := b0.E
-			f10 := b0.F
-			g10 := b0.G
-			h10 := b0.H
-			value11 := uint64(a10)
+			field10_0 := field0_1.A
+			field10_1 := field0_1.B
+			field10_2 := field0_1.C
+			field10_3 := field0_1.D
+			field10_4 := field0_1.E
+			field10_5 := field0_1.F
+			field10_6 := field0_1.G
+			field10_7 := field0_1.H
+			value11 := uint64(field10_0)
 			i.module.Memory().WriteUint64Le(base+72, uint64(value11))
-			value12 := uint64(b10)
+			value12 := uint64(field10_1)
 			i.module.Memory().WriteUint64Le(base+80, uint64(value12))
-			value13 := uint64(c10)
+			value13 := uint64(field10_2)
 			i.module.Memory().WriteUint64Le(base+88, uint64(value13))
-			value14 := uint64(d10)
+			value14 := uint64(field10_3)
 			i.module.Memory().WriteUint64Le(base+96, uint64(value14))
-			value15 := uint64(e10)
+			value15 := uint64(field10_4)
 			i.module.Memory().WriteUint64Le(base+104, uint64(value15))
-			value16 := uint64(f10)
+			value16 := uint64(field10_5)
 			i.module.Memory().WriteUint64Le(base+112, uint64(value16))
-			value17 := uint64(g10)
+			value17 := uint64(field10_6)
 			i.module.Memory().WriteUint64Le(base+120, uint64(value17))
-			value18 := uint64(h10)
+			value18 := uint64(field10_7)
 			i.module.Memory().WriteUint64Le(base+128, uint64(value18))
-			a19 := c0.A
-			b19 := c0.B
-			c19 := c0.C
-			d19 := c0.D
-			e19 := c0.E
-			f19 := c0.F
-			g19 := c0.G
-			h19 := c0.H
-			value20 := uint64(a19)
+			field19_0 := field0_2.A
+			field19_1 := field0_2.B
+			field19_2 := field0_2.C
+			field19_3 := field0_2.D
+			field19_4 := field0_2.E
+			field19_5 := field0_2.F
+			field19_6 := field0_2.G
+			field19_7 := field0_2.H
+			value20 := uint64(field19_0)
 			i.module.Memory().WriteUint64Le(base+136, uint64(value20))
-			value21 := uint64(b19)
+			value21 := uint64(field19_1)
 			i.module.Memory().WriteUint64Le(base+144, uint64(value21))
-			value22 := uint64(c19)
+			value22 := uint64(field19_2)
 			i.module.Memory().WriteUint64Le(base+152, uint64(value22))
-			value23 := uint64(d19)
+			value23 := uint64(field19_3)
 			i.module.Memory().WriteUint64Le(base+160, uint64(value23))
-			value24 := uint64(e19)
+			value24 := uint64(field19_4)
 			i.module.Memory().WriteUint64Le(base+168, uint64(value24))
-			value25 := uint64(f19)
+			value25 := uint64(field19_5)
 			i.module.Memory().WriteUint64Le(base+176, uint64(value25))
-			value26 := uint64(g19)
+			value26 := uint64(field19_6)
 			i.module.Memory().WriteUint64Le(base+184, uint64(value26))
-			value27 := uint64(h19)
+			value27 := uint64(field19_7)
 			i.module.Memory().WriteUint64Le(base+192, uint64(value27))
-			a28 := d0.A
-			b28 := d0.B
-			c28 := d0.C
-			d28 := d0.D
-			e28 := d0.E
-			f28 := d0.F
-			g28 := d0.G
-			h28 := d0.H
-			value29 := uint64(a28)
+			field28_0 := field0_3.A
+			field28_1 := field0_3.B
+			field28_2 := field0_3.C
+			field28_3 := field0_3.D
+			field28_4 := field0_3.E
+			field28_5 := field0_3.F
+			field28_6 := field0_3.G
+			field28_7 := field0_3.H
+			value29 := uint64(field28_0)
 			i.module.Memory().WriteUint64Le(base+200, uint64(value29))
-			value30 := uint64(b28)
+			value30 := uint64(field28_1)
 			i.module.Memory().WriteUint64Le(base+208, uint64(value30))
-			value31 := uint64(c28)
+			value31 := uint64(field28_2)
 			i.module.Memory().WriteUint64Le(base+216, uint64(value31))
-			value32 := uint64(d28)
+			value32 := uint64(field28_3)
 			i.module.Memory().WriteUint64Le(base+224, uint64(value32))
-			value33 := uint64(e28)
+			value33 := uint64(field28_4)
 			i.module.Memory().WriteUint64Le(base+232, uint64(value33))
-			value34 := uint64(f28)
+			value34 := uint64(field28_5)
 			i.module.Memory().WriteUint64Le(base+240, uint64(value34))
-			value35 := uint64(g28)
+			value35 := uint64(field28_6)
 			i.module.Memory().WriteUint64Le(base+248, uint64(value35))
-			value36 := uint64(h28)
+			value36 := uint64(field28_7)
 			i.module.Memory().WriteUint64Le(base+256, uint64(value36))
-			a37 := e0.A
-			b37 := e0.B
-			c37 := e0.C
-			d37 := e0.D
-			e37 := e0.E
-			f37 := e0.F
-			g37 := e0.G
-			h37 := e0.H
-			value38 := uint64(a37)
+			field37_0 := field0_4.A
+			field37_1 := field0_4.B
+			field37_2 := field0_4.C
+			field37_3 := field0_4.D
+			field37_4 := field0_4.E
+			field37_5 := field0_4.F
+			field37_6 := field0_4.G
+			field37_7 := field0_4.H
+			value38 := uint64(field37_0)
 			i.module.Memory().WriteUint64Le(base+264, uint64(value38))
-			value39 := uint64(b37)
+			value39 := uint64(field37_1)
 			i.module.Memory().WriteUint64Le(base+272, uint64(value39))
-			value40 := uint64(c37)
+			value40 := uint64(field37_2)
 			i.module.Memory().WriteUint64Le(base+280, uint64(value40))
-			value41 := uint64(d37)
+			value41 := uint64(field37_3)
 			i.module.Memory().WriteUint64Le(base+288, uint64(value41))
-			value42 := uint64(e37)
+			value42 := uint64(field37_4)
 			i.module.Memory().WriteUint64Le(base+296, uint64(value42))
-			value43 := uint64(f37)
+			value43 := uint64(field37_5)
 			i.module.Memory().WriteUint64Le(base+304, uint64(value43))
-			value44 := uint64(g37)
+			value44 := uint64(field37_6)
 			i.module.Memory().WriteUint64Le(base+312, uint64(value44))
-			value45 := uint64(h37)
+			value45 := uint64(field37_7)
 			i.module.Memory().WriteUint64Le(base+320, uint64(value45))
-			a46 := f0.A
-			b46 := f0.B
-			c46 := f0.C
-			d46 := f0.D
-			e46 := f0.E
-			f46 := f0.F
-			g46 := f0.G
-			h46 := f0.H
-			value47 := uint64(a46)
+			field46_0 := field0_5.A
+			field46_1 := field0_5.B
+			field46_2 := field0_5.C
+			field46_3 := field0_5.D
+			field46_4 := field0_5.E
+			field46_5 := field0_5.F
+			field46_6 := field0_5.G
+			field46_7 := field0_5.H
+			value47 := uint64(field46_0)
 			i.module.Memory().WriteUint64Le(base+328, uint64(value47))
-			value48 := uint64(b46)
+			value48 := uint64(field46_1)
 			i.module.Memory().WriteUint64Le(base+336, uint64(value48))
-			value49 := uint64(c46)
+			value49 := uint64(field46_2)
 			i.module.Memory().WriteUint64Le(base+344, uint64(value49))
-			value50 := uint64(d46)
+			value50 := uint64(field46_3)
 			i.module.Memory().WriteUint64Le(base+352, uint64(value50))
-			value51 := uint64(e46)
+			value51 := uint64(field46_4)
 			i.module.Memory().WriteUint64Le(base+360, uint64(value51))
-			value52 := uint64(f46)
+			value52 := uint64(field46_5)
 			i.module.Memory().WriteUint64Le(base+368, uint64(value52))
-			value53 := uint64(g46)
+			value53 := uint64(field46_6)
 			i.module.Memory().WriteUint64Le(base+376, uint64(value53))
-			value54 := uint64(h46)
+			value54 := uint64(field46_7)
 			i.module.Memory().WriteUint64Le(base+384, uint64(value54))
-			a55 := g0.A
-			b55 := g0.B
-			c55 := g0.C
-			d55 := g0.D
-			e55 := g0.E
-			f55 := g0.F
-			g55 := g0.G
-			h55 := g0.H
-			value56 := uint64(a55)
+			field55_0 := field0_6.A
+			field55_1 := field0_6.B
+			field55_2 := field0_6.C
+			field55_3 := field0_6.D
+			field55_4 := field0_6.E
+			field55_5 := field0_6.F
+			field55_6 := field0_6.G
+			field55_7 := field0_6.H
+			value56 := uint64(field55_0)
 			i.module.Memory().WriteUint64Le(base+392, uint64(value56))
-			value57 := uint64(b55)
+			value57 := uint64(field55_1)
 			i.module.Memory().WriteUint64Le(base+400, uint64(value57))
-			value58 := uint64(c55)
+			value58 := uint64(field55_2)
 			i.module.Memory().WriteUint64Le(base+408, uint64(value58))
-			value59 := uint64(d55)
+			value59 := uint64(field55_3)
 			i.module.Memory().WriteUint64Le(base+416, uint64(value59))
-			value60 := uint64(e55)
+			value60 := uint64(field55_4)
 			i.module.Memory().WriteUint64Le(base+424, uint64(value60))
-			value61 := uint64(f55)
+			value61 := uint64(field55_5)
 			i.module.Memory().WriteUint64Le(base+432, uint64(value61))
-			value62 := uint64(g55)
+			value62 := uint64(field55_6)
 			i.module.Memory().WriteUint64Le(base+440, uint64(value62))
-			value63 := uint64(h55)
+			value63 := uint64(field55_7)
 			i.module.Memory().WriteUint64Le(base+448, uint64(value63))
-			a64 := h0.A
-			b64 := h0.B
-			c64 := h0.C
-			d64 := h0.D
-			e64 := h0.E
-			f64 := h0.F
-			g64 := h0.G
-			h64 := h0.H
-			value65 := uint64(a64)
+			field64_0 := field0_7.A
+			field64_1 := field0_7.B
+			field64_2 := field0_7.C
+			field64_3 := field0_7.D
+			field64_4 := field0_7.E
+			field64_5 := field0_7.F
+			field64_6 := field0_7.G
+			field64_7 := field0_7.H
+			value65 := uint64(field64_0)
 			i.module.Memory().WriteUint64Le(base+456, uint64(value65))
-			value66 := uint64(b64)
+			value66 := uint64(field64_1)
 			i.module.Memory().WriteUint64Le(base+464, uint64(value66))
-			value67 := uint64(c64)
+			value67 := uint64(field64_2)
 			i.module.Memory().WriteUint64Le(base+472, uint64(value67))
-			value68 := uint64(d64)
+			value68 := uint64(field64_3)
 			i.module.Memory().WriteUint64Le(base+480, uint64(value68))
-			value69 := uint64(e64)
+			value69 := uint64(field64_4)
 			i.module.Memory().WriteUint64Le(base+488, uint64(value69))
-			value70 := uint64(f64)
+			value70 := uint64(field64_5)
 			i.module.Memory().WriteUint64Le(base+496, uint64(value70))
-			value71 := uint64(g64)
+			value71 := uint64(field64_6)
 			i.module.Memory().WriteUint64Le(base+504, uint64(value71))
-			value72 := uint64(h64)
+			value72 := uint64(field64_7)
 			i.module.Memory().WriteUint64Le(base+512, uint64(value72))
 		}
 	}
@@ -720,56 +720,56 @@ func (i *GuestLengthsInstance) Wide(
 		var default0 uint32
 		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0)
 	}
-	p11 := arg0.P1
-	p21 := arg0.P2
-	p31 := arg0.P3
-	p41 := arg0.P4
-	p51 := arg0.P5
-	p61 := arg0.P6
-	p71 := arg0.P7
-	p81 := arg0.P8
-	p91 := arg0.P9
-	p101 := arg0.P10
-	p111 := arg0.P11
-	p121 := arg0.P12
-	p131 := arg0.P13
-	p141 := arg0.P14
-	p151 := arg0.P15
-	p161 := arg0.P16
-	p171 := arg0.P17
-	result2 := uint32(p11)
+	field1_0 := arg0.P1
+	field1_1 := arg0.P2
+	field1_2 := arg0.P3
+	field1_3 := arg0.P4
+	field1_4 := arg0.P5
+	field1_5 := arg0.P6
+	field1_6 := arg0.P7
+	field1_7 := arg0.P8
+	field1_8 := arg0.P9
+	field1_9 := arg0.P10
+	field1_10 := arg0.P11
+	field1_11 := arg0.P12
+	field1_12 := arg0.P13
+	field1_13 := arg0.P14
+	field1_14 := arg0.P15
+	field1_15 := arg0.P16
+	field1_16 := arg0.P17
+	result2 := uint32(field1_0)
 	i.module.Memory().WriteUint32Le(ptr0+0, uint32(result2))
-	result3 := uint32(p21)
+	result3 := uint32(field1_1)
 	i.module.Memory().WriteUint32Le(ptr0+4, uint32(result3))
-	result4 := uint32(p31)
+	result4 := uint32(field1_2)
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result4))
-	result5 := uint32(p41)
+	result5 := uint32(field1_3)
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(result5))
-	result6 := uint32(p51)
+	result6 := uint32(field1_4)
 	i.module.Memory().WriteUint32Le(ptr0+16, uint32(result6))
-	result7 := uint32(p61)
+	result7 := uint32(field1_5)
 	i.module.Memory().WriteUint32Le(ptr0+20, uint32(result7))
-	result8 := uint32(p71)
+	result8 := uint32(field1_6)
 	i.module.Memory().WriteUint32Le(ptr0+24, uint32(result8))
-	result9 := uint32(p81)
+	result9 := uint32(field1_7)
 	i.module.Memory().WriteUint32Le(ptr0+28, uint32(result9))
-	result10 := uint32(p91)
+	result10 := uint32(field1_8)
 	i.module.Memory().WriteUint32Le(ptr0+32, uint32(result10))
-	result11 := uint32(p101)
+	result11 := uint32(field1_9)
 	i.module.Memory().WriteUint32Le(ptr0+36, uint32(result11))
-	result12 := uint32(p111)
+	result12 := uint32(field1_10)
 	i.module.Memory().WriteUint32Le(ptr0+40, uint32(result12))
-	result13 := uint32(p121)
+	result13 := uint32(field1_11)
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(result13))
-	result14 := uint32(p131)
+	result14 := uint32(field1_12)
 	i.module.Memory().WriteUint32Le(ptr0+48, uint32(result14))
-	result15 := uint32(p141)
+	result15 := uint32(field1_13)
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(result15))
-	result16 := uint32(p151)
+	result16 := uint32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(result16))
-	result17 := uint32(p161)
+	result17 := uint32(field1_15)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
-	result18 := uint32(p171)
+	result18 := uint32(field1_16)
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(result18))
 	raw19, err19 := i.exports.get("wide").Call(ctx, uint64(ptr0))
 	if err19 != nil {

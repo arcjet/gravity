@@ -297,10 +297,10 @@ func (i *InterfaceExportsGeometryExports) QuadrantOf(
 	p Point,
 ) Quadrant {
 	arg0 := p
-	x0 := arg0.X
-	y0 := arg0.Y
-	value1 := uint32(x0)
-	value2 := uint32(y0)
+	field0_0 := arg0.X
+	field0_1 := arg0.Y
+	value1 := uint32(field0_0)
+	value2 := uint32(field0_1)
 	raw3, err3 := i.exports.get("gravity:interface-exports/geometry@0.1.0#quadrant-of").Call(ctx, uint64(value1), uint64(value2))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
@@ -346,16 +346,16 @@ func (i *InterfaceExportsGeometryExports) Midpoint(
 	s Segment,
 ) Point {
 	arg0 := s
-	start0 := arg0.Start
-	end0 := arg0.End
-	x1 := start0.X
-	y1 := start0.Y
-	value2 := uint32(x1)
-	value3 := uint32(y1)
-	x4 := end0.X
-	y4 := end0.Y
-	value5 := uint32(x4)
-	value6 := uint32(y4)
+	field0_0 := arg0.Start
+	field0_1 := arg0.End
+	field1_0 := field0_0.X
+	field1_1 := field0_0.Y
+	value2 := uint32(field1_0)
+	value3 := uint32(field1_1)
+	field4_0 := field0_1.X
+	field4_1 := field0_1.Y
+	value5 := uint32(field4_0)
+	value6 := uint32(field4_1)
 	raw7, err7 := i.exports.get("gravity:interface-exports/geometry@0.1.0#midpoint").Call(ctx, uint64(value2), uint64(value3), uint64(value5), uint64(value6))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
@@ -399,16 +399,16 @@ func (i *InterfaceExportsGeometryExports) LengthSquared(
 	s Segment,
 ) uint64 {
 	arg0 := s
-	start0 := arg0.Start
-	end0 := arg0.End
-	x1 := start0.X
-	y1 := start0.Y
-	value2 := uint32(x1)
-	value3 := uint32(y1)
-	x4 := end0.X
-	y4 := end0.Y
-	value5 := uint32(x4)
-	value6 := uint32(y4)
+	field0_0 := arg0.Start
+	field0_1 := arg0.End
+	field1_0 := field0_0.X
+	field1_1 := field0_0.Y
+	value2 := uint32(field1_0)
+	value3 := uint32(field1_1)
+	field4_0 := field0_1.X
+	field4_1 := field0_1.Y
+	value5 := uint32(field4_0)
+	value6 := uint32(field4_1)
 	raw7, err7 := i.exports.get("gravity:interface-exports/geometry@0.1.0#length-squared").Call(ctx, uint64(value2), uint64(value3), uint64(value5), uint64(value6))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {

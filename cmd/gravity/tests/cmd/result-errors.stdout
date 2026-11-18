@@ -211,13 +211,13 @@ func NewResultErrorsFactory(
 			}
 			variantPayload := typed5.Value
 			mod.Memory().WriteByte(arg1+0, uint8(1))
-			code2 := variantPayload.Code
-			detail2 := variantPayload.Detail
-			result3 := uint32(code2)
+			field2_0 := variantPayload.Code
+			field2_1 := variantPayload.Detail
+			result3 := uint32(field2_0)
 			mod.Memory().WriteUint32Le(arg1+4, uint32(result3))
 			memory4 := mod.Memory()
 			realloc4 := gravityExportCache.lookup(mod, "cabi_realloc")
-			ptr4, len4, err4 := writeString(ctx, detail2, memory4, realloc4)
+			ptr4, len4, err4 := writeString(ctx, field2_1, memory4, realloc4)
 			if err4 != nil {
 				panic(err4)
 			}
@@ -265,13 +265,13 @@ func NewResultErrorsFactory(
 				case Problem:
 					variantPayload := case8
 					mod.Memory().WriteByte(arg1+4, uint8(1))
-					code4 := variantPayload.Code
-					detail4 := variantPayload.Detail
-					result5 := uint32(code4)
+					field4_0 := variantPayload.Code
+					field4_1 := variantPayload.Detail
+					result5 := uint32(field4_0)
 					mod.Memory().WriteUint32Le(arg1+8, uint32(result5))
 					memory6 := mod.Memory()
 					realloc6 := gravityExportCache.lookup(mod, "cabi_realloc")
-					ptr6, len6, err6 := writeString(ctx, detail4, memory6, realloc6)
+					ptr6, len6, err6 := writeString(ctx, field4_1, memory6, realloc6)
 					if err6 != nil {
 						panic(err6)
 					}

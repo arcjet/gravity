@@ -18,6 +18,7 @@ package examples
 //go:generate cargo build -p example-utf8-strings --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-cleanup-errors --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-guest-lengths --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-name-collisions --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -37,3 +38,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world utf8-strings --output ./utf8-strings/utf8_strings.go ../target/wasm32-unknown-unknown/release/example_utf8_strings.wasm
 //go:generate cargo run --bin gravity -- --world cleanup-errors --output ./cleanup-errors/cleanup_errors.go ../target/wasm32-unknown-unknown/release/example_cleanup_errors.wasm
 //go:generate cargo run --bin gravity -- --world guest-lengths --output ./guest-lengths/guest_lengths.go ../target/wasm32-unknown-unknown/release/example_guest_lengths.wasm
+//go:generate cargo run --bin gravity -- --world name-collisions --output ./name-collisions/name_collisions.go ../target/wasm32-unknown-unknown/release/example_name_collisions.wasm

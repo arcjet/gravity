@@ -342,6 +342,19 @@ mod tests {
         assert!(tokens.to_string().unwrap().contains("func writeString"));
     }
 
+    /// A WIT parameter named for a helper is escaped, so it cannot shadow the
+    /// helper a function body calls.
+    #[test]
+    fn test_helpers_are_reserved_locals() {
+        for (helper, _) in super::HELPERS {
+            assert_eq!(
+                String::from(GoIdentifier::local(helper)),
+                format!("{helper}_"),
+                "a local named `{helper}` is not escaped"
+            );
+        }
+    }
+
     /// Each instance is anonymous, so one factory can hold many at once.
     #[test]
     fn test_instances_are_anonymous() {
