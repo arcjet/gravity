@@ -393,10 +393,8 @@ func (i *EnumDiscriminantsInstance) Echo(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo: %w", err))
 			}
 		}
 	}()
@@ -466,10 +464,8 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-list"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-list: %w", err))
 			}
 		}
 	}()
@@ -557,10 +553,8 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-entry"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-entry: %w", err))
 			}
 		}
 	}()
@@ -656,10 +650,8 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-option: %w", err))
 			}
 		}
 	}()
@@ -731,10 +723,8 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after via-host: %w", err))
 			}
 		}
 	}()
@@ -774,10 +764,8 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_host-entries"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after host-entries: %w", err))
 			}
 		}
 	}()
@@ -890,10 +878,8 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after via-host-option: %w", err))
 			}
 		}
 	}()

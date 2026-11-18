@@ -406,7 +406,7 @@ func (e *ResultError[E]) Error() string {
 func (i *ResultErrorsInstance) Decide(
 	ctx context.Context,
 	n uint32,
-) (Decided, error) {
+) (_ Decided, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("decide").Call(ctx, uint64(result0))
@@ -421,10 +421,7 @@ func (i *ResultErrorsInstance) Decide(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_decide"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after decide: %w", err))
 			}
 		}
 	}()
@@ -500,7 +497,7 @@ func (i *ResultErrorsInstance) Decide(
 func (i *ResultErrorsInstance) Inspect(
 	ctx context.Context,
 	n uint32,
-) (uint32, error) {
+) (_ uint32, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("inspect").Call(ctx, uint64(result0))
@@ -515,10 +512,7 @@ func (i *ResultErrorsInstance) Inspect(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_inspect"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after inspect: %w", err))
 			}
 		}
 	}()
@@ -581,7 +575,7 @@ func (i *ResultErrorsInstance) Inspect(
 func (i *ResultErrorsInstance) Classify(
 	ctx context.Context,
 	n uint32,
-) (string, error) {
+) (_ string, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("classify").Call(ctx, uint64(result0))
@@ -596,10 +590,7 @@ func (i *ResultErrorsInstance) Classify(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_classify"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after classify: %w", err))
 			}
 		}
 	}()
@@ -734,7 +725,7 @@ func (i *ResultErrorsInstance) Classify(
 func (i *ResultErrorsInstance) OnlyErr(
 	ctx context.Context,
 	n uint32,
-) error {
+) (gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("only-err").Call(ctx, uint64(result0))
@@ -748,10 +739,7 @@ func (i *ResultErrorsInstance) OnlyErr(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_only-err"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after only-err: %w", err))
 			}
 		}
 	}()
@@ -791,7 +779,7 @@ func (i *ResultErrorsInstance) OnlyErr(
 func (i *ResultErrorsInstance) ViaCheck(
 	ctx context.Context,
 	n uint32,
-) (uint32, error) {
+) (_ uint32, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("via-check").Call(ctx, uint64(result0))
@@ -806,10 +794,7 @@ func (i *ResultErrorsInstance) ViaCheck(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-check"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after via-check: %w", err))
 			}
 		}
 	}()
@@ -861,7 +846,7 @@ func (i *ResultErrorsInstance) ViaCheck(
 func (i *ResultErrorsInstance) ViaProbe(
 	ctx context.Context,
 	n uint32,
-) error {
+) (gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("via-probe").Call(ctx, uint64(result0))
@@ -875,10 +860,7 @@ func (i *ResultErrorsInstance) ViaProbe(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-probe"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after via-probe: %w", err))
 			}
 		}
 	}()
@@ -926,7 +908,7 @@ func (i *ResultErrorsInstance) ViaProbe(
 func (i *ResultErrorsInstance) ViaExplain(
 	ctx context.Context,
 	n uint32,
-) (string, error) {
+) (_ string, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("via-explain").Call(ctx, uint64(result0))
@@ -941,10 +923,7 @@ func (i *ResultErrorsInstance) ViaExplain(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-explain"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after via-explain: %w", err))
 			}
 		}
 	}()

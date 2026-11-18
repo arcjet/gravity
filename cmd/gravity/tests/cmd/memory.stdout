@@ -555,10 +555,8 @@ func (i *MemoryInstance) RoundTrip(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after round-trip: %w", err))
 			}
 		}
 	}()
@@ -811,10 +809,8 @@ func (i *MemoryInstance) CallHostEcho(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_call-host-echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after call-host-echo: %w", err))
 			}
 		}
 	}()
@@ -1049,10 +1045,8 @@ func (i *MemoryInstance) RoundTripNarrow(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip-narrow"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after round-trip-narrow: %w", err))
 			}
 		}
 	}()

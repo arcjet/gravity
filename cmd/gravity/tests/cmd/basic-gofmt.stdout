@@ -4,6 +4,7 @@ package basic
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
@@ -286,7 +287,7 @@ func writeString(
 
 func (i *BasicInstance) Hello(
 	ctx context.Context,
-) (string, error) {
+) (_ string, gravity_err error) {
 	raw0, err0 := i.exports.get("hello").Call(ctx)
 	if err0 != nil {
 		var default0 string
@@ -299,10 +300,7 @@ func (i *BasicInstance) Hello(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_hello"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after hello: %w", err))
 			}
 		}
 	}()
@@ -429,7 +427,7 @@ func (i *BasicInstance) OptionalPrimitive(
 
 func (i *BasicInstance) ResultPrimitive(
 	ctx context.Context,
-) (bool, error) {
+) (_ bool, gravity_err error) {
 	raw0, err0 := i.exports.get("result-primitive").Call(ctx)
 	if err0 != nil {
 		var default0 bool
@@ -442,10 +440,7 @@ func (i *BasicInstance) ResultPrimitive(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_result-primitive"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after result-primitive: %w", err))
 			}
 		}
 	}()
@@ -532,10 +527,8 @@ func (i *BasicInstance) OptionalString(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_optional-string"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after optional-string: %w", err))
 			}
 		}
 	}()

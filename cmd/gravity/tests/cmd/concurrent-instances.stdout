@@ -4,6 +4,7 @@ package concurrent_instances
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
@@ -220,10 +221,8 @@ func (i *ConcurrentInstancesInstance) Join(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_join"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after join: %w", err))
 			}
 		}
 	}()
@@ -270,10 +269,8 @@ func (i *ConcurrentInstancesInstance) Greet(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_greet"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after greet: %w", err))
 			}
 		}
 	}()

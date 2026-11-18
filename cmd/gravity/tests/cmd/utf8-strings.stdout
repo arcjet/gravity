@@ -4,6 +4,7 @@ package utf8_strings
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
@@ -195,7 +196,7 @@ func writeString(
 func (i *Utf8StringsInstance) Echo(
 	ctx context.Context,
 	s string,
-) (string, error) {
+) (_ string, gravity_err error) {
 	arg0 := s
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
@@ -216,10 +217,7 @@ func (i *Utf8StringsInstance) Echo(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after echo: %w", err))
 			}
 		}
 	}()
@@ -308,7 +306,7 @@ func (i *Utf8StringsInstance) ByteLength(
 
 func (i *Utf8StringsInstance) Invalid(
 	ctx context.Context,
-) (string, error) {
+) (_ string, gravity_err error) {
 	raw0, err0 := i.exports.get("invalid").Call(ctx, )
 	if err0 != nil {
 		var default0 string
@@ -321,10 +319,7 @@ func (i *Utf8StringsInstance) Invalid(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_invalid"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after invalid: %w", err))
 			}
 		}
 	}()
@@ -390,7 +385,7 @@ func (i *Utf8StringsInstance) Invalid(
 
 func (i *Utf8StringsInstance) InvalidError(
 	ctx context.Context,
-) error {
+) (gravity_err error) {
 	raw0, err0 := i.exports.get("invalid-error").Call(ctx, )
 	if err0 != nil {
 		return err0
@@ -402,10 +397,7 @@ func (i *Utf8StringsInstance) InvalidError(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_invalid-error"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after invalid-error: %w", err))
 			}
 		}
 	}()
@@ -456,10 +448,8 @@ func (i *Utf8StringsInstance) InvalidPlain(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_invalid-plain"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after invalid-plain: %w", err))
 			}
 		}
 	}()
@@ -490,7 +480,7 @@ func (i *Utf8StringsInstance) InvalidPlain(
 
 func (i *Utf8StringsInstance) FromHost(
 	ctx context.Context,
-) (string, error) {
+) (_ string, gravity_err error) {
 	raw0, err0 := i.exports.get("from-host").Call(ctx, )
 	if err0 != nil {
 		var default0 string
@@ -503,10 +493,7 @@ func (i *Utf8StringsInstance) FromHost(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_from-host"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after from-host: %w", err))
 			}
 		}
 	}()
@@ -572,7 +559,7 @@ func (i *Utf8StringsInstance) FromHost(
 
 func (i *Utf8StringsInstance) ToHostInvalid(
 	ctx context.Context,
-) error {
+) (gravity_err error) {
 	raw0, err0 := i.exports.get("to-host-invalid").Call(ctx, )
 	if err0 != nil {
 		return err0
@@ -584,10 +571,7 @@ func (i *Utf8StringsInstance) ToHostInvalid(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_to-host-invalid"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after to-host-invalid: %w", err))
 			}
 		}
 	}()
