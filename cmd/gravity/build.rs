@@ -1,39 +1,43 @@
-use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-fn main() {
-    // Tell Cargo to re-run this build script if .git/HEAD changes
-    // This is safe even if .git/HEAD doesn't exist (e.g., source tarball builds)
-    println!("cargo:rerun-if-changed=.git/HEAD");
+/// Runs git with `args` and returns its trimmed output, or `None` when git is
+/// missing, fails, or prints nothing.
+fn git(args: &[&str]) -> Option<String> {
+    let output = Command::new("git").args(args).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let out = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    (!out.is_empty()).then_some(out)
+}
 
-    // If .git/HEAD exists and points to a branch ref, also watch that ref file
-    if let Ok(head_content) = fs::read_to_string(".git/HEAD") {
-        // .git/HEAD contains something like "ref: refs/heads/main"
-        if let Some(ref_path) = head_content.strip_prefix("ref: ") {
-            let ref_path = ref_path.trim();
-            let full_ref_path = format!(".git/{}", ref_path);
-            if Path::new(&full_ref_path).exists() {
-                println!("cargo:rerun-if-changed={}", full_ref_path);
-            }
+/// The absolute path of `name` inside the git directory. Git resolves it for
+/// a worktree, whose `.git` is a file, and finds a branch's ref in the common
+/// directory a worktree shares.
+fn git_path(name: &str) -> Option<String> {
+    git(&["rev-parse", "--path-format=absolute", "--git-path", name])
+}
+
+fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+
+    // Cargo treats a rerun-if-changed path that does not exist as changed, and
+    // reruns this script and recompiles the crate on every build, so only
+    // existing files are named. HEAD changes when a branch is checked out;
+    // HEAD's reflog on every commit, checkout and reset; the branch's ref file
+    // or packed-refs when the branch moves.
+    let mut watched = vec!["HEAD".to_string(), "logs/HEAD".to_string()];
+    if let Some(branch) = git(&["symbolic-ref", "-q", "HEAD"]) {
+        watched.push(branch);
+    }
+    watched.push("packed-refs".to_string());
+    for name in &watched {
+        if let Some(path) = git_path(name).filter(|path| Path::new(path).is_file()) {
+            println!("cargo:rerun-if-changed={path}");
         }
     }
 
-    // Get the git hash at build time
-    let git_hash = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()
-        .and_then(|output| {
-            if output.status.success() {
-                String::from_utf8(output.stdout).ok()
-            } else {
-                None
-            }
-        })
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
-
-    // Make the git hash available as an environment variable at compile time
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+    let git_hash = git(&["rev-parse", "HEAD"]).unwrap_or_else(|| "unknown".to_string());
+    println!("cargo:rustc-env=GIT_HASH={git_hash}");
 }
