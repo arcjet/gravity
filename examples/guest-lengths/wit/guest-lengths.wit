@@ -1,0 +1,35 @@
+package gravity:guest-lengths;
+
+// The canonical ABI passes a list as a pointer and a length into guest
+// memory. The host checks a length the guest returns against guest memory
+// before it sizes a host allocation, refuses a list too long for the guest's
+// 32-bit lengths, and checks that each block cabi_realloc returns lies inside
+// guest memory before writing into it.
+//
+// The guest's exports and cabi_realloc are written by hand rather than with
+// wit-bindgen's export!, so they can return what a buggy guest would.
+world guest-lengths {
+  record r8 { a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64, h: u64 }
+  // 512 bytes in guest memory; an option<r64> is 520.
+  record r64 { a: r8, b: r8, c: r8, d: r8, e: r8, f: r8, g: r8, h: r8 }
+  record seventeen {
+    p1: u32, p2: u32, p3: u32, p4: u32, p5: u32, p6: u32, p7: u32, p8: u32, p9: u32,
+    p10: u32, p11: u32, p12: u32, p13: u32, p14: u32, p15: u32, p16: u32, p17: u32,
+  }
+
+  // Return a list of 2^20 u32s at address 0, longer than guest memory.
+  export long-list: func() -> list<u32>;
+  export long-list-result: func() -> result<list<u32>, string>;
+
+  // Sum a list the host lowers.
+  export sum: func(items: list<u32>) -> result<u32, string>;
+  // Count a list whose elements are 520 bytes each in guest memory and a nil
+  // pointer each in Go, so a short slice exceeds 4 GiB.
+  export count: func(items: list<option<r64>>) -> result<u32, string>;
+  // Seventeen u32s flatten past the canonical ABI's limit of 16 parameters,
+  // so the host allocates an area for them with cabi_realloc.
+  export wide: func(params: seventeen) -> result<u32, string>;
+
+  // Make the next cabi_realloc call return a block outside guest memory.
+  export break-realloc: func();
+}

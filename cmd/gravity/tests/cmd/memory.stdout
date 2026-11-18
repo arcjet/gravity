@@ -470,6 +470,10 @@ func (i *MemoryInstance) RoundTrip(
 		panic(err0)
 	}
 	ptr0 := uint32(result0[0])
+	if uint64(ptr0)+64 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
+	}
 	aU81 := arg0.AU8
 	aS81 := arg0.AS8
 	aU161 := arg0.AU16
@@ -724,6 +728,10 @@ func (i *MemoryInstance) CallHostEcho(
 		panic(err0)
 	}
 	ptr0 := uint32(result0[0])
+	if uint64(ptr0)+64 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
+	}
 	aU81 := arg0.AU8
 	aS81 := arg0.AS8
 	aU161 := arg0.AU16
@@ -978,6 +986,10 @@ func (i *MemoryInstance) RoundTripNarrow(
 		panic(err0)
 	}
 	ptr0 := uint32(result0[0])
+	if uint64(ptr0)+68 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
+	}
 	n01 := arg0.N0
 	n11 := arg0.N1
 	n21 := arg0.N2

@@ -17,6 +17,7 @@ package examples
 //go:generate cargo build -p example-interface-exports --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-utf8-strings --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-cleanup-errors --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-guest-lengths --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -35,3 +36,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world interface-exports --output ./interface-exports/interface_exports.go ../target/wasm32-unknown-unknown/release/example_interface_exports.wasm
 //go:generate cargo run --bin gravity -- --world utf8-strings --output ./utf8-strings/utf8_strings.go ../target/wasm32-unknown-unknown/release/example_utf8_strings.wasm
 //go:generate cargo run --bin gravity -- --world cleanup-errors --output ./cleanup-errors/cleanup_errors.go ../target/wasm32-unknown-unknown/release/example_cleanup_errors.wasm
+//go:generate cargo run --bin gravity -- --world guest-lengths --output ./guest-lengths/guest_lengths.go ../target/wasm32-unknown-unknown/release/example_guest_lengths.wasm

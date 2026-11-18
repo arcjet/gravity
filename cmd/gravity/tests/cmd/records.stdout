@@ -172,12 +172,20 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	vec7 := vf320
 	len7 := uint64(len(vec7))
+	if len7 > 1073741823 {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 1073741823", len7))
+	}
 	result7, err7 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
 		panic(err7)
 	}
 	ptr7 := result7[0]
+	if uint64(ptr7)+len7 * 4 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len7 * 4, ptr7))
+	}
 	for idx := uint64(0); idx < len7; idx++ {
 		e := vec7[idx]
 		base := uint32(ptr7 + uint64(idx) * uint64(4))
@@ -186,12 +194,20 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
+	if len9 > 536870911 {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len9))
+	}
 	result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err9 != nil {
 		panic(err9)
 	}
 	ptr9 := result9[0]
+	if uint64(ptr9)+len9 * 8 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 8, ptr9))
+	}
 	for idx := uint64(0); idx < len9; idx++ {
 		e := vec9[idx]
 		base := uint32(ptr9 + uint64(idx) * uint64(8))
@@ -274,6 +290,10 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	base28 := ptr23
 	len28 := len24
+	if uint64(base28)+uint64(len28) * 4 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len28, base28))
+	}
 	result28 := make([]float32, len28)
 	for idx28 := uint32(0); idx28 < len28; idx28++ {
 		base := base28 + idx28 * 4
@@ -298,6 +318,10 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	base33 := ptr29
 	len33 := len30
+	if uint64(base33)+uint64(len33) * 8 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len33, base33))
+	}
 	result33 := make([]float64, len33)
 	for idx33 := uint32(0); idx33 < len33; idx33++ {
 		base := base33 + idx33 * 8
@@ -346,12 +370,20 @@ func (i *RecordsInstance) ModifyFooFallible(
 	}
 	vec7 := vf320
 	len7 := uint64(len(vec7))
+	if len7 > 1073741823 {
+		var default7 Foo
+		return default7, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 1073741823", len7)
+	}
 	result7, err7 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len7 * 4)
 	if err7 != nil {
 		var default7 Foo
 		return default7, err7
 	}
 	ptr7 := result7[0]
+	if uint64(ptr7)+len7 * 4 > uint64(i.module.Memory().Size()) {
+		var default7 Foo
+		return default7, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len7 * 4, ptr7)
+	}
 	for idx := uint64(0); idx < len7; idx++ {
 		e := vec7[idx]
 		base := uint32(ptr7 + uint64(idx) * uint64(4))
@@ -360,12 +392,20 @@ func (i *RecordsInstance) ModifyFooFallible(
 	}
 	vec9 := vf640
 	len9 := uint64(len(vec9))
+	if len9 > 536870911 {
+		var default9 Foo
+		return default9, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len9)
+	}
 	result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, len9 * 8)
 	if err9 != nil {
 		var default9 Foo
 		return default9, err9
 	}
 	ptr9 := result9[0]
+	if uint64(ptr9)+len9 * 8 > uint64(i.module.Memory().Size()) {
+		var default9 Foo
+		return default9, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 8, ptr9)
+	}
 	for idx := uint64(0); idx < len9; idx++ {
 		e := vec9[idx]
 		base := uint32(ptr9 + uint64(idx) * uint64(8))
@@ -456,6 +496,10 @@ func (i *RecordsInstance) ModifyFooFallible(
 		}
 		base29 := ptr24
 		len29 := len25
+		if uint64(base29)+uint64(len29) * 4 > uint64(i.module.Memory().Size()) {
+			var default29 Foo
+			return default29, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len29, base29)
+		}
 		result29 := make([]float32, len29)
 		for idx29 := uint32(0); idx29 < len29; idx29++ {
 			base := base29 + idx29 * 4
@@ -480,6 +524,10 @@ func (i *RecordsInstance) ModifyFooFallible(
 		}
 		base34 := ptr30
 		len34 := len31
+		if uint64(base34)+uint64(len34) * 8 > uint64(i.module.Memory().Size()) {
+			var default34 Foo
+			return default34, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len34, base34)
+		}
 		result34 := make([]float64, len34)
 		for idx34 := uint32(0); idx34 < len34; idx34++ {
 			base := base34 + idx34 * 8

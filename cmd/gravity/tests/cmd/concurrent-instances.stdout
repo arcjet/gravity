@@ -183,12 +183,20 @@ func (i *ConcurrentInstancesInstance) Join(
 	arg1 := sep
 	vec1 := arg0
 	len1 := uint64(len(vec1))
+	if len1 > 536870911 {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len1))
+	}
 	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
 	}
 	ptr1 := result1[0]
+	if uint64(ptr1)+len1 * 8 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1))
+	}
 	for idx := uint64(0); idx < len1; idx++ {
 		e := vec1[idx]
 		base := uint32(ptr1 + uint64(idx) * uint64(8))

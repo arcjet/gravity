@@ -166,6 +166,43 @@ impl<'a> Func<'a> {
         self.blocks.pop().expect("should have block to pop")
     }
 
+    /// Emits `if <cond> { ... }`, whose body returns `err` (a Go `error`
+    /// expression) where the function returns an error, and panics with it
+    /// otherwise. `tmp` is the calling instruction's temporary number, which
+    /// names the zero value returned beside the error.
+    fn fail_if(&mut self, tmp: usize, cond: Tokens<Go>, err: Tokens<Go>) {
+        let default = &format!("default{tmp}");
+        quote_in! { self.body =>
+            $['\r']
+            if $cond {
+                $(match &self.result {
+                    GoResult::Anon(GoType::ValueOrError(typ)) => {
+                        var $default $(typ.as_ref())
+                        return $default, $err
+                    }
+                    GoResult::Anon(GoType::Error) => {
+                        return $err
+                    }
+                    GoResult::Anon(_) | GoResult::Empty => {
+                        $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                        panic($err)
+                    }
+                })
+            }
+        };
+    }
+
+    /// Emits the check that `size` bytes at `ptr` (Go expressions that
+    /// convert to `uint64`) lie inside guest memory, failing with `err`.
+    fn fail_unless_in_memory(&mut self, tmp: usize, ptr: &str, size: Tokens<Go>, err: Tokens<Go>) {
+        let module_handle = self.module_handle();
+        self.fail_if(
+            tmp,
+            quote!(uint64($ptr)+$size > uint64($module_handle.Memory().Size())),
+            err,
+        );
+    }
+
     /// Emits `valueN, okN := <module>.Memory().<read>(uint32(ptr + offset))`
     /// followed by the check that handles a failed read for the function's
     /// return type, and returns the name of the value variable. `what` names
@@ -1084,11 +1121,22 @@ impl Bindgen for Func<'_> {
                 let size = self.sizes.size(element).size_wasm32();
                 let align = self.sizes.align(element).align_wasm32();
                 let realloc_fn = self.exported_function(realloc_name);
+                // The guest takes the length and the byte size as i32s, so
+                // a longer list would be truncated.
+                let max_len = u32::MAX as usize / size.max(1);
 
                 quote_in! { self.body =>
                     $['\r']
                     $vec := $operand
                     $len := uint64(len($vec))
+                };
+                self.fail_if(
+                    tmp,
+                    quote!($len > $max_len),
+                    quote!($FMT_ERRORF($(quoted(format!("list of %d elements is too long for the guest, which takes at most {max_len}"))), $len)),
+                );
+                quote_in! { self.body =>
+                    $['\r']
                     $result, $err := $realloc_fn.Call(ctx, 0, 0, $align, $len * $size)
                     $(match &self.result {
                         GoResult::Anon(GoType::ValueOrError(typ)) => {
@@ -1110,6 +1158,15 @@ impl Bindgen for Func<'_> {
                         }
                     })
                     $ptr := $result[0]
+                };
+                self.fail_unless_in_memory(
+                    tmp,
+                    ptr,
+                    quote!($len * $size),
+                    quote!($FMT_ERRORF("cabi_realloc returned %d bytes at %d, outside guest memory", $len * $size, $ptr)),
+                );
+                quote_in! { self.body =>
+                    $['\r']
                     for idx := uint64(0); idx < $len; idx++ {
                         $iter_element := $vec[idx]
                         $iter_base := uint32($ptr + uint64(idx) * uint64($size))
@@ -1138,6 +1195,17 @@ impl Bindgen for Func<'_> {
                     $['\r']
                     $base := $base_operand
                     $len := $len_operand
+                };
+                // The guest supplies the length, so check it against guest
+                // memory before it sizes a host allocation.
+                self.fail_unless_in_memory(
+                    tmp,
+                    base,
+                    quote!(uint64($len) * $size),
+                    quote!($FMT_ERRORF("list of %d elements at %d does not fit in guest memory", $len, $base)),
+                );
+                quote_in! { self.body =>
+                    $['\r']
                     $result := make([]$typ, $len)
                     for $idx := uint32(0); $idx < $len; $idx++ {
                         base := $base + $idx * $size
@@ -1774,6 +1842,12 @@ impl Bindgen for Func<'_> {
                     })
                     $ptr := uint32($result[0])
                 };
+                self.fail_unless_in_memory(
+                    tmp,
+                    ptr,
+                    quote!($size),
+                    quote!($FMT_ERRORF("cabi_realloc returned %d bytes at %d, outside guest memory", $size, $ptr)),
+                );
 
                 results.push(Operand::SingleValue(ptr.into()));
             }

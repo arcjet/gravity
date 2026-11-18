@@ -184,12 +184,20 @@ func NewEnumDiscriminantsFactory(
 		value0 := host.Entries(ctx, )
 		vec4 := value0
 		len4 := uint64(len(vec4))
+		if len4 > 357913941 {
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len4))
+		}
 		result4, err4 := gravityExportCache.lookup(mod, "cabi_realloc").Call(ctx, 0, 0, 4, len4 * 12)
 		// The return type doesn't contain an error so we panic if one is encountered
 		if err4 != nil {
 			panic(err4)
 		}
 		ptr4 := result4[0]
+		if uint64(ptr4)+len4 * 12 > uint64(mod.Memory().Size()) {
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len4 * 12, ptr4))
+		}
 		for idx := uint64(0); idx < len4; idx++ {
 			e := vec4[idx]
 			base := uint32(ptr4 + uint64(idx) * uint64(12))
@@ -426,12 +434,20 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	arg0 := ls
 	vec1 := arg0
 	len1 := uint64(len(vec1))
+	if len1 > 4294967295 {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 4294967295", len1))
+	}
 	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 1, len1 * 1)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
 		panic(err1)
 	}
 	ptr1 := result1[0]
+	if uint64(ptr1)+len1 * 1 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 1, ptr1))
+	}
 	for idx := uint64(0); idx < len1; idx++ {
 		e := vec1[idx]
 		base := uint32(ptr1 + uint64(idx) * uint64(1))
@@ -483,6 +499,10 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	}
 	base7 := ptr3
 	len7 := len4
+	if uint64(base7)+uint64(len7) * 1 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len7, base7))
+	}
 	result7 := make([]Level, len7)
 	for idx7 := uint32(0); idx7 < len7; idx7++ {
 		base := base7 + idx7 * 1
@@ -783,6 +803,10 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 	}
 	base9 := ptr1
 	len9 := len2
+	if uint64(base9)+uint64(len9) * 12 > uint64(i.module.Memory().Size()) {
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len9, base9))
+	}
 	result9 := make([]Entry, len9)
 	for idx9 := uint32(0); idx9 < len9; idx9++ {
 		base := base9 + idx9 * 12
