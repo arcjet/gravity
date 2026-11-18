@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The job only reads the repository: it checks out, builds and tests.
+permissions:
+  contents: read
+
 jobs:
   gravity:
     name: Gravity tests
@@ -39,6 +43,10 @@ jobs:
       # Most toolchains require checkout first
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No later step pushes or calls the API, so the token stays out of
+          # .git/config, where the build and `go generate` could read it.
+          persist-credentials: false
 
       # Language toolchains
       - name: Install Go
