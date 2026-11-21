@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Checker implements IRegressionsChecker for testing.
@@ -114,6 +116,7 @@ func newInstance(t *testing.T) *RegressionsInstance {
 	t.Helper()
 	fac, err := NewRegressionsFactory(
 		t.Context(),
+		wazero.NewRuntimeConfig(),
 		Checker{},
 		Processor{},
 		Pinger{},

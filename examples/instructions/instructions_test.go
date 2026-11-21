@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand/v2"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 func inclusive[Num interface {
@@ -46,7 +48,7 @@ func inclusiveStep[Num interface{ ~int32 | ~uint32 }](start Num, end Num, step N
 }
 
 func Test_S8Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +69,7 @@ func Test_S8Roundtrip(t *testing.T) {
 }
 
 func Test_U8Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +90,7 @@ func Test_U8Roundtrip(t *testing.T) {
 }
 
 func Test_S16Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +111,7 @@ func Test_S16Roundtrip(t *testing.T) {
 }
 
 func Test_U16Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +132,7 @@ func Test_U16Roundtrip(t *testing.T) {
 }
 
 func Test_S32Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +153,7 @@ func Test_S32Roundtrip(t *testing.T) {
 }
 
 func Test_U32Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +174,7 @@ func Test_U32Roundtrip(t *testing.T) {
 }
 
 func Test_F32Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +200,7 @@ func Test_F32Roundtrip(t *testing.T) {
 }
 
 func Test_F64Roundtrip(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +226,7 @@ func Test_F64Roundtrip(t *testing.T) {
 }
 
 func Test_EnumInput(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +249,7 @@ func Test_EnumInput(t *testing.T) {
 // field into it and pass a single pointer. The guest echoes every field back so
 // a wrong size, alignment or store offset shows up as a mismatched string.
 func Test_IndirectParams(t *testing.T) {
-	fac, err := NewInstructionsFactory(t.Context())
+	fac, err := NewInstructionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

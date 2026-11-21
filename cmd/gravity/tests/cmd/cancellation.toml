@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world cancellation ../../target/wasm32-unknown-unknown/release/example_cancellation.wasm"

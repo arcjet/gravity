@@ -3,10 +3,12 @@ package records
 import (
 	"math"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 func TestRecord(t *testing.T) {
-	fac, err := NewRecordsFactory(t.Context())
+	fac, err := NewRecordsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +45,7 @@ func TestRecord(t *testing.T) {
 }
 
 func TestRecordFallibleSuccess(t *testing.T) {
-	fac, err := NewRecordsFactory(t.Context())
+	fac, err := NewRecordsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +85,7 @@ func TestRecordFallibleSuccess(t *testing.T) {
 }
 
 func TestRecordFallibleError(t *testing.T) {
-	fac, err := NewRecordsFactory(t.Context())
+	fac, err := NewRecordsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

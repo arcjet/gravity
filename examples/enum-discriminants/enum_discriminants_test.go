@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Every case of the five-case Level crosses every position an enum can take,
@@ -33,7 +35,7 @@ func show(l *Level) string {
 
 func newInstance(t *testing.T, h *Host) *EnumDiscriminantsInstance {
 	t.Helper()
-	fac, err := NewEnumDiscriminantsFactory(t.Context(), h)
+	fac, err := NewEnumDiscriminantsFactory(t.Context(), wazero.NewRuntimeConfig(), h)
 	if err != nil {
 		t.Fatal(err)
 	}

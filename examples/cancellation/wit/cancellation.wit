@@ -1,0 +1,11 @@
+package gravity:cancellation;
+
+// A guest call runs on the caller's goroutine. NewCancellationFactory takes the
+// wazero runtime configuration, so a caller can have a done context stop a
+// call, and can bound guest memory.
+world cancellation {
+  // Never returns.
+  export spin: func() -> result<_, string>;
+  // Allocates and fills `bytes` bytes, and returns how many it filled.
+  export allocate: func(bytes: u32) -> result<u32, string>;
+}

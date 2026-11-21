@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // After an export returns, the bindings call its cabi_post_* function so the
@@ -13,7 +15,7 @@ import (
 
 func newInstance(t *testing.T) *CleanupErrorsInstance {
 	t.Helper()
-	fac, err := NewCleanupErrorsFactory(t.Context())
+	fac, err := NewCleanupErrorsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

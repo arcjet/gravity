@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // An export with an option<f64> or option<f32> parameter flattens the
@@ -12,7 +14,7 @@ import (
 
 func newInstance(t *testing.T) *OptionFloatParamsInstance {
 	t.Helper()
-	fac, err := NewOptionFloatParamsFactory(t.Context())
+	fac, err := NewOptionFloatParamsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

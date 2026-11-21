@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // A result<T, E> whose E is not a string returns its err case as a
@@ -54,7 +56,7 @@ func (Host) Explain(_ context.Context, n uint32) (string, error) {
 
 func newInstance(t *testing.T) *ResultErrorsInstance {
 	t.Helper()
-	fac, err := NewResultErrorsFactory(t.Context(), Host{})
+	fac, err := NewResultErrorsFactory(t.Context(), wazero.NewRuntimeConfig(), Host{})
 	if err != nil {
 		t.Fatal(err)
 	}

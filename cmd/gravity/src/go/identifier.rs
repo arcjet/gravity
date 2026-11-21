@@ -89,6 +89,7 @@ const RESERVED: &[&str] = &[
     "wazero",
     // Fixed names in generated function bodies.
     "base",
+    "config",
     "ctx",
     "e",
     "err",
@@ -276,6 +277,7 @@ mod tests {
             ("len", "len_"),
             ("errors", "errors_"),
             ("ctx", "ctx_"),
+            ("config", "config_"),
             ("i", "i_"),
             ("variant-payload", "variantPayload_"),
             ("write-string", "writeString_"),

@@ -2,6 +2,8 @@ package variants
 
 import (
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // TestClassify_UnitCase exercises lifting a unit-case variant returned
@@ -117,7 +119,7 @@ func TestChooseMany(t *testing.T) {
 
 func newInstance(t *testing.T) *VariantsInstance {
 	t.Helper()
-	fac, err := NewVariantsFactory(t.Context())
+	fac, err := NewVariantsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

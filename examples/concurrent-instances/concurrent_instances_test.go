@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Host keeps no state, so every instance of a factory can call it at once.
@@ -18,7 +20,7 @@ func (Host) Name(_ context.Context, n uint32) string {
 // refuses a second module of the same name in one runtime, so this fails with
 // "has already been instantiated" unless every instance is anonymous.
 func TestTwoLiveInstancesFromOneFactory(t *testing.T) {
-	fac, err := NewConcurrentInstancesFactory(t.Context(), Host{})
+	fac, err := NewConcurrentInstancesFactory(t.Context(), wazero.NewRuntimeConfig(), Host{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func TestTwoLiveInstancesFromOneFactory(t *testing.T) {
 // instance in the factory's registry while other goroutines instantiate and
 // close theirs, so under -race this checks that the registry is shared safely.
 func TestInstancesOnSeparateGoroutines(t *testing.T) {
-	fac, err := NewConcurrentInstancesFactory(t.Context(), Host{})
+	fac, err := NewConcurrentInstancesFactory(t.Context(), wazero.NewRuntimeConfig(), Host{})
 	if err != nil {
 		t.Fatal(err)
 	}

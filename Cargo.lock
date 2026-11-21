@@ -165,6 +165,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-cancellation"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-cleanup-errors"
 version = "0.0.2"
 dependencies = [
