@@ -59,7 +59,10 @@ func TestNoPrimitiveCleanup(t *testing.T) {
 	}
 	defer ins.Close(t.Context())
 
-	actual := ins.Primitive(t.Context())
+	actual, err := ins.Primitive(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	const expected = true
 	if actual != expected {
@@ -81,7 +84,10 @@ func TestNoOptionalPrimitiveCleanup(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	in := true
-	actual := ins.OptionalPrimitive(t.Context(), &in)
+	actual, err := ins.OptionalPrimitive(t.Context(), &in)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if actual == nil {
 		t.Fatal("expected non-nil option result")
 	}

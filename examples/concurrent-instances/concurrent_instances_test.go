@@ -35,10 +35,14 @@ func TestTwoLiveInstancesFromOneFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.Close(context.Background())
-	if s := first.Join(t.Context(), []string{"a", "b"}, "-"); s != "a-b" {
+	if s, err := first.Join(t.Context(), []string{"a", "b"}, "-"); err != nil {
+		t.Fatal(err)
+	} else if s != "a-b" {
 		t.Errorf("first.Join = %q, want %q", s, "a-b")
 	}
-	if s := second.Join(t.Context(), []string{"c", "d"}, "+"); s != "c+d" {
+	if s, err := second.Join(t.Context(), []string{"c", "d"}, "+"); err != nil {
+		t.Fatal(err)
+	} else if s != "c+d" {
 		t.Errorf("second.Join = %q, want %q", s, "c+d")
 	}
 }
@@ -65,13 +69,14 @@ func TestInstancesOnSeparateGoroutines(t *testing.T) {
 			defer ins.Close(context.Background())
 			for i := range 50 {
 				want := fmt.Sprintf("%d-%d", g, i)
-				if s := ins.Join(context.Background(), []string{fmt.Sprint(g), fmt.Sprint(i)}, "-"); s != want {
-					t.Errorf("Join = %q, want %q", s, want)
+				if s, err := ins.Join(context.Background(), []string{fmt.Sprint(g), fmt.Sprint(i)}, "-"); err != nil || s != want {
+					t.Errorf("Join = %q, %v; want %q", s, err, want)
 					return
 				}
 				n := uint32(g*100 + i)
-				if s, want := ins.Greet(context.Background(), n), fmt.Sprintf("hello, guest-%d", n); s != want {
-					t.Errorf("Greet = %q, want %q", s, want)
+				want = fmt.Sprintf("hello, guest-%d", n)
+				if s, err := ins.Greet(context.Background(), n); err != nil || s != want {
+					t.Errorf("Greet = %q, %v; want %q", s, err, want)
 					return
 				}
 			}

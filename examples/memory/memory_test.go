@@ -67,7 +67,9 @@ func TestRoundTrip(t *testing.T) {
 	ins := newInstance(t, &Host{})
 	for name, want := range cases {
 		t.Run(name, func(t *testing.T) {
-			if got := ins.RoundTrip(t.Context(), want); !reflect.DeepEqual(got, want) {
+			if got, err := ins.RoundTrip(t.Context(), want); err != nil {
+				t.Fatal(err)
+			} else if !reflect.DeepEqual(got, want) {
 				t.Errorf("wanted: %+v, but got: %+v", want, got)
 			}
 		})
@@ -80,7 +82,10 @@ func TestCallHostEcho(t *testing.T) {
 			t.Run(name+"/"+replyName, func(t *testing.T) {
 				h := &Host{reply: reply}
 				ins := newInstance(t, h)
-				got := ins.CallHostEcho(t.Context(), sent)
+				got, err := ins.CallHostEcho(t.Context(), sent)
+				if err != nil {
+					t.Fatal(err)
+				}
 				if !reflect.DeepEqual(h.got, sent) {
 					t.Errorf("host received: %+v, but wanted: %+v", h.got, sent)
 				}
@@ -103,7 +108,9 @@ func TestRoundTripNarrow(t *testing.T) {
 			N8: 8, N9: 9, N10: 10, N11: 11, N12: 12, N13: math.MaxUint32,
 			S: "a string allocated after the parameter area", F: -1.5,
 		}
-		if got := ins.RoundTripNarrow(t.Context(), want); got != want {
+		if got, err := ins.RoundTripNarrow(t.Context(), want); err != nil {
+			t.Fatal(err)
+		} else if got != want {
 			t.Fatalf("call %d: wanted: %+v, but got: %+v", i, want, got)
 		}
 	}
@@ -143,8 +150,15 @@ func TestSpecialFloats(t *testing.T) {
 			h := &Host{reply: x}
 			ins := newInstance(t, h)
 
-			check(t, "export result", ins.RoundTrip(t.Context(), x), v)
-			reply := ins.CallHostEcho(t.Context(), x)
+			got, err := ins.RoundTrip(t.Context(), x)
+			if err != nil {
+				t.Fatal(err)
+			}
+			check(t, "export result", got, v)
+			reply, err := ins.CallHostEcho(t.Context(), x)
+			if err != nil {
+				t.Fatal(err)
+			}
 			check(t, "host parameter", h.got, v)
 			check(t, "host result", reply, v)
 		})

@@ -74,7 +74,9 @@ func TestExportSideLookupsAreMemoized(t *testing.T) {
 	}
 	want := strings.Join(parts, ", ")
 	got := bytesPerCall(func() {
-		if s := ins.Join(context.Background(), parts, ", "); s != want {
+		if s, err := ins.Join(context.Background(), parts, ", "); err != nil {
+			t.Fatal(err)
+		} else if s != want {
 			t.Fatalf("Join = %q, want %q", s, want)
 		}
 	})
@@ -88,7 +90,9 @@ func TestImportSideLookupsAreMemoized(t *testing.T) {
 	_, ins := newInstance(t)
 	got := bytesPerCall(func() {
 		// w0..w31: ten 2-byte words and twenty-two 3-byte words.
-		if n := ins.HostWords(context.Background(), 32); n != 10*2+22*3 {
+		if n, err := ins.HostWords(context.Background(), 32); err != nil {
+			t.Fatal(err)
+		} else if n != 10*2+22*3 {
 			t.Fatalf("HostWords = %d, want %d", n, 10*2+22*3)
 		}
 	})

@@ -212,19 +212,19 @@ func writeString(
 func (i *NameCollisionsInstance) Pick(
 	ctx context.Context,
 	v R,
-) uint64 {
+) (_ uint64, gravity_err error) {
 	arg0 := v
 	// Allocate the area holding the indirectly passed parameters
 	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, 88)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint64
+		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
 	pages0, _ := i.module.Memory().Grow(0)
 	if uint64(ptr0)+88 > uint64(pages0)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 88, ptr0))
+		var default0 uint64
+		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 88, ptr0)
 	}
 	field1_0 := arg0.T0
 	field1_1 := arg0.T1
@@ -240,104 +240,104 @@ func (i *NameCollisionsInstance) Pick(
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
 	ptr2, len2, err2 := writeString(ctx, field1_0, memory2, realloc2)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 uint64
+		return default2, err2
 	}
 	i.module.Memory().WriteUint32Le(ptr0+4, uint32(len2))
 	i.module.Memory().WriteUint32Le(ptr0+0, uint32(ptr2))
 	memory3 := i.module.Memory()
 	realloc3 := i.exports.get("cabi_realloc")
 	ptr3, len3, err3 := writeString(ctx, field1_1, memory3, realloc3)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 uint64
+		return default3, err3
 	}
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(len3))
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(ptr3))
 	memory4 := i.module.Memory()
 	realloc4 := i.exports.get("cabi_realloc")
 	ptr4, len4, err4 := writeString(ctx, field1_2, memory4, realloc4)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err4 != nil {
-		panic(err4)
+		var default4 uint64
+		return default4, err4
 	}
 	i.module.Memory().WriteUint32Le(ptr0+20, uint32(len4))
 	i.module.Memory().WriteUint32Le(ptr0+16, uint32(ptr4))
 	memory5 := i.module.Memory()
 	realloc5 := i.exports.get("cabi_realloc")
 	ptr5, len5, err5 := writeString(ctx, field1_3, memory5, realloc5)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err5 != nil {
-		panic(err5)
+		var default5 uint64
+		return default5, err5
 	}
 	i.module.Memory().WriteUint32Le(ptr0+28, uint32(len5))
 	i.module.Memory().WriteUint32Le(ptr0+24, uint32(ptr5))
 	memory6 := i.module.Memory()
 	realloc6 := i.exports.get("cabi_realloc")
 	ptr6, len6, err6 := writeString(ctx, field1_4, memory6, realloc6)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err6 != nil {
-		panic(err6)
+		var default6 uint64
+		return default6, err6
 	}
 	i.module.Memory().WriteUint32Le(ptr0+36, uint32(len6))
 	i.module.Memory().WriteUint32Le(ptr0+32, uint32(ptr6))
 	memory7 := i.module.Memory()
 	realloc7 := i.exports.get("cabi_realloc")
 	ptr7, len7, err7 := writeString(ctx, field1_5, memory7, realloc7)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
-		panic(err7)
+		var default7 uint64
+		return default7, err7
 	}
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(len7))
 	i.module.Memory().WriteUint32Le(ptr0+40, uint32(ptr7))
 	memory8 := i.module.Memory()
 	realloc8 := i.exports.get("cabi_realloc")
 	ptr8, len8, err8 := writeString(ctx, field1_6, memory8, realloc8)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err8 != nil {
-		panic(err8)
+		var default8 uint64
+		return default8, err8
 	}
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(len8))
 	i.module.Memory().WriteUint32Le(ptr0+48, uint32(ptr8))
 	memory9 := i.module.Memory()
 	realloc9 := i.exports.get("cabi_realloc")
 	ptr9, len9, err9 := writeString(ctx, field1_7, memory9, realloc9)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err9 != nil {
-		panic(err9)
+		var default9 uint64
+		return default9, err9
 	}
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(len9))
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(ptr9))
 	memory10 := i.module.Memory()
 	realloc10 := i.exports.get("cabi_realloc")
 	ptr10, len10, err10 := writeString(ctx, field1_8, memory10, realloc10)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err10 != nil {
-		panic(err10)
+		var default10 uint64
+		return default10, err10
 	}
 	i.module.Memory().WriteUint32Le(ptr0+68, uint32(len10))
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(ptr10))
 	memory11 := i.module.Memory()
 	realloc11 := i.exports.get("cabi_realloc")
 	ptr11, len11, err11 := writeString(ctx, field1_9, memory11, realloc11)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err11 != nil {
-		panic(err11)
+		var default11 uint64
+		return default11, err11
 	}
 	i.module.Memory().WriteUint32Le(ptr0+76, uint32(len11))
 	i.module.Memory().WriteUint32Le(ptr0+72, uint32(ptr11))
 	value12 := uint64(field1_10)
 	i.module.Memory().WriteUint64Le(ptr0+80, uint64(value12))
 	raw13, err13 := i.exports.get("pick").Call(ctx, uint64(ptr0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err13 != nil {
-		panic(err13)
+		var default13 uint64
+		return default13, err13
 	}
 
 	results13 := raw13[0]
 	value14 := uint64(results13)
-	return value14
+	return value14, nil
 }
 
 func (i *NameCollisionsInstance) Keywords(
@@ -347,7 +347,7 @@ func (i *NameCollisionsInstance) Keywords(
 	string_ uint32,
 	range_ uint32,
 	nil_ bool,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := type_
 	arg1 := func_
 	arg2 := string_
@@ -356,9 +356,9 @@ func (i *NameCollisionsInstance) Keywords(
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 	result1 := uint32(arg1)
 	result2 := uint32(arg2)
@@ -370,9 +370,9 @@ func (i *NameCollisionsInstance) Keywords(
 		value4 = 0
 	}
 	raw5, err5 := i.exports.get("keywords").Call(ctx, uint64(ptr0), uint64(len0), uint64(result1), uint64(result2), uint64(result3), uint64(value4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err5 != nil {
-		panic(err5)
+		var default5 string
+		return default5, err5
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -381,34 +381,33 @@ func (i *NameCollisionsInstance) Keywords(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_keywords"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw5...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after keywords: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after keywords: %w", err))
 			}
 		}
 	}()
 
 	results5 := raw5[0]
 	ptr6, ok6 := i.module.Memory().ReadUint32Le(uint32(results5 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok6 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default6 string
+		return default6, errors.New("failed to read pointer from memory")
 	}
 	len7, ok7 := i.module.Memory().ReadUint32Le(uint32(results5 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok7 {
-		panic(errors.New("failed to read length from memory"))
+		var default7 string
+		return default7, errors.New("failed to read length from memory")
 	}
 	buf8, ok8 := i.module.Memory().Read(ptr6, len7)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok8 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default8 string
+		return default8, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf8) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default8 string
+		return default8, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str8 := string(buf8)
-	return str8
+	return str8, nil
 }
 
 func (i *NameCollisionsInstance) FixedNames(
@@ -417,7 +416,7 @@ func (i *NameCollisionsInstance) FixedNames(
 	errors_ string,
 	ctx_ uint32,
 	i_ uint32,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := len_
 	arg1 := errors_
 	arg2 := ctx_
@@ -426,16 +425,16 @@ func (i *NameCollisionsInstance) FixedNames(
 	memory1 := i.module.Memory()
 	realloc1 := i.exports.get("cabi_realloc")
 	ptr1, len1, err1 := writeString(ctx, arg1, memory1, realloc1)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 	result2 := uint32(arg2)
 	result3 := uint32(arg3)
 	raw4, err4 := i.exports.get("fixed-names").Call(ctx, uint64(result0), uint64(ptr1), uint64(len1), uint64(result2), uint64(result3))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err4 != nil {
-		panic(err4)
+		var default4 string
+		return default4, err4
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -444,34 +443,33 @@ func (i *NameCollisionsInstance) FixedNames(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_fixed-names"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw4...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after fixed-names: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after fixed-names: %w", err))
 			}
 		}
 	}()
 
 	results4 := raw4[0]
 	ptr5, ok5 := i.module.Memory().ReadUint32Le(uint32(results4 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok5 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default5 string
+		return default5, errors.New("failed to read pointer from memory")
 	}
 	len6, ok6 := i.module.Memory().ReadUint32Le(uint32(results4 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok6 {
-		panic(errors.New("failed to read length from memory"))
+		var default6 string
+		return default6, errors.New("failed to read length from memory")
 	}
 	buf7, ok7 := i.module.Memory().Read(ptr5, len6)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok7 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default7 string
+		return default7, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf7) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default7 string
+		return default7, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str7 := string(buf7)
-	return str7
+	return str7, nil
 }
 
 func (i *NameCollisionsInstance) Numbered(
@@ -479,7 +477,7 @@ func (i *NameCollisionsInstance) Numbered(
 	arg1_ uint32,
 	ptr0_ uint32,
 	writeString_ string,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := arg1_
 	arg1 := ptr0_
 	arg2 := writeString_
@@ -488,14 +486,14 @@ func (i *NameCollisionsInstance) Numbered(
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
 	ptr2, len2, err2 := writeString(ctx, arg2, memory2, realloc2)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 string
+		return default2, err2
 	}
 	raw3, err3 := i.exports.get("numbered").Call(ctx, uint64(result0), uint64(result1), uint64(ptr2), uint64(len2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 string
+		return default3, err3
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -504,52 +502,51 @@ func (i *NameCollisionsInstance) Numbered(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_numbered"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after numbered: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after numbered: %w", err))
 			}
 		}
 	}()
 
 	results3 := raw3[0]
 	ptr4, ok4 := i.module.Memory().ReadUint32Le(uint32(results3 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default4 string
+		return default4, errors.New("failed to read pointer from memory")
 	}
 	len5, ok5 := i.module.Memory().ReadUint32Le(uint32(results3 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok5 {
-		panic(errors.New("failed to read length from memory"))
+		var default5 string
+		return default5, errors.New("failed to read length from memory")
 	}
 	buf6, ok6 := i.module.Memory().Read(ptr4, len5)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok6 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default6 string
+		return default6, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf6) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default6 string
+		return default6, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str6 := string(buf6)
-	return str6
+	return str6, nil
 }
 
 func (i *NameCollisionsInstance) CallHost(
 	ctx context.Context,
 	s string,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := s
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("call-host").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -558,33 +555,32 @@ func (i *NameCollisionsInstance) CallHost(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_call-host"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after call-host: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after call-host: %w", err))
 			}
 		}
 	}()
 
 	results1 := raw1[0]
 	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default2 string
+		return default2, errors.New("failed to read pointer from memory")
 	}
 	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read length from memory"))
+		var default3 string
+		return default3, errors.New("failed to read length from memory")
 	}
 	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default4 string
+		return default4, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf4) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default4 string
+		return default4, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str4 := string(buf4)
-	return str4
+	return str4, nil
 }
 

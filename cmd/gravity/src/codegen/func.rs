@@ -46,7 +46,11 @@ enum Direction<'a> {
 pub struct Func<'a> {
     direction: Direction<'a>,
     args: Vec<String>,
+    /// The Go function's result. An export's always carries an error.
     result: GoResult,
+    /// The result the WIT function declares, which decides whether the core
+    /// wasm function returns a value and whether it needs `cabi_post_*`.
+    wit_result: GoResult,
     tmp: usize,
     body: Tokens<Go>,
     block_storage: Vec<Tokens<Go>>,
@@ -59,12 +63,23 @@ pub struct Func<'a> {
 }
 
 impl<'a> Func<'a> {
-    /// Create a new exported function.
-    pub fn export(result: GoResult, sizes: &'a SizeAlign) -> Self {
+    /// Create a new exported function whose WIT result is `wit_result`.
+    ///
+    /// Every export returns an error, so a trap or a failed memory access is
+    /// returned to the caller rather than panicking: a WIT function with no
+    /// result returns `error`, and one whose result is not already a
+    /// `result<T, E>` returns `(T, error)`.
+    pub fn export(wit_result: GoResult, sizes: &'a SizeAlign) -> Self {
+        let result = match &wit_result {
+            GoResult::Empty => GoResult::Anon(GoType::Error),
+            GoResult::Anon(GoType::ValueOrError(_) | GoType::Error) => wit_result.clone(),
+            GoResult::Anon(typ) => GoResult::Anon(GoType::ValueOrError(Box::new(typ.clone()))),
+        };
         Self {
             direction: Direction::Export,
             args: Vec::new(),
             result,
+            wit_result,
             tmp: 0,
             body: Tokens::new(),
             block_storage: Vec::new(),
@@ -86,6 +101,7 @@ impl<'a> Func<'a> {
         Self {
             direction: Direction::Import { param_name },
             args: Vec::new(),
+            wit_result: result.clone(),
             result,
             tmp: 0,
             body: Tokens::new(),
@@ -338,46 +354,27 @@ impl Bindgen for Func<'_> {
                 let raw = &format!("raw{tmp}");
                 let ret = &format!("results{tmp}");
                 let err = &format!("err{tmp}");
-                let default = &format!("default{tmp}");
                 let name = self.wasm_name.as_deref().unwrap_or(name);
                 let call_fn = &self.exported_function(name);
                 let post_fn = &self.exported_function(&format!("cabi_post_{name}"));
                 let cleanup_message = format!("failed to clean up after {name}: %w");
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
+                // A core wasm function returns a value only when the WIT
+                // function has a result.
+                let call_results = match self.wit_result {
+                    GoResult::Empty => quote!(_),
+                    GoResult::Anon(_) => quote!($raw),
+                };
+                let failure = self.failure(tmp, quote!($err));
                 quote_in! { self.body =>
                     $['\r']
-                    $(match &self.result {
-                        GoResult::Anon(GoType::ValueOrError(typ)) => {
-                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            if $err != nil {
-                                var $default $(typ.as_ref())
-                                return $default, $err
-                            }
-                        }
-                        GoResult::Anon(GoType::Error) => {
-                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            if $err != nil {
-                                return $err
-                            }
-                        }
-                        GoResult::Anon(_) => {
-                            $raw, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                        GoResult::Empty => {
-                            _, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
-                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                            if $err != nil {
-                                panic($err)
-                            }
-                        }
-                    })
+                    $call_results, $err := $call_fn.Call(ctx, $(for op in operands.iter() join (, ) => uint64($op)))
+                    if $err != nil {
+                        $failure
+                    }
 
-                    $(if self.result.needs_cleanup() {
+                    $(if self.wit_result.needs_cleanup() {
                         $(comment(&[
                             "The cleanup via `cabi_post_*` cleans up the memory in the guest. By",
                             "deferring this, we ensure that no memory is corrupted before the function",
@@ -400,12 +397,12 @@ impl Bindgen for Func<'_> {
                         }()
                     })
 
-                    $(match &self.result {
+                    $(match &self.wit_result {
                         GoResult::Anon(_) => $ret := $raw[0],
                         GoResult::Empty => (),
                     })
                 };
-                match self.result {
+                match self.wit_result {
                     GoResult::Empty => (),
                     GoResult::Anon(_) => results.push(Operand::SingleValue(ret.into())),
                 }
@@ -803,12 +800,28 @@ impl Bindgen for Func<'_> {
             }
             Instruction::ResultLift { .. } => todo!("implement instruction: {inst:?}"),
             Instruction::Return { amt, .. } => {
-                if *amt != 0 {
-                    let operand = &operands[0];
-                    quote_in! { self.body =>
+                // An export whose WIT result carries no error adds a nil one.
+                let adds_error = self.result != self.wit_result;
+                match (*amt, adds_error) {
+                    (0, false) => (),
+                    (0, true) => quote_in! { self.body =>
                         $['\r']
-                        return $operand
-                    };
+                        return nil
+                    },
+                    (_, false) => {
+                        let operand = &operands[0];
+                        quote_in! { self.body =>
+                            $['\r']
+                            return $operand
+                        }
+                    }
+                    (_, true) => {
+                        let operand = &operands[0];
+                        quote_in! { self.body =>
+                            $['\r']
+                            return $operand, nil
+                        }
+                    }
                 }
             }
             Instruction::CallInterface { func, .. } => {

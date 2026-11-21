@@ -81,22 +81,16 @@ func TestEchoRefusesInvalidArgument(t *testing.T) {
 	}
 }
 
-// An export with no error return panics for an invalid argument, with the
-// same error.
-func TestByteLengthPanicsOnInvalidArgument(t *testing.T) {
+// An export whose WIT result is not a result refuses an invalid argument too.
+func TestByteLengthRefusesInvalidArgument(t *testing.T) {
 	ins := newInstance(t, &Host{})
-	if got := ins.ByteLength(t.Context(), "héllo"); got != 6 {
+	if got, err := ins.ByteLength(t.Context(), "héllo"); err != nil {
+		t.Fatal(err)
+	} else if got != 6 {
 		t.Fatalf("ByteLength(héllo) = %d, want 6", got)
 	}
-	defer func() {
-		r := recover()
-		err, ok := r.(error)
-		if !ok {
-			t.Fatalf("expected a panic with an error, got %v", r)
-		}
-		requireUTF8Error(t, err, "passed to the guest")
-	}()
-	ins.ByteLength(t.Context(), notUTF8)
+	_, err := ins.ByteLength(t.Context(), notUTF8)
+	requireUTF8Error(t, err, "passed to the guest")
 }
 
 // A string the guest returns is checked before it becomes a Go string.
@@ -117,18 +111,12 @@ func TestInvalidErrorFromGuest(t *testing.T) {
 	requireUTF8Error(t, err, "received from the guest")
 }
 
-// An export with no error return panics for a string the guest returns.
-func TestInvalidPlainPanics(t *testing.T) {
+// An export whose WIT result is not a result checks a string the guest
+// returns too.
+func TestInvalidPlainFromGuest(t *testing.T) {
 	ins := newInstance(t, &Host{})
-	defer func() {
-		r := recover()
-		err, ok := r.(error)
-		if !ok {
-			t.Fatalf("expected a panic with an error, got %v", r)
-		}
-		requireUTF8Error(t, err, "received from the guest")
-	}()
-	ins.InvalidPlain(t.Context())
+	_, err := ins.InvalidPlain(t.Context())
+	requireUTF8Error(t, err, "received from the guest")
 }
 
 // A host function that returns invalid UTF-8 traps the guest, as any failure

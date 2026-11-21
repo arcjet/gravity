@@ -10,6 +10,6 @@ world cleanup-errors {
   export fail-value: func() -> result<string, string>;
   // The cleanup traps after the guest returns its own error.
   export fail-error: func() -> result<_, string>;
-  // The cleanup traps in an export that cannot return an error.
+  // The cleanup traps in an export whose WIT result is not a result.
   export fail-plain: func() -> string;
 }

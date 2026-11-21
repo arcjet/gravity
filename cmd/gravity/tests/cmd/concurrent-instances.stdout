@@ -185,25 +185,25 @@ func (i *ConcurrentInstancesInstance) Join(
 	ctx context.Context,
 	parts []string,
 	sep string,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := parts
 	arg1 := sep
 	vec1 := arg0
 	len1 := uint64(len(vec1))
 	if len1 > 536870911 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len1))
+		var default1 string
+		return default1, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len1)
 	}
 	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 	ptr1 := result1[0]
 	pages1, _ := i.module.Memory().Grow(0)
 	if uint64(ptr1)+len1 * 8 > uint64(pages1)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1))
+		var default1 string
+		return default1, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1)
 	}
 	for idx := uint64(0); idx < len1; idx++ {
 		e := vec1[idx]
@@ -211,9 +211,9 @@ func (i *ConcurrentInstancesInstance) Join(
 		memory0 := i.module.Memory()
 		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, e, memory0, realloc0)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
-			panic(err0)
+			var default0 string
+			return default0, err0
 		}
 		i.module.Memory().WriteUint32Le(base+4, uint32(len0))
 		i.module.Memory().WriteUint32Le(base+0, uint32(ptr0))
@@ -221,14 +221,14 @@ func (i *ConcurrentInstancesInstance) Join(
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
 	ptr2, len2, err2 := writeString(ctx, arg1, memory2, realloc2)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 string
+		return default2, err2
 	}
 	raw3, err3 := i.exports.get("join").Call(ctx, uint64(ptr1), uint64(len1), uint64(ptr2), uint64(len2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 string
+		return default3, err3
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -237,46 +237,45 @@ func (i *ConcurrentInstancesInstance) Join(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_join"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after join: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after join: %w", err))
 			}
 		}
 	}()
 
 	results3 := raw3[0]
 	ptr4, ok4 := i.module.Memory().ReadUint32Le(uint32(results3 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default4 string
+		return default4, errors.New("failed to read pointer from memory")
 	}
 	len5, ok5 := i.module.Memory().ReadUint32Le(uint32(results3 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok5 {
-		panic(errors.New("failed to read length from memory"))
+		var default5 string
+		return default5, errors.New("failed to read length from memory")
 	}
 	buf6, ok6 := i.module.Memory().Read(ptr4, len5)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok6 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default6 string
+		return default6, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf6) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default6 string
+		return default6, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str6 := string(buf6)
-	return str6
+	return str6, nil
 }
 
 func (i *ConcurrentInstancesInstance) Greet(
 	ctx context.Context,
 	n uint32,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := n
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("greet").Call(ctx, uint64(result0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -285,33 +284,32 @@ func (i *ConcurrentInstancesInstance) Greet(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_greet"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after greet: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after greet: %w", err))
 			}
 		}
 	}()
 
 	results1 := raw1[0]
 	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default2 string
+		return default2, errors.New("failed to read pointer from memory")
 	}
 	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read length from memory"))
+		var default3 string
+		return default3, errors.New("failed to read length from memory")
 	}
 	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default4 string
+		return default4, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf4) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default4 string
+		return default4, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str4 := string(buf4)
-	return str4
+	return str4, nil
 }
 

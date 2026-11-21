@@ -187,11 +187,11 @@ func writeString(
 
 func (i *InterfaceExportsInstance) Version(
 	ctx context.Context,
-) string {
+) (_ string, gravity_err error) {
 	raw0, err0 := i.exports.get("version").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -200,34 +200,33 @@ func (i *InterfaceExportsInstance) Version(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_version"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after version: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after version: %w", err))
 			}
 		}
 	}()
 
 	results0 := raw0[0]
 	ptr1, ok1 := i.module.Memory().ReadUint32Le(uint32(results0 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok1 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default1 string
+		return default1, errors.New("failed to read pointer from memory")
 	}
 	len2, ok2 := i.module.Memory().ReadUint32Le(uint32(results0 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read length from memory"))
+		var default2 string
+		return default2, errors.New("failed to read length from memory")
 	}
 	buf3, ok3 := i.module.Memory().Read(ptr1, len2)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default3 string
+		return default3, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf3) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default3 string
+		return default3, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str3 := string(buf3)
-	return str3
+	return str3, nil
 }
 
 type Quadrant interface {
@@ -302,16 +301,16 @@ func (i *InterfaceExportsInstance) Geometry() *InterfaceExportsGeometryExports {
 func (i *InterfaceExportsGeometryExports) QuadrantOf(
 	ctx context.Context,
 	p Point,
-) Quadrant {
+) (_ Quadrant, gravity_err error) {
 	arg0 := p
 	field0_0 := arg0.X
 	field0_1 := arg0.Y
 	value1 := uint32(field0_0)
 	value2 := uint32(field0_1)
 	raw3, err3 := i.exports.get("gravity:interface-exports/geometry@0.1.0#quadrant-of").Call(ctx, uint64(value1), uint64(value2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 Quadrant
+		return default3, err3
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -320,8 +319,7 @@ func (i *InterfaceExportsGeometryExports) QuadrantOf(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_gravity:interface-exports/geometry@0.1.0#quadrant-of"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after gravity:interface-exports/geometry@0.1.0#quadrant-of: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after gravity:interface-exports/geometry@0.1.0#quadrant-of: %w", err))
 			}
 		}
 	}()
@@ -342,16 +340,16 @@ func (i *InterfaceExportsGeometryExports) QuadrantOf(
 	case 5:
 		enum4 = QuadrantAxis
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid quadrant discriminant"))
+		var default0 Quadrant
+		return default0, errors.New("invalid quadrant discriminant")
 	}
-	return enum4
+	return enum4, nil
 }
 
 func (i *InterfaceExportsGeometryExports) Midpoint(
 	ctx context.Context,
 	s Segment,
-) Point {
+) (_ Point, gravity_err error) {
 	arg0 := s
 	field0_0 := arg0.Start
 	field0_1 := arg0.End
@@ -364,9 +362,9 @@ func (i *InterfaceExportsGeometryExports) Midpoint(
 	value5 := uint32(field4_0)
 	value6 := uint32(field4_1)
 	raw7, err7 := i.exports.get("gravity:interface-exports/geometry@0.1.0#midpoint").Call(ctx, uint64(value2), uint64(value3), uint64(value5), uint64(value6))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
-		panic(err7)
+		var default7 Point
+		return default7, err7
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -375,36 +373,35 @@ func (i *InterfaceExportsGeometryExports) Midpoint(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_gravity:interface-exports/geometry@0.1.0#midpoint"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw7...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after gravity:interface-exports/geometry@0.1.0#midpoint: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after gravity:interface-exports/geometry@0.1.0#midpoint: %w", err))
 			}
 		}
 	}()
 
 	results7 := raw7[0]
 	value8, ok8 := i.module.Memory().ReadUint32Le(uint32(results7 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok8 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default8 Point
+		return default8, errors.New("failed to read i32 from memory")
 	}
 	result9 := int32(value8)
 	value10, ok10 := i.module.Memory().ReadUint32Le(uint32(results7 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok10 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default10 Point
+		return default10, errors.New("failed to read i32 from memory")
 	}
 	result11 := int32(value10)
 	value12 := Point{
 		X: result9,
 		Y: result11,
 	}
-	return value12
+	return value12, nil
 }
 
 func (i *InterfaceExportsGeometryExports) LengthSquared(
 	ctx context.Context,
 	s Segment,
-) uint64 {
+) (_ uint64, gravity_err error) {
 	arg0 := s
 	field0_0 := arg0.Start
 	field0_1 := arg0.End
@@ -417,14 +414,14 @@ func (i *InterfaceExportsGeometryExports) LengthSquared(
 	value5 := uint32(field4_0)
 	value6 := uint32(field4_1)
 	raw7, err7 := i.exports.get("gravity:interface-exports/geometry@0.1.0#length-squared").Call(ctx, uint64(value2), uint64(value3), uint64(value5), uint64(value6))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
-		panic(err7)
+		var default7 uint64
+		return default7, err7
 	}
 
 	results7 := raw7[0]
 	value8 := uint64(results7)
-	return value8
+	return value8, nil
 }
 
 // InterfaceExportsGreeterExports holds the functions the guest exports from gravity:interface-exports/greeter@0.1.0.
@@ -439,19 +436,19 @@ func (i *InterfaceExportsInstance) Greeter() *InterfaceExportsGreeterExports {
 func (i *InterfaceExportsGreeterExports) Greet(
 	ctx context.Context,
 	name string,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := name
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("gravity:interface-exports/greeter@0.1.0#greet").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -460,33 +457,32 @@ func (i *InterfaceExportsGreeterExports) Greet(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_gravity:interface-exports/greeter@0.1.0#greet"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after gravity:interface-exports/greeter@0.1.0#greet: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after gravity:interface-exports/greeter@0.1.0#greet: %w", err))
 			}
 		}
 	}()
 
 	results1 := raw1[0]
 	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default2 string
+		return default2, errors.New("failed to read pointer from memory")
 	}
 	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read length from memory"))
+		var default3 string
+		return default3, errors.New("failed to read length from memory")
 	}
 	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default4 string
+		return default4, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf4) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default4 string
+		return default4, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str4 := string(buf4)
-	return str4
+	return str4, nil
 }
 

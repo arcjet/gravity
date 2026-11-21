@@ -1,0 +1,11 @@
+[package]
+name = "example-traps"
+version = "0.0.2"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "=0.63.0"
+wit-component = "=0.262.0"

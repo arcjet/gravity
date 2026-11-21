@@ -444,159 +444,159 @@ func (i *ExampleInstance) Hello(
 
 func (i *ExampleInstance) CallGetU32(
 	ctx context.Context,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-u32").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint32
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := uint32(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetU8(
 	ctx context.Context,
-) uint8 {
+) (_ uint8, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-u8").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint8
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := uint8(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetS8(
 	ctx context.Context,
-) int8 {
+) (_ int8, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-s8").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 int8
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := int8(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetU16(
 	ctx context.Context,
-) uint16 {
+) (_ uint16, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-u16").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint16
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := uint16(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetS16(
 	ctx context.Context,
-) int16 {
+) (_ int16, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-s16").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 int16
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := int16(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetS32(
 	ctx context.Context,
-) int32 {
+) (_ int32, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-s32").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 int32
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := int32(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetU64(
 	ctx context.Context,
-) uint64 {
+) (_ uint64, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-u64").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint64
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	value1 := uint64(results0)
-	return value1
+	return value1, nil
 }
 
 func (i *ExampleInstance) CallGetS64(
 	ctx context.Context,
-) int64 {
+) (_ int64, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-s64").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 int64
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := int64(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetF32(
 	ctx context.Context,
-) float32 {
+) (_ float32, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-f32").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 float32
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := api.DecodeF32(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetF64(
 	ctx context.Context,
-) float64 {
+) (_ float64, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-f64").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 float64
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := api.DecodeF64(results0)
-	return result1
+	return result1, nil
 }
 
 func (i *ExampleInstance) CallGetChar(
 	ctx context.Context,
-) rune {
+) (_ rune, gravity_err error) {
 	raw0, err0 := i.exports.get("call-get-char").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 rune
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	result1 := rune(results0)
 	if !utf8.ValidRune(result1) {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid char value %#x", uint32(results0)))
+		var default1 rune
+		return default1, fmt.Errorf("invalid char value %#x", uint32(results0))
 	}
-	return result1
+	return result1, nil
 }
 

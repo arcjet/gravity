@@ -10,8 +10,7 @@ import (
 
 // After an export returns, the bindings call its cabi_post_* function so the
 // guest can free the result's memory. A failed cleanup is returned as an
-// error from an export that returns one, and is a panic otherwise; either
-// way it carries the wazero error.
+// error that carries the wazero error, from every export.
 
 func newInstance(t *testing.T) *CleanupErrorsInstance {
 	t.Helper()
@@ -68,15 +67,9 @@ func TestFailedCleanupAfterGuestErrorIsJoined(t *testing.T) {
 	}
 }
 
-func TestFailedCleanupWithoutErrorReturnPanics(t *testing.T) {
+// An export whose WIT result is not a result returns the failure too.
+func TestFailedCleanupWithoutWITResultIsReturned(t *testing.T) {
 	ins := newInstance(t)
-	defer func() {
-		r := recover()
-		err, ok := r.(error)
-		if !ok {
-			t.Fatalf("expected a panic with an error, got %v", r)
-		}
-		requireCleanupError(t, err, "fail-plain")
-	}()
-	ins.FailPlain(t.Context())
+	_, err := ins.FailPlain(t.Context())
+	requireCleanupError(t, err, "fail-plain")
 }

@@ -48,16 +48,11 @@ func TestNameRefusesInvalidEnum(t *testing.T) {
 	}
 }
 
-func TestNamePlainPanicsOnInvalidEnum(t *testing.T) {
+// An export whose WIT result is not a result returns the error too.
+func TestNamePlainRefusesInvalidEnum(t *testing.T) {
 	ins := newInstance(t)
-	defer func() {
-		err, ok := recover().(error)
-		if !ok {
-			t.Fatal("expected a panic with an error")
-		}
-		requireErrorContaining(t, err, "invalid color value <nil>")
-	}()
-	ins.NamePlain(t.Context(), nil)
+	_, err := ins.NamePlain(t.Context(), nil)
+	requireErrorContaining(t, err, "invalid color value <nil>")
 }
 
 func TestSurrogateIsReturnedAsError(t *testing.T) {

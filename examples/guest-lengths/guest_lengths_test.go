@@ -38,20 +38,6 @@ func requireErrorContaining(t *testing.T, err error, want string) {
 	}
 }
 
-func requirePanicContaining(t *testing.T, want string, f func()) {
-	t.Helper()
-	defer func() {
-		t.Helper()
-		r := recover()
-		err, ok := r.(error)
-		if !ok {
-			t.Fatalf("expected a panic with an error, got %v", r)
-		}
-		requireErrorContaining(t, err, want)
-	}()
-	f()
-}
-
 const doesNotFit = "list of 1048576 elements at 0 does not fit in guest memory"
 
 // A length longer than guest memory is refused before it sizes a slice.
@@ -61,9 +47,10 @@ func TestLongListResult(t *testing.T) {
 	requireErrorContaining(t, err, doesNotFit)
 }
 
-func TestLongListPanics(t *testing.T) {
+func TestLongList(t *testing.T) {
 	ins := newInstance(t)
-	requirePanicContaining(t, doesNotFit, func() { ins.LongList(t.Context()) })
+	_, err := ins.LongList(t.Context())
+	requireErrorContaining(t, err, doesNotFit)
 }
 
 func TestSum(t *testing.T) {

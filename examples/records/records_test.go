@@ -29,7 +29,10 @@ func TestRecord(t *testing.T) {
 		Vf32:    []float32{1.0, 2.0, 3.0},
 		Vf64:    []float64{1.0, 2.0, 3.0},
 	}
-	got := ins.ModifyFoo(t.Context(), foo)
+	got, err := ins.ModifyFoo(t.Context(), foo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := Foo{
 		Float32: foo.Float32 * 2.0,
 		Float64: foo.Float64 * 2.0,

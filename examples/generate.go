@@ -21,6 +21,7 @@ package examples
 //go:generate cargo build -p example-name-collisions --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-cancellation --target wasm32-unknown-unknown --release
 //go:generate cargo build -p example-invalid-values --target wasm32-unknown-unknown --release
+//go:generate cargo build -p example-traps --target wasm32-unknown-unknown --release
 
 //go:generate cargo run --bin gravity -- --world basic --output ./basic/basic.go ../target/wasm32-unknown-unknown/release/example_basic.wasm
 //go:generate cargo run --bin gravity -- --world records --output ./records/records.go ../target/wasm32-unknown-unknown/release/example_records.wasm
@@ -43,3 +44,4 @@ package examples
 //go:generate cargo run --bin gravity -- --world name-collisions --output ./name-collisions/name_collisions.go ../target/wasm32-unknown-unknown/release/example_name_collisions.wasm
 //go:generate cargo run --bin gravity -- --world cancellation --output ./cancellation/cancellation.go ../target/wasm32-unknown-unknown/release/example_cancellation.wasm
 //go:generate cargo run --bin gravity -- --world invalid-values --output ./invalid-values/invalid_values.go ../target/wasm32-unknown-unknown/release/example_invalid_values.wasm
+//go:generate cargo run --bin gravity -- --world traps --output ./traps/traps.go ../target/wasm32-unknown-unknown/release/example_traps.wasm

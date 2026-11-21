@@ -151,10 +151,14 @@ func newInstance(t *testing.T) *RegressionsInstance {
 func TestCheckEnabled(t *testing.T) {
 	ins := newInstance(t)
 
-	if got := ins.CheckEnabled(t.Context(), "enabled"); got != true {
+	if got, err := ins.CheckEnabled(t.Context(), "enabled"); err != nil {
+		t.Fatal(err)
+	} else if got != true {
 		t.Errorf("CheckEnabled(\"enabled\") = %v, want true", got)
 	}
-	if got := ins.CheckEnabled(t.Context(), "disabled"); got != false {
+	if got, err := ins.CheckEnabled(t.Context(), "disabled"); err != nil {
+		t.Fatal(err)
+	} else if got != false {
 		t.Errorf("CheckEnabled(\"disabled\") = %v, want false", got)
 	}
 }
@@ -176,7 +180,9 @@ func TestCheckStatus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := ins.CheckStatus(t.Context(), tt.key); got != tt.want {
+		if got, err := ins.CheckStatus(t.Context(), tt.key); err != nil {
+			t.Fatal(err)
+		} else if got != tt.want {
 			t.Errorf("CheckStatus(%q) = %d, want %d", tt.key, got, tt.want)
 		}
 	}
@@ -204,7 +210,9 @@ func TestDoubleValue(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := ins.DoubleValue(t.Context(), tt.input); got != tt.want {
+		if got, err := ins.DoubleValue(t.Context(), tt.input); err != nil {
+			t.Fatal(err)
+		} else if got != tt.want {
 			t.Errorf("DoubleValue(%d) = %d, want %d", tt.input, got, tt.want)
 		}
 	}
@@ -219,7 +227,9 @@ func TestDoubleValue(t *testing.T) {
 func TestRunPing(t *testing.T) {
 	ins := newInstance(t)
 
-	if got := ins.RunPing(t.Context()); got != true {
+	if got, err := ins.RunPing(t.Context()); err != nil {
+		t.Fatal(err)
+	} else if got != true {
 		t.Errorf("RunPing() = %v, want true", got)
 	}
 }
@@ -243,7 +253,9 @@ func TestCrossInterfaceEnumCollision(t *testing.T) {
 		{"other", 2},
 	}
 	for _, tt := range emailTests {
-		if got := ins.CheckEmailAllowed(t.Context(), tt.input); got != tt.want {
+		if got, err := ins.CheckEmailAllowed(t.Context(), tt.input); err != nil {
+			t.Fatal(err)
+		} else if got != tt.want {
 			t.Errorf("CheckEmailAllowed(%q) = %d, want %d", tt.input, got, tt.want)
 		}
 	}
@@ -257,7 +269,9 @@ func TestCrossInterfaceEnumCollision(t *testing.T) {
 		{"other", 2},
 	}
 	for _, tt := range botTests {
-		if got := ins.CheckBotVerified(t.Context(), tt.input); got != tt.want {
+		if got, err := ins.CheckBotVerified(t.Context(), tt.input); err != nil {
+			t.Fatal(err)
+		} else if got != tt.want {
 			t.Errorf("CheckBotVerified(%q) = %d, want %d", tt.input, got, tt.want)
 		}
 	}
@@ -272,10 +286,14 @@ func TestCrossInterfaceEnumCollision(t *testing.T) {
 func TestImportCallbackOptionString(t *testing.T) {
 	ins := newInstance(t)
 
-	if got := ins.RunIpLookup(t.Context(), "127.0.0.1"); got != "localhost" {
+	if got, err := ins.RunIpLookup(t.Context(), "127.0.0.1"); err != nil {
+		t.Fatal(err)
+	} else if got != "localhost" {
 		t.Errorf("RunIpLookup(\"127.0.0.1\") = %q, want \"localhost\"", got)
 	}
-	if got := ins.RunIpLookup(t.Context(), "0.0.0.0"); got != "absent" {
+	if got, err := ins.RunIpLookup(t.Context(), "0.0.0.0"); err != nil {
+		t.Fatal(err)
+	} else if got != "absent" {
 		t.Errorf("RunIpLookup(\"0.0.0.0\") = %q, want \"absent\"", got)
 	}
 }
@@ -286,7 +304,9 @@ func TestImportCallbackOptionString(t *testing.T) {
 func TestCrossInterfaceRecordCollision(t *testing.T) {
 	ins := newInstance(t)
 
-	if got := ins.RunJobs(t.Context(), 40, "ab"); got != 42 {
+	if got, err := ins.RunJobs(t.Context(), 40, "ab"); err != nil {
+		t.Fatal(err)
+	} else if got != 42 {
 		t.Errorf("RunJobs(40, \"ab\") = %d, want 42", got)
 	}
 }

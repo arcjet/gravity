@@ -84,7 +84,10 @@ func TestCallGetU32(t *testing.T) {
 	}
 	defer ins.Close(t.Context())
 
-	value := ins.CallGetU32(t.Context())
+	value, err := ins.CallGetU32(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var want uint32 = 42
 	if value != want {
@@ -95,7 +98,7 @@ func TestCallGetU32(t *testing.T) {
 // roundTrip sets each value as the host import's return value, calls the
 // export that returns the import's result, and checks the value survives the
 // trip through the guest.
-func roundTrip[T comparable](t *testing.T, values []T, set func(*Runtime, T), call func(*ExampleInstance, context.Context) T) {
+func roundTrip[T comparable](t *testing.T, values []T, set func(*Runtime, T), call func(*ExampleInstance, context.Context) (T, error)) {
 	t.Helper()
 	r := &Runtime{}
 	fac, err := NewExampleFactory(t.Context(), wazero.NewRuntimeConfig(), r)
@@ -112,7 +115,9 @@ func roundTrip[T comparable](t *testing.T, values []T, set func(*Runtime, T), ca
 
 	for _, want := range values {
 		set(r, want)
-		if got := call(ins, t.Context()); got != want {
+		if got, err := call(ins, t.Context()); err != nil {
+			t.Fatal(err)
+		} else if got != want {
 			t.Errorf("wanted: %v, but got: %v", want, got)
 		}
 	}

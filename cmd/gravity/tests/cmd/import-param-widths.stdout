@@ -218,7 +218,7 @@ func (i *ImportParamWidthsInstance) CallWide(
 	d float64,
 	e_ uint32,
 	f int8,
-) float64 {
+) (_ float64, gravity_err error) {
 	arg0 := a
 	arg1 := b
 	arg2 := c
@@ -232,20 +232,20 @@ func (i *ImportParamWidthsInstance) CallWide(
 	result4 := uint32(arg4)
 	value5 := uint32(arg5)
 	raw6, err6 := i.exports.get("call-wide").Call(ctx, uint64(value0), uint64(value1), uint64(result2), uint64(result3), uint64(result4), uint64(value5))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err6 != nil {
-		panic(err6)
+		var default6 float64
+		return default6, err6
 	}
 
 	results6 := raw6[0]
 	result7 := api.DecodeF64(results6)
-	return result7
+	return result7, nil
 }
 
 func (i *ImportParamWidthsInstance) CallOpt(
 	ctx context.Context,
 	x *int64,
-) int64 {
+) (_ int64, gravity_err error) {
 	arg0 := x
 	var variant1_0 uint32
 	var variant1_1 uint64
@@ -259,13 +259,13 @@ func (i *ImportParamWidthsInstance) CallOpt(
 		variant1_1 = value0
 	}
 	raw2, err2 := i.exports.get("call-opt").Call(ctx, uint64(variant1_0), uint64(variant1_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 int64
+		return default2, err2
 	}
 
 	results2 := raw2[0]
 	result3 := int64(results2)
-	return result3
+	return result3, nil
 }
 

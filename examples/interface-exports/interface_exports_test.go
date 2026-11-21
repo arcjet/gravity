@@ -40,15 +40,21 @@ func TestInterfaceTypesAndFunctions(t *testing.T) {
 		{2, -3}:  QuadrantFourth,
 		{0, 5}:   QuadrantAxis,
 	} {
-		if got := geo.QuadrantOf(t.Context(), p); got != want {
+		if got, err := geo.QuadrantOf(t.Context(), p); err != nil {
+			t.Fatal(err)
+		} else if got != want {
 			t.Errorf("QuadrantOf(%+v) = %v, want %v", p, got, want)
 		}
 	}
 	s := Segment{Start: Point{X: -4, Y: 2}, End: Point{X: 6, Y: -8}}
-	if got := geo.Midpoint(t.Context(), s); got != (Point{X: 1, Y: -3}) {
+	if got, err := geo.Midpoint(t.Context(), s); err != nil {
+		t.Fatal(err)
+	} else if got != (Point{X: 1, Y: -3}) {
 		t.Errorf("Midpoint = %+v", got)
 	}
-	if got := geo.LengthSquared(t.Context(), s); got != 200 {
+	if got, err := geo.LengthSquared(t.Context(), s); err != nil {
+		t.Fatal(err)
+	} else if got != 200 {
 		t.Errorf("LengthSquared = %d, want 200", got)
 	}
 }
@@ -56,7 +62,9 @@ func TestInterfaceTypesAndFunctions(t *testing.T) {
 func TestInterfaceCallsBackIntoTheHost(t *testing.T) {
 	l := &Log{}
 	ins := newInstance(t, l)
-	if got := ins.Greeter().Greet(t.Context(), "rob"); got != "hello, rob" {
+	if got, err := ins.Greeter().Greet(t.Context(), "rob"); err != nil {
+		t.Fatal(err)
+	} else if got != "hello, rob" {
 		t.Errorf("Greet = %q", got)
 	}
 	if len(l.lines) != 1 || l.lines[0] != "greeting rob" {
@@ -65,7 +73,9 @@ func TestInterfaceCallsBackIntoTheHost(t *testing.T) {
 }
 
 func TestWorldFunctionsBesideInterfaces(t *testing.T) {
-	if got := newInstance(t, &Log{}).Version(t.Context()); got != "0.1.0" {
+	if got, err := newInstance(t, &Log{}).Version(t.Context()); err != nil {
+		t.Fatal(err)
+	} else if got != "0.1.0" {
 		t.Errorf("Version = %q", got)
 	}
 }
@@ -98,13 +108,17 @@ func TestInterfaceLookupsAreMemoized(t *testing.T) {
 	geo := ins.Geometry()
 	s := Segment{Start: Point{X: -4, Y: 2}, End: Point{X: 6, Y: -8}}
 	midpoint := bytesPerCall(func() {
-		if got := geo.Midpoint(t.Context(), s); got != (Point{X: 1, Y: -3}) {
+		if got, err := geo.Midpoint(t.Context(), s); err != nil {
+			t.Fatal(err)
+		} else if got != (Point{X: 1, Y: -3}) {
 			t.Fatalf("Midpoint = %+v", got)
 		}
 	})
 	greeter := ins.Greeter()
 	greet := bytesPerCall(func() {
-		if got := greeter.Greet(t.Context(), "rob"); got != "hello, rob" {
+		if got, err := greeter.Greet(t.Context(), "rob"); err != nil {
+			t.Fatal(err)
+		} else if got != "hello, rob" {
 			t.Fatalf("Greet = %q", got)
 		}
 	})

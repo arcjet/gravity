@@ -61,7 +61,10 @@ func Test_S8Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusive[int8](math.MinInt8, math.MaxInt8) {
-		actual := ins.S8Roundtrip(t.Context(), expected)
+		actual, err := ins.S8Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -82,7 +85,10 @@ func Test_U8Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusive[uint8](0, math.MaxUint8) {
-		actual := ins.U8Roundtrip(t.Context(), expected)
+		actual, err := ins.U8Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -103,7 +109,10 @@ func Test_S16Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusive[int16](math.MinInt16, math.MaxInt16) {
-		actual := ins.S16Roundtrip(t.Context(), expected)
+		actual, err := ins.S16Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -124,7 +133,10 @@ func Test_U16Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusive[uint16](0, math.MaxUint16) {
-		actual := ins.U16Roundtrip(t.Context(), expected)
+		actual, err := ins.U16Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -145,7 +157,10 @@ func Test_S32Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusiveStep[int32](math.MinInt32, math.MaxInt32, 10_000) {
-		actual := ins.S32Roundtrip(t.Context(), expected)
+		actual, err := ins.S32Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -166,7 +181,10 @@ func Test_U32Roundtrip(t *testing.T) {
 	defer ins.Close(t.Context())
 
 	for expected := range inclusiveStep[uint32](0, math.MaxUint32, 10_000) {
-		actual := ins.U32Roundtrip(t.Context(), expected)
+		actual, err := ins.U32Roundtrip(t.Context(), expected)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if actual != expected {
 			t.Errorf("expected: %d, but got: %d", expected, actual)
 		}
@@ -192,7 +210,9 @@ func Test_F32Roundtrip(t *testing.T) {
 	for i := range 1000 {
 		t.Run(fmt.Sprintf("i: %d", i), func(t *testing.T) {
 			expected := rng.Float32()
-			if actual := ins.F32Roundtrip(t.Context(), expected); actual != expected {
+			if actual, err := ins.F32Roundtrip(t.Context(), expected); err != nil {
+				t.Fatal(err)
+			} else if actual != expected {
 				t.Errorf("expected: %f, but got: %f", expected, actual)
 			}
 		})
@@ -218,7 +238,9 @@ func Test_F64Roundtrip(t *testing.T) {
 	for i := range 1000 {
 		t.Run(fmt.Sprintf("i: %d", i), func(t *testing.T) {
 			expected := rng.Float64()
-			if actual := ins.F64Roundtrip(t.Context(), expected); actual != expected {
+			if actual, err := ins.F64Roundtrip(t.Context(), expected); err != nil {
+				t.Fatal(err)
+			} else if actual != expected {
 				t.Errorf("expected: %f, but got: %f", expected, actual)
 			}
 		})
@@ -281,7 +303,9 @@ func Test_IndirectParams(t *testing.T) {
 	}
 
 	want := "wide:1,2,3,4,5,6,7,8,9,10,11,12,13,14,4294967295"
-	if got := ins.IndirectParams(t.Context(), val); got != want {
+	if got, err := ins.IndirectParams(t.Context(), val); err != nil {
+		t.Fatal(err)
+	} else if got != want {
 		t.Errorf("expected: %q, but got: %q", want, got)
 	}
 }

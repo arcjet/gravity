@@ -54,27 +54,41 @@ func TestEveryCaseInEveryPosition(t *testing.T) {
 	for i, l := range levels {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			ctx := t.Context()
-			if got := ins.Echo(ctx, l); got != l {
+			if got, err := ins.Echo(ctx, l); err != nil {
+				t.Fatal(err)
+			} else if got != l {
 				t.Errorf("Echo: got %v, want %v", got, l)
 			}
-			if got := ins.EchoEntry(ctx, Entry{At: l, Msg: "m"}); got != (Entry{At: l, Msg: "m"}) {
+			if got, err := ins.EchoEntry(ctx, Entry{At: l, Msg: "m"}); err != nil {
+				t.Fatal(err)
+			} else if got != (Entry{At: l, Msg: "m"}) {
 				t.Errorf("EchoEntry: got %+v", got)
 			}
-			if got := ins.EchoOption(ctx, &l); got == nil || *got != l {
+			if got, err := ins.EchoOption(ctx, &l); err != nil {
+				t.Fatal(err)
+			} else if got == nil || *got != l {
 				t.Errorf("EchoOption: got %s, want %v", show(got), l)
 			}
-			if got := ins.ViaHost(ctx, l); got != l {
+			if got, err := ins.ViaHost(ctx, l); err != nil {
+				t.Fatal(err)
+			} else if got != l {
 				t.Errorf("ViaHost: got %v, want %v", got, l)
 			}
-			if got := ins.ViaHostOption(ctx, &l); got == nil || *got != l {
+			if got, err := ins.ViaHostOption(ctx, &l); err != nil {
+				t.Fatal(err)
+			} else if got == nil || *got != l {
 				t.Errorf("ViaHostOption: got %s, want %v", show(got), l)
 			}
 		})
 	}
-	if got := ins.EchoOption(t.Context(), nil); got != nil {
+	if got, err := ins.EchoOption(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	} else if got != nil {
 		t.Errorf("EchoOption(nil): got %s", show(got))
 	}
-	if got := ins.ViaHostOption(t.Context(), nil); got != nil {
+	if got, err := ins.ViaHostOption(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	} else if got != nil {
 		t.Errorf("ViaHostOption(nil): got %s", show(got))
 	}
 }
@@ -84,13 +98,17 @@ func TestEveryCaseInLists(t *testing.T) {
 	ins := newInstance(t, h)
 	// Reversed, so an index mistaken for a discriminant shows.
 	want := []Level{LevelFatal, LevelWarn, LevelInfo, LevelDebug, LevelTrace, LevelFatal}
-	if got := ins.EchoList(t.Context(), want); !reflect.DeepEqual(got, want) {
+	if got, err := ins.EchoList(t.Context(), want); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(got, want) {
 		t.Errorf("EchoList: got %v, want %v", got, want)
 	}
 	for _, l := range want {
 		h.entries = append(h.entries, Entry{At: l, Msg: fmt.Sprint(l)})
 	}
-	if got := ins.HostEntries(t.Context()); !reflect.DeepEqual(got, h.entries) {
+	if got, err := ins.HostEntries(t.Context()); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(got, h.entries) {
 		t.Errorf("HostEntries: got %+v, want %+v", got, h.entries)
 	}
 }

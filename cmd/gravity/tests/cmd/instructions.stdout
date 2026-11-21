@@ -207,143 +207,143 @@ func writeString(
 func (i *InstructionsInstance) S8Roundtrip(
 	ctx context.Context,
 	val int8,
-) int8 {
+) (_ int8, gravity_err error) {
 	arg0 := val
 	value0 := uint32(arg0)
 	raw1, err1 := i.exports.get("s8-roundtrip").Call(ctx, uint64(value0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 int8
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := int8(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) U8Roundtrip(
 	ctx context.Context,
 	val uint8,
-) uint8 {
+) (_ uint8, gravity_err error) {
 	arg0 := val
 	value0 := uint32(arg0)
 	raw1, err1 := i.exports.get("u8-roundtrip").Call(ctx, uint64(value0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint8
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint8(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) S16Roundtrip(
 	ctx context.Context,
 	val int16,
-) int16 {
+) (_ int16, gravity_err error) {
 	arg0 := val
 	value0 := uint32(arg0)
 	raw1, err1 := i.exports.get("s16-roundtrip").Call(ctx, uint64(value0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 int16
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := int16(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) U16Roundtrip(
 	ctx context.Context,
 	val uint16,
-) uint16 {
+) (_ uint16, gravity_err error) {
 	arg0 := val
 	value0 := uint32(arg0)
 	raw1, err1 := i.exports.get("u16-roundtrip").Call(ctx, uint64(value0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint16
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint16(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) S32Roundtrip(
 	ctx context.Context,
 	val int32,
-) int32 {
+) (_ int32, gravity_err error) {
 	arg0 := val
 	value0 := uint32(arg0)
 	raw1, err1 := i.exports.get("s32-roundtrip").Call(ctx, uint64(value0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 int32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := int32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) U32Roundtrip(
 	ctx context.Context,
 	val uint32,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := val
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("u32-roundtrip").Call(ctx, uint64(result0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) F32Roundtrip(
 	ctx context.Context,
 	val float32,
-) float32 {
+) (_ float32, gravity_err error) {
 	arg0 := val
 	result0 := api.EncodeF32(arg0)
 	raw1, err1 := i.exports.get("f32-roundtrip").Call(ctx, uint64(result0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 float32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := api.DecodeF32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) F64Roundtrip(
 	ctx context.Context,
 	val float64,
-) float64 {
+) (_ float64, gravity_err error) {
 	arg0 := val
 	result0 := api.EncodeF64(arg0)
 	raw1, err1 := i.exports.get("f64-roundtrip").Call(ctx, uint64(result0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 float64
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := api.DecodeF64(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *InstructionsInstance) EnumInput(
 	ctx context.Context,
 	val EnumValues,
-) {
+) (gravity_err error) {
 	arg0 := val
 	var enum0 uint32
 	switch arg0 {
@@ -354,32 +354,32 @@ func (i *InstructionsInstance) EnumInput(
 	case EnumValuesThree:
 		enum0 = 2
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid enum-values value %v", arg0))
+		return fmt.Errorf("invalid enum-values value %v", arg0)
 	}
 	_, err1 := i.exports.get("enum-input").Call(ctx, uint64(enum0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		return err1
 	}
+
+	return nil
 }
 
 func (i *InstructionsInstance) IndirectParams(
 	ctx context.Context,
 	val WideParams,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := val
 	// Allocate the area holding the indirectly passed parameters
 	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, 68)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
 	pages0, _ := i.module.Memory().Grow(0)
 	if uint64(ptr0)+68 > uint64(pages0)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
+		var default0 string
+		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0)
 	}
 	field1_0 := arg0.A
 	field1_1 := arg0.B
@@ -430,16 +430,16 @@ func (i *InstructionsInstance) IndirectParams(
 	memory17 := i.module.Memory()
 	realloc17 := i.exports.get("cabi_realloc")
 	ptr17, len17, err17 := writeString(ctx, field1_15, memory17, realloc17)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err17 != nil {
-		panic(err17)
+		var default17 string
+		return default17, err17
 	}
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(len17))
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(ptr17))
 	raw18, err18 := i.exports.get("indirect-params").Call(ctx, uint64(ptr0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
-		panic(err18)
+		var default18 string
+		return default18, err18
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -448,33 +448,32 @@ func (i *InstructionsInstance) IndirectParams(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_indirect-params"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after indirect-params: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after indirect-params: %w", err))
 			}
 		}
 	}()
 
 	results18 := raw18[0]
 	ptr19, ok19 := i.module.Memory().ReadUint32Le(uint32(results18 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok19 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default19 string
+		return default19, errors.New("failed to read pointer from memory")
 	}
 	len20, ok20 := i.module.Memory().ReadUint32Le(uint32(results18 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok20 {
-		panic(errors.New("failed to read length from memory"))
+		var default20 string
+		return default20, errors.New("failed to read length from memory")
 	}
 	buf21, ok21 := i.module.Memory().Read(ptr19, len20)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok21 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default21 string
+		return default21, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf21) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default21 string
+		return default21, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str21 := string(buf21)
-	return str21
+	return str21, nil
 }
 

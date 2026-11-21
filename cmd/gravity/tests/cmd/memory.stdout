@@ -469,19 +469,19 @@ func writeString(
 func (i *MemoryInstance) RoundTrip(
 	ctx context.Context,
 	x Everything,
-) Everything {
+) (_ Everything, gravity_err error) {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
 	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, 64)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 Everything
+		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
 	pages0, _ := i.module.Memory().Grow(0)
 	if uint64(ptr0)+64 > uint64(pages0)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
+		var default0 Everything
+		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0)
 	}
 	field1_0 := arg0.AU8
 	field1_1 := arg0.AS8
@@ -534,8 +534,8 @@ func (i *MemoryInstance) RoundTrip(
 	case ColorBlue:
 		enum13 = 2
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid color value %v", field1_11))
+		var default13 Everything
+		return default13, fmt.Errorf("invalid color value %v", field1_11)
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
 	if field1_12 == nil {
@@ -549,18 +549,18 @@ func (i *MemoryInstance) RoundTrip(
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, field1_13, memory16, realloc16)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
-		panic(err16)
+		var default16 Everything
+		return default16, err16
 	}
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
 	result17 := api.EncodeF32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
 	raw18, err18 := i.exports.get("round-trip").Call(ctx, uint64(ptr0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
-		panic(err18)
+		var default18 Everything
+		return default18, err18
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -569,87 +569,86 @@ func (i *MemoryInstance) RoundTrip(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after round-trip: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after round-trip: %w", err))
 			}
 		}
 	}()
 
 	results18 := raw18[0]
 	value19, ok19 := i.module.Memory().ReadByte(uint32(results18 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok19 {
-		panic(errors.New("failed to read byte from memory"))
+		var default19 Everything
+		return default19, errors.New("failed to read byte from memory")
 	}
 	result20 := uint8(value19)
 	value21, ok21 := i.module.Memory().ReadByte(uint32(results18 + 1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok21 {
-		panic(errors.New("failed to read byte from memory"))
+		var default21 Everything
+		return default21, errors.New("failed to read byte from memory")
 	}
 	result22 := int8(value21)
 	value23, ok23 := i.module.Memory().ReadUint16Le(uint32(results18 + 2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok23 {
-		panic(errors.New("failed to read i16 from memory"))
+		var default23 Everything
+		return default23, errors.New("failed to read i16 from memory")
 	}
 	result24 := uint16(value23)
 	value25, ok25 := i.module.Memory().ReadUint16Le(uint32(results18 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok25 {
-		panic(errors.New("failed to read i16 from memory"))
+		var default25 Everything
+		return default25, errors.New("failed to read i16 from memory")
 	}
 	result26 := int16(value25)
 	value27, ok27 := i.module.Memory().ReadUint32Le(uint32(results18 + 8))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok27 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default27 Everything
+		return default27, errors.New("failed to read i32 from memory")
 	}
 	result28 := uint32(value27)
 	value29, ok29 := i.module.Memory().ReadUint32Le(uint32(results18 + 12))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok29 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default29 Everything
+		return default29, errors.New("failed to read i32 from memory")
 	}
 	result30 := int32(value29)
 	value31, ok31 := i.module.Memory().ReadUint64Le(uint32(results18 + 16))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok31 {
-		panic(errors.New("failed to read i64 from memory"))
+		var default31 Everything
+		return default31, errors.New("failed to read i64 from memory")
 	}
 	value32 := uint64(value31)
 	value33, ok33 := i.module.Memory().ReadUint64Le(uint32(results18 + 24))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok33 {
-		panic(errors.New("failed to read i64 from memory"))
+		var default33 Everything
+		return default33, errors.New("failed to read i64 from memory")
 	}
 	result34 := int64(value33)
 	value35, ok35 := i.module.Memory().ReadUint64Le(uint32(results18 + 32))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok35 {
-		panic(errors.New("failed to read f64 from memory"))
+		var default35 Everything
+		return default35, errors.New("failed to read f64 from memory")
 	}
 	result36 := api.DecodeF64(value35)
 	value37, ok37 := i.module.Memory().ReadByte(uint32(results18 + 40))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok37 {
-		panic(errors.New("failed to read byte from memory"))
+		var default37 Everything
+		return default37, errors.New("failed to read byte from memory")
 	}
 	value38 := value37 != 0
 	value39, ok39 := i.module.Memory().ReadUint32Le(uint32(results18 + 44))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok39 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default39 Everything
+		return default39, errors.New("failed to read i32 from memory")
 	}
 	result40 := rune(value39)
 	if !utf8.ValidRune(result40) {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid char value %#x", uint32(value39)))
+		var default40 Everything
+		return default40, fmt.Errorf("invalid char value %#x", uint32(value39))
 	}
 	value41, ok41 := i.module.Memory().ReadByte(uint32(results18 + 48))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok41 {
-		panic(errors.New("failed to read byte from memory"))
+		var default41 Everything
+		return default41, errors.New("failed to read byte from memory")
 	}
 	var enum42 Color
 	switch value41 {
@@ -660,49 +659,49 @@ func (i *MemoryInstance) RoundTrip(
 	case 2:
 		enum42 = ColorBlue
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid color discriminant"))
+		var default0 Everything
+		return default0, errors.New("invalid color discriminant")
 	}
 	value43, ok43 := i.module.Memory().ReadByte(uint32(results18 + 49))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok43 {
-		panic(errors.New("failed to read byte from memory"))
+		var default43 Everything
+		return default43, errors.New("failed to read byte from memory")
 	}
 	var result46 *uint8
 	if value43 != 0 {
 		value44, ok44 := i.module.Memory().ReadByte(uint32(results18 + 50))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok44 {
-			panic(errors.New("failed to read byte from memory"))
+			var default44 Everything
+			return default44, errors.New("failed to read byte from memory")
 		}
 		result45 := uint8(value44)
 		someValue46 := result45
 		result46 = &someValue46
 	}
 	ptr47, ok47 := i.module.Memory().ReadUint32Le(uint32(results18 + 52))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok47 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default47 Everything
+		return default47, errors.New("failed to read pointer from memory")
 	}
 	len48, ok48 := i.module.Memory().ReadUint32Le(uint32(results18 + 56))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok48 {
-		panic(errors.New("failed to read length from memory"))
+		var default48 Everything
+		return default48, errors.New("failed to read length from memory")
 	}
 	buf49, ok49 := i.module.Memory().Read(ptr47, len48)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok49 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default49 Everything
+		return default49, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf49) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default49 Everything
+		return default49, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 60))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok50 {
-		panic(errors.New("failed to read f32 from memory"))
+		var default50 Everything
+		return default50, errors.New("failed to read f32 from memory")
 	}
 	bits51 := uint64(value50)
 	result52 := api.DecodeF32(bits51)
@@ -723,25 +722,25 @@ func (i *MemoryInstance) RoundTrip(
 		AStr: str49,
 		AF32: result52,
 	}
-	return value53
+	return value53, nil
 }
 
 func (i *MemoryInstance) CallHostEcho(
 	ctx context.Context,
 	x Everything,
-) Everything {
+) (_ Everything, gravity_err error) {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
 	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 8, 64)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 Everything
+		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
 	pages0, _ := i.module.Memory().Grow(0)
 	if uint64(ptr0)+64 > uint64(pages0)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
+		var default0 Everything
+		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0)
 	}
 	field1_0 := arg0.AU8
 	field1_1 := arg0.AS8
@@ -794,8 +793,8 @@ func (i *MemoryInstance) CallHostEcho(
 	case ColorBlue:
 		enum13 = 2
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid color value %v", field1_11))
+		var default13 Everything
+		return default13, fmt.Errorf("invalid color value %v", field1_11)
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
 	if field1_12 == nil {
@@ -809,18 +808,18 @@ func (i *MemoryInstance) CallHostEcho(
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, field1_13, memory16, realloc16)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
-		panic(err16)
+		var default16 Everything
+		return default16, err16
 	}
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
 	result17 := api.EncodeF32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
 	raw18, err18 := i.exports.get("call-host-echo").Call(ctx, uint64(ptr0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
-		panic(err18)
+		var default18 Everything
+		return default18, err18
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -829,87 +828,86 @@ func (i *MemoryInstance) CallHostEcho(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_call-host-echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after call-host-echo: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after call-host-echo: %w", err))
 			}
 		}
 	}()
 
 	results18 := raw18[0]
 	value19, ok19 := i.module.Memory().ReadByte(uint32(results18 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok19 {
-		panic(errors.New("failed to read byte from memory"))
+		var default19 Everything
+		return default19, errors.New("failed to read byte from memory")
 	}
 	result20 := uint8(value19)
 	value21, ok21 := i.module.Memory().ReadByte(uint32(results18 + 1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok21 {
-		panic(errors.New("failed to read byte from memory"))
+		var default21 Everything
+		return default21, errors.New("failed to read byte from memory")
 	}
 	result22 := int8(value21)
 	value23, ok23 := i.module.Memory().ReadUint16Le(uint32(results18 + 2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok23 {
-		panic(errors.New("failed to read i16 from memory"))
+		var default23 Everything
+		return default23, errors.New("failed to read i16 from memory")
 	}
 	result24 := uint16(value23)
 	value25, ok25 := i.module.Memory().ReadUint16Le(uint32(results18 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok25 {
-		panic(errors.New("failed to read i16 from memory"))
+		var default25 Everything
+		return default25, errors.New("failed to read i16 from memory")
 	}
 	result26 := int16(value25)
 	value27, ok27 := i.module.Memory().ReadUint32Le(uint32(results18 + 8))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok27 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default27 Everything
+		return default27, errors.New("failed to read i32 from memory")
 	}
 	result28 := uint32(value27)
 	value29, ok29 := i.module.Memory().ReadUint32Le(uint32(results18 + 12))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok29 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default29 Everything
+		return default29, errors.New("failed to read i32 from memory")
 	}
 	result30 := int32(value29)
 	value31, ok31 := i.module.Memory().ReadUint64Le(uint32(results18 + 16))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok31 {
-		panic(errors.New("failed to read i64 from memory"))
+		var default31 Everything
+		return default31, errors.New("failed to read i64 from memory")
 	}
 	value32 := uint64(value31)
 	value33, ok33 := i.module.Memory().ReadUint64Le(uint32(results18 + 24))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok33 {
-		panic(errors.New("failed to read i64 from memory"))
+		var default33 Everything
+		return default33, errors.New("failed to read i64 from memory")
 	}
 	result34 := int64(value33)
 	value35, ok35 := i.module.Memory().ReadUint64Le(uint32(results18 + 32))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok35 {
-		panic(errors.New("failed to read f64 from memory"))
+		var default35 Everything
+		return default35, errors.New("failed to read f64 from memory")
 	}
 	result36 := api.DecodeF64(value35)
 	value37, ok37 := i.module.Memory().ReadByte(uint32(results18 + 40))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok37 {
-		panic(errors.New("failed to read byte from memory"))
+		var default37 Everything
+		return default37, errors.New("failed to read byte from memory")
 	}
 	value38 := value37 != 0
 	value39, ok39 := i.module.Memory().ReadUint32Le(uint32(results18 + 44))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok39 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default39 Everything
+		return default39, errors.New("failed to read i32 from memory")
 	}
 	result40 := rune(value39)
 	if !utf8.ValidRune(result40) {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("invalid char value %#x", uint32(value39)))
+		var default40 Everything
+		return default40, fmt.Errorf("invalid char value %#x", uint32(value39))
 	}
 	value41, ok41 := i.module.Memory().ReadByte(uint32(results18 + 48))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok41 {
-		panic(errors.New("failed to read byte from memory"))
+		var default41 Everything
+		return default41, errors.New("failed to read byte from memory")
 	}
 	var enum42 Color
 	switch value41 {
@@ -920,49 +918,49 @@ func (i *MemoryInstance) CallHostEcho(
 	case 2:
 		enum42 = ColorBlue
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid color discriminant"))
+		var default0 Everything
+		return default0, errors.New("invalid color discriminant")
 	}
 	value43, ok43 := i.module.Memory().ReadByte(uint32(results18 + 49))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok43 {
-		panic(errors.New("failed to read byte from memory"))
+		var default43 Everything
+		return default43, errors.New("failed to read byte from memory")
 	}
 	var result46 *uint8
 	if value43 != 0 {
 		value44, ok44 := i.module.Memory().ReadByte(uint32(results18 + 50))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok44 {
-			panic(errors.New("failed to read byte from memory"))
+			var default44 Everything
+			return default44, errors.New("failed to read byte from memory")
 		}
 		result45 := uint8(value44)
 		someValue46 := result45
 		result46 = &someValue46
 	}
 	ptr47, ok47 := i.module.Memory().ReadUint32Le(uint32(results18 + 52))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok47 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default47 Everything
+		return default47, errors.New("failed to read pointer from memory")
 	}
 	len48, ok48 := i.module.Memory().ReadUint32Le(uint32(results18 + 56))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok48 {
-		panic(errors.New("failed to read length from memory"))
+		var default48 Everything
+		return default48, errors.New("failed to read length from memory")
 	}
 	buf49, ok49 := i.module.Memory().Read(ptr47, len48)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok49 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default49 Everything
+		return default49, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf49) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default49 Everything
+		return default49, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 60))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok50 {
-		panic(errors.New("failed to read f32 from memory"))
+		var default50 Everything
+		return default50, errors.New("failed to read f32 from memory")
 	}
 	bits51 := uint64(value50)
 	result52 := api.DecodeF32(bits51)
@@ -983,25 +981,25 @@ func (i *MemoryInstance) CallHostEcho(
 		AStr: str49,
 		AF32: result52,
 	}
-	return value53
+	return value53, nil
 }
 
 func (i *MemoryInstance) RoundTripNarrow(
 	ctx context.Context,
 	x Narrow,
-) Narrow {
+) (_ Narrow, gravity_err error) {
 	arg0 := x
 	// Allocate the area holding the indirectly passed parameters
 	result0, err0 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, 68)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 Narrow
+		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
 	pages0, _ := i.module.Memory().Grow(0)
 	if uint64(ptr0)+68 > uint64(pages0)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
+		var default0 Narrow
+		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0)
 	}
 	field1_0 := arg0.N0
 	field1_1 := arg0.N1
@@ -1050,18 +1048,18 @@ func (i *MemoryInstance) RoundTripNarrow(
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
 	ptr16, len16, err16 := writeString(ctx, field1_14, memory16, realloc16)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
-		panic(err16)
+		var default16 Narrow
+		return default16, err16
 	}
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(ptr16))
 	result17 := api.EncodeF32(field1_15)
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(result17))
 	raw18, err18 := i.exports.get("round-trip-narrow").Call(ctx, uint64(ptr0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err18 != nil {
-		panic(err18)
+		var default18 Narrow
+		return default18, err18
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -1070,121 +1068,120 @@ func (i *MemoryInstance) RoundTripNarrow(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip-narrow"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after round-trip-narrow: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after round-trip-narrow: %w", err))
 			}
 		}
 	}()
 
 	results18 := raw18[0]
 	value19, ok19 := i.module.Memory().ReadUint32Le(uint32(results18 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok19 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default19 Narrow
+		return default19, errors.New("failed to read i32 from memory")
 	}
 	result20 := uint32(value19)
 	value21, ok21 := i.module.Memory().ReadUint32Le(uint32(results18 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok21 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default21 Narrow
+		return default21, errors.New("failed to read i32 from memory")
 	}
 	result22 := uint32(value21)
 	value23, ok23 := i.module.Memory().ReadUint32Le(uint32(results18 + 8))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok23 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default23 Narrow
+		return default23, errors.New("failed to read i32 from memory")
 	}
 	result24 := uint32(value23)
 	value25, ok25 := i.module.Memory().ReadUint32Le(uint32(results18 + 12))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok25 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default25 Narrow
+		return default25, errors.New("failed to read i32 from memory")
 	}
 	result26 := uint32(value25)
 	value27, ok27 := i.module.Memory().ReadUint32Le(uint32(results18 + 16))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok27 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default27 Narrow
+		return default27, errors.New("failed to read i32 from memory")
 	}
 	result28 := uint32(value27)
 	value29, ok29 := i.module.Memory().ReadUint32Le(uint32(results18 + 20))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok29 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default29 Narrow
+		return default29, errors.New("failed to read i32 from memory")
 	}
 	result30 := uint32(value29)
 	value31, ok31 := i.module.Memory().ReadUint32Le(uint32(results18 + 24))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok31 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default31 Narrow
+		return default31, errors.New("failed to read i32 from memory")
 	}
 	result32 := uint32(value31)
 	value33, ok33 := i.module.Memory().ReadUint32Le(uint32(results18 + 28))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok33 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default33 Narrow
+		return default33, errors.New("failed to read i32 from memory")
 	}
 	result34 := uint32(value33)
 	value35, ok35 := i.module.Memory().ReadUint32Le(uint32(results18 + 32))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok35 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default35 Narrow
+		return default35, errors.New("failed to read i32 from memory")
 	}
 	result36 := uint32(value35)
 	value37, ok37 := i.module.Memory().ReadUint32Le(uint32(results18 + 36))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok37 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default37 Narrow
+		return default37, errors.New("failed to read i32 from memory")
 	}
 	result38 := uint32(value37)
 	value39, ok39 := i.module.Memory().ReadUint32Le(uint32(results18 + 40))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok39 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default39 Narrow
+		return default39, errors.New("failed to read i32 from memory")
 	}
 	result40 := uint32(value39)
 	value41, ok41 := i.module.Memory().ReadUint32Le(uint32(results18 + 44))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok41 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default41 Narrow
+		return default41, errors.New("failed to read i32 from memory")
 	}
 	result42 := uint32(value41)
 	value43, ok43 := i.module.Memory().ReadUint32Le(uint32(results18 + 48))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok43 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default43 Narrow
+		return default43, errors.New("failed to read i32 from memory")
 	}
 	result44 := uint32(value43)
 	value45, ok45 := i.module.Memory().ReadUint32Le(uint32(results18 + 52))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok45 {
-		panic(errors.New("failed to read i32 from memory"))
+		var default45 Narrow
+		return default45, errors.New("failed to read i32 from memory")
 	}
 	result46 := uint32(value45)
 	ptr47, ok47 := i.module.Memory().ReadUint32Le(uint32(results18 + 56))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok47 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default47 Narrow
+		return default47, errors.New("failed to read pointer from memory")
 	}
 	len48, ok48 := i.module.Memory().ReadUint32Le(uint32(results18 + 60))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok48 {
-		panic(errors.New("failed to read length from memory"))
+		var default48 Narrow
+		return default48, errors.New("failed to read length from memory")
 	}
 	buf49, ok49 := i.module.Memory().Read(ptr47, len48)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok49 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default49 Narrow
+		return default49, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf49) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default49 Narrow
+		return default49, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 64))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok50 {
-		panic(errors.New("failed to read f32 from memory"))
+		var default50 Narrow
+		return default50, errors.New("failed to read f32 from memory")
 	}
 	bits51 := uint64(value50)
 	result52 := api.DecodeF32(bits51)
@@ -1206,6 +1203,6 @@ func (i *MemoryInstance) RoundTripNarrow(
 		S: str49,
 		F: result52,
 	}
-	return value53
+	return value53, nil
 }
 

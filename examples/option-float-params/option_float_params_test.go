@@ -41,7 +41,9 @@ func TestOptionF64Param(t *testing.T) {
 		{-0.25, ptr(-4.0), 1.0},
 		{3, ptr(math.Inf(1)), math.Inf(1)},
 	} {
-		if got := ins.Scale(t.Context(), tc.value, tc.factor); got != tc.want {
+		if got, err := ins.Scale(t.Context(), tc.value, tc.factor); err != nil {
+			t.Fatal(err)
+		} else if got != tc.want {
 			t.Errorf("Scale(%v, %v) = %v, want %v", tc.value, tc.factor, got, tc.want)
 		}
 	}
@@ -49,23 +51,33 @@ func TestOptionF64Param(t *testing.T) {
 
 func TestOptionF32Param(t *testing.T) {
 	ins := newInstance(t)
-	if got := ins.Scale32(t.Context(), 1.5, nil); got != 1.5 {
+	if got, err := ins.Scale32(t.Context(), 1.5, nil); err != nil {
+		t.Fatal(err)
+	} else if got != 1.5 {
 		t.Errorf("Scale32(1.5, nil) = %v, want 1.5", got)
 	}
-	if got := ins.Scale32(t.Context(), 1.5, ptr[float32](-2)); got != -3 {
+	if got, err := ins.Scale32(t.Context(), 1.5, ptr[float32](-2)); err != nil {
+		t.Fatal(err)
+	} else if got != -3 {
 		t.Errorf("Scale32(1.5, -2) = %v, want -3", got)
 	}
 }
 
 func TestVariantF64Param(t *testing.T) {
 	ins := newInstance(t)
-	if got := ins.ToMeters(t.Context(), LengthMeters{Value: 2.5}); got != 2.5 {
+	if got, err := ins.ToMeters(t.Context(), LengthMeters{Value: 2.5}); err != nil {
+		t.Fatal(err)
+	} else if got != 2.5 {
 		t.Errorf("ToMeters(meters 2.5) = %v, want 2.5", got)
 	}
-	if got := ins.ToMeters(t.Context(), LengthFeet{Value: 10}); math.Abs(got-3.048) > 1e-12 {
+	if got, err := ins.ToMeters(t.Context(), LengthFeet{Value: 10}); err != nil {
+		t.Fatal(err)
+	} else if math.Abs(got-3.048) > 1e-12 {
 		t.Errorf("ToMeters(feet 10) = %v, want 3.048", got)
 	}
-	if got := ins.ToMeters(t.Context(), LengthUnknown{}); got != -1 {
+	if got, err := ins.ToMeters(t.Context(), LengthUnknown{}); err != nil {
+		t.Fatal(err)
+	} else if got != -1 {
 		t.Errorf("ToMeters(unknown) = %v, want -1", got)
 	}
 }
