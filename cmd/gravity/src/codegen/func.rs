@@ -10,12 +10,19 @@ use crate::{
     go::{
         GoIdentifier, GoResult, GoType, Operand, comment,
         imports::{
-            ERRORS_AS, ERRORS_NEW, UTF8_VALID, UTF8_VALID_RUNE, WAZERO_API_DECODE_F32,
-            WAZERO_API_DECODE_F64, WAZERO_API_ENCODE_F32, WAZERO_API_ENCODE_F64,
+            ERRORS_AS, ERRORS_JOIN, ERRORS_NEW, FMT_ERRORF, UTF8_VALID, UTF8_VALID_RUNE,
+            WAZERO_API_DECODE_F32, WAZERO_API_DECODE_F64, WAZERO_API_ENCODE_F32,
+            WAZERO_API_ENCODE_F64,
         },
     },
     resolve_type, resolve_wasm_type,
 };
+
+/// The name of an export's error result. An export that returns an error
+/// names its results, so the deferred `cabi_post_*` call can report its own
+/// failure through this one. A WIT name becomes a Go identifier with no
+/// underscore, so no parameter can take it.
+pub const RESULT_ERR: &str = "gravity_err";
 
 /// The error for a string lifted from guest memory whose bytes are not
 /// valid UTF-8, which the Component Model requires of every string.
@@ -288,6 +295,7 @@ impl Bindgen for Func<'_> {
                 let name = self.wasm_name.as_deref().unwrap_or(name);
                 let call_fn = &self.exported_function(name);
                 let post_fn = &self.exported_function(&format!("cabi_post_{name}"));
+                let cleanup_message = format!("failed to clean up after {name}: %w");
                 // TODO(#17): Wrapping every argument in `uint64` is bad and we should instead be looking
                 // at the types and converting with proper guards in place
                 quote_in! { self.body =>
@@ -331,12 +339,15 @@ impl Bindgen for Func<'_> {
                         defer func() {
                             if postFn := $post_fn; postFn != nil {
                                 if _, err := postFn.Call(ctx, $raw...); err != nil {
-                                    $(comment(&[
-                                        "If we get an error during cleanup, something really bad is",
-                                        "going on, so we panic. Also, you can't return the error from",
-                                        "the `defer`"
-                                    ]))
-                                    panic($ERRORS_NEW("failed to cleanup"))
+                                    $(match &self.result {
+                                        GoResult::Anon(GoType::ValueOrError(_) | GoType::Error) => {
+                                            $RESULT_ERR = $ERRORS_JOIN($RESULT_ERR, $FMT_ERRORF($(quoted(&cleanup_message)), err))
+                                        }
+                                        GoResult::Anon(_) | GoResult::Empty => {
+                                            $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                                            panic($FMT_ERRORF($(quoted(&cleanup_message)), err))
+                                        }
+                                    })
                                 }
                             }
                         }()

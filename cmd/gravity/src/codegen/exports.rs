@@ -5,7 +5,7 @@ use wit_bindgen_core::wit_parser::{
 };
 
 use crate::{
-    codegen::{imports::ImportCodeGenerator, ir::AnalyzedImports},
+    codegen::{func::RESULT_ERR, imports::ImportCodeGenerator, ir::AnalyzedImports},
     go::{GoIdentifier, GoResult, GoType, comment, imports::CONTEXT_CONTEXT},
 };
 
@@ -94,13 +94,22 @@ impl<'a> ExportGenerator<'a> {
             .map(|(arg, (param, _))| (arg, param))
             .collect::<Vec<_>>();
         let fn_name = &GoIdentifier::public(&func.name);
+        // An export that returns an error names its results, so the deferred
+        // `cabi_post_*` call can return its failure through RESULT_ERR.
+        let result = match f.result() {
+            GoResult::Anon(GoType::ValueOrError(typ)) => {
+                quote!((_ $(typ.as_ref()), $RESULT_ERR error))
+            }
+            GoResult::Anon(GoType::Error) => quote!(($RESULT_ERR error)),
+            result => quote!($result),
+        };
         quote_in! { *tokens =>
             $['\n']
             func (i *$receiver) $fn_name(
                 $['\r']
                 ctx $CONTEXT_CONTEXT,
                 $(for (name, typ) in &params join ($['\r']) => $name $typ,)
-            ) $(f.result()) {
+            ) $result {
                 $(for (arg, param) in arg_assignments join ($['\r']) => $arg := $param)
                 $(f.body())
             }
@@ -436,13 +445,19 @@ mod tests {
             }",
         );
         let decide = generate(&fixture, "decide");
-        assert!(decide.contains(") (Decided, error) {"), "got:\n{decide}");
+        assert!(
+            decide.contains(") (_ Decided, gravity_err error) {"),
+            "got:\n{decide}"
+        );
         assert!(
             decide.contains("= &ResultError[Refusal]{Value: enum"),
             "the err case must be a *ResultError[Refusal], got:\n{decide}"
         );
         let only_err = generate(&fixture, "only-err");
-        assert!(only_err.contains(") error {"), "got:\n{only_err}");
+        assert!(
+            only_err.contains(") (gravity_err error) {"),
+            "got:\n{only_err}"
+        );
         assert!(
             only_err.contains("= &ResultError[Refusal]{Value: enum"),
             "got:\n{only_err}"
