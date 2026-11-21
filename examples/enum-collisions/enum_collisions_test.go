@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Every enum case is a constant named for its enum, so cases that share a
@@ -15,7 +17,7 @@ func newInstance(t *testing.T) *EnumCollisionsInstance {
 	t.Helper()
 	// The world imports `types` only for its types, so the factory takes no
 	// host argument for it.
-	fac, err := NewEnumCollisionsFactory(t.Context())
+	fac, err := NewEnumCollisionsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}

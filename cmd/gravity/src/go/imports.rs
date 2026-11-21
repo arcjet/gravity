@@ -17,7 +17,10 @@ pub static FMT_ERRORF: GoImport = GoImport("fmt", "Errorf");
 pub static FMT_SPRINTF: GoImport = GoImport("fmt", "Sprintf");
 pub static FMT_PRINTF: GoImport = GoImport("fmt", "Printf");
 pub static WAZERO_RUNTIME: GoImport = GoImport("github.com/tetratelabs/wazero", "Runtime");
-pub static WAZERO_NEW_RUNTIME: GoImport = GoImport("github.com/tetratelabs/wazero", "NewRuntime");
+pub static WAZERO_NEW_RUNTIME_WITH_CONFIG: GoImport =
+    GoImport("github.com/tetratelabs/wazero", "NewRuntimeWithConfig");
+pub static WAZERO_RUNTIME_CONFIG: GoImport =
+    GoImport("github.com/tetratelabs/wazero", "RuntimeConfig");
 pub static WAZERO_NEW_MODULE_CONFIG: GoImport =
     GoImport("github.com/tetratelabs/wazero", "NewModuleConfig");
 pub static WAZERO_COMPILED_MODULE: GoImport =

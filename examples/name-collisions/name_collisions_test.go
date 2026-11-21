@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // WIT names that would take a name the generated code uses get a trailing
@@ -20,7 +22,7 @@ func (Mod) Echo(_ context.Context, type_ string, ctx_ uint32, len_ uint32) strin
 
 func newInstance(t *testing.T) *NameCollisionsInstance {
 	t.Helper()
-	fac, err := NewNameCollisionsFactory(t.Context(), Mod{})
+	fac, err := NewNameCollisionsFactory(t.Context(), wazero.NewRuntimeConfig(), Mod{})
 	if err != nil {
 		t.Fatal(err)
 	}

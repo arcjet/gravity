@@ -125,8 +125,25 @@ The generated code will define the `ExampleFactory` and `ExampleInstance`. Gener
 the factory is constructed once upon startup because it prepares all of the
 imports and compiles the WebAssembly, which can take a long time. In the example
 above, the `ExampleFactory` can be constructed with `NewExampleFactory` which is
-provided with a `context.Context` and a type implementing the `IExampleLogger`
-interface.
+provided with a `context.Context`, a `wazero.RuntimeConfig` and a type
+implementing the `IExampleLogger` interface.
+
+The runtime configuration decides whether a done context stops a guest call
+and how much memory a guest may have. `wazero.NewRuntimeConfig()` is wazero's
+default, in which a done context does not stop a call and a guest can grow its
+memory to 4 GiB:
+
+```go
+config := wazero.NewRuntimeConfig().
+  WithCloseOnContextDone(true).
+  WithMemoryLimitPages(512)
+factory, err := NewExampleFactory(ctx, config, logger)
+```
+
+`WithCloseOnContextDone(true)` makes every call into the guest slower,
+including the `cabi_realloc` call for each string or list an argument holds.
+A call stopped this way closes its instance, so instantiate a new one before
+calling the guest again.
 
 Any interfaces defined as imports to the world will have a corresponding
 interface definition in Go, as we saw the `IExampleLogger` above. This defines the
@@ -168,13 +185,14 @@ import (
   "testing"
 
   "github.com/stretchr/testify/require"
+  "github.com/tetratelabs/wazero"
 )
 
 func Test_Generated_Example(t *testing.T) {
   // Assuming you've generated mocks with Mockery
   logger := NewMockIBotsLogger(t)
   ctx := context.Background()
-  factory, err := NewExampleFactory(ctx, logger)
+  factory, err := NewExampleFactory(ctx, wazero.NewRuntimeConfig(), logger)
   require.NoError(t, err)
 
   instance, err := factory.Instantiate(ctx)

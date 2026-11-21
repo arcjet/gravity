@@ -9,7 +9,8 @@ use crate::{
         imports::{
             CONTEXT_CONTEXT, ERRORS_NEW, FMT_SPRINTF, SYNC_MAP, UTF8_VALID_STRING,
             WAZERO_API_FUNCTION, WAZERO_API_MEMORY, WAZERO_API_MODULE, WAZERO_COMPILED_MODULE,
-            WAZERO_NEW_MODULE_CONFIG, WAZERO_NEW_RUNTIME, WAZERO_RUNTIME,
+            WAZERO_NEW_MODULE_CONFIG, WAZERO_NEW_RUNTIME_WITH_CONFIG, WAZERO_RUNTIME,
+            WAZERO_RUNTIME_CONFIG,
         },
     },
 };
@@ -172,6 +173,13 @@ impl<'a> FactoryGenerator<'a> {
     }
 
     /// Generate the Factory struct, constructor, and methods.
+    ///
+    /// The constructor takes the wazero runtime configuration, so each caller
+    /// chooses whether a done context stops a guest call and how much memory
+    /// a guest may have. Closing a module on a done context cost about 340 ns
+    /// and 180 bytes on every call into the guest (wazero 1.12 on arm64, the
+    /// export-memo example), and the canonical ABI calls the guest once per
+    /// string or list it lowers, so it is the caller's choice, not a default.
     fn generate_factory(&self, tokens: &mut Tokens<Go>) {
         let AnalyzedImports {
             factory_name,
@@ -180,18 +188,27 @@ impl<'a> FactoryGenerator<'a> {
             ..
         } = &self.config.analyzed_imports;
         let wasm_var_name = self.config.wasm_var_name;
-        // Build the parameter list
-        let params = self.build_parameters();
+        let hosts = self.host_parameters();
         let has_host_interfaces = !self.config.analyzed_imports.interfaces.is_empty();
-        let constructor_doc = [
-            format!(
-                "{} returns a factory for instances of the guest.",
-                String::from(constructor_name)
-            ),
-            "Every instance the factory creates shares the host-interface implementations".into(),
-            "passed here, so they must be safe for concurrent use when instances run on".into(),
-            "separate goroutines.".into(),
+        let constructor = String::from(constructor_name);
+        let mut constructor_doc = vec![
+            format!("{constructor} returns a factory for instances of the guest, whose wazero"),
+            "runtime is configured by config; wazero.NewRuntimeConfig() is wazero's default."
+                .into(),
+            "config.WithCloseOnContextDone(true) stops a guest call when its context is done,"
+                .into(),
+            "at a cost on every call into the guest, and closes the instance the call was".into(),
+            "made on, which must not be used again. config.WithMemoryLimitPages bounds the".into(),
+            "memory of each instance.".into(),
         ];
+        if has_host_interfaces {
+            constructor_doc.extend([
+                "Every instance the factory creates shares the host-interface implementations"
+                    .into(),
+                "passed here, so they must be safe for concurrent use when instances run on".into(),
+                "separate goroutines.".into(),
+            ]);
+        }
         quote_in! { *tokens =>
             $['\n']
             type $factory_name struct {
@@ -200,13 +217,15 @@ impl<'a> FactoryGenerator<'a> {
                 exports *exportedFunctionCache
             }
             $['\n']
-            $(if has_host_interfaces => $(comment(&constructor_doc)))
+            $(comment(&constructor_doc))
             func $constructor_name(
                 $['\r']
-                $params
+                ctx $CONTEXT_CONTEXT,
+                config $WAZERO_RUNTIME_CONFIG,
+                $(for (name, typ) in &hosts join ($['\r']) => $(*name) $(*typ),)
                 $['\r']
             ) (*$factory_name, error) {
-                wazeroRuntime := $WAZERO_NEW_RUNTIME(ctx)
+                wazeroRuntime := $WAZERO_NEW_RUNTIME_WITH_CONFIG(ctx, config)
                 gravityExportCache := &exportedFunctionCache{}
 
                 $(for chain in self.config.import_chains.values() =>
@@ -259,7 +278,8 @@ impl<'a> FactoryGenerator<'a> {
                 "instantiate one per goroutine. A host implementation must not call back",
                 "into the instance that called it: the instance reuses one api.Function per",
                 "export, and wazero's Function.Call must not be called again until the",
-                "previous Call returns.",
+                "previous Call returns. An instance whose call was stopped by a done context",
+                "is closed, and must not be used again.",
             ]))
             type $instance_name struct {
                 module  $WAZERO_API_MODULE
@@ -279,16 +299,16 @@ impl<'a> FactoryGenerator<'a> {
         };
     }
 
-    /// Build parameter list for factory constructor
-    fn build_parameters(&self) -> Tokens<Go> {
-        let interfaces = &self.config.analyzed_imports.interfaces;
-
-        quote! {
-            ctx $CONTEXT_CONTEXT,
-            $(for interface in interfaces.iter().filter(|i| i.needs_host()) join ($['\r']) =>
-            $(&interface.constructor_param_name) $(&interface.go_interface_name),
-            )
-        }
+    /// The factory constructor's parameters after `ctx` and `config`: one
+    /// per imported interface the host implements, as its name and Go type.
+    fn host_parameters(&self) -> Vec<(&GoIdentifier, &GoIdentifier)> {
+        self.config
+            .analyzed_imports
+            .interfaces
+            .iter()
+            .filter(|i| i.needs_host())
+            .map(|i| (&i.constructor_param_name, &i.go_interface_name))
+            .collect()
     }
 }
 

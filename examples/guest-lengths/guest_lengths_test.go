@@ -15,7 +15,7 @@ import (
 
 func newInstance(t *testing.T) *GuestLengthsInstance {
 	t.Helper()
-	fac, err := NewGuestLengthsFactory(t.Context())
+	fac, err := NewGuestLengthsFactory(t.Context(), wazero.NewRuntimeConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,16 +130,14 @@ func TestParamAreaOutsideMemory(t *testing.T) {
 // Memory.Size() reads zero for it. The checks size memory from its page
 // count instead, so lists and parameter blocks still pass them. wazero's
 // compiler engine cannot run a guest whose memory is at the maximum, but its
-// interpreter can, so this test builds the factory with the interpreter.
+// interpreter can, so this test passes the interpreter's configuration.
 func TestFullMemory(t *testing.T) {
 	ctx := t.Context()
-	runtime := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfigInterpreter())
-	t.Cleanup(func() { runtime.Close(context.Background()) })
-	module, err := runtime.CompileModule(ctx, wasmFileGuestLengths)
+	fac, err := NewGuestLengthsFactory(ctx, wazero.NewRuntimeConfigInterpreter())
 	if err != nil {
 		t.Fatal(err)
 	}
-	fac := &GuestLengthsFactory{runtime: runtime, module: module, exports: &exportedFunctionCache{}}
+	t.Cleanup(func() { fac.Close(context.Background()) })
 	ins, err := fac.Instantiate(ctx)
 	if err != nil {
 		t.Fatal(err)

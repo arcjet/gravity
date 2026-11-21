@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // api.Module.ExportedFunction builds a new call engine each time it is
@@ -26,7 +28,7 @@ func (Host) Words(_ context.Context, n uint32) []string {
 
 func newFactory(t testing.TB) *ExportMemoFactory {
 	t.Helper()
-	fac, err := NewExportMemoFactory(context.Background(), Host{})
+	fac, err := NewExportMemoFactory(context.Background(), wazero.NewRuntimeConfig(), Host{})
 	if err != nil {
 		t.Fatal(err)
 	}

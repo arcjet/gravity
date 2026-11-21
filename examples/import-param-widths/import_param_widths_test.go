@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Each host function parameter takes its core wasm type's Go width, so the
@@ -40,7 +42,7 @@ func (h *Host) Opt(_ context.Context, x *int64) int64 {
 
 func newInstance(t *testing.T, h *Host) *ImportParamWidthsInstance {
 	t.Helper()
-	fac, err := NewImportParamWidthsFactory(t.Context(), h)
+	fac, err := NewImportParamWidthsFactory(t.Context(), wazero.NewRuntimeConfig(), h)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"runtime"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // A world that exports interfaces: each becomes a Go type holding its
@@ -15,7 +17,7 @@ func (l *Log) Info(_ context.Context, msg string) { l.lines = append(l.lines, ms
 
 func newInstance(t *testing.T, l *Log) *InterfaceExportsInstance {
 	t.Helper()
-	fac, err := NewInterfaceExportsFactory(t.Context(), l)
+	fac, err := NewInterfaceExportsFactory(t.Context(), wazero.NewRuntimeConfig(), l)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 type SlogLogger struct{}
@@ -21,7 +23,7 @@ func (Utils) Uppercase(ctx context.Context, value string) string {
 }
 
 func TestBasic(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
+	fac, err := NewBasicFactory(t.Context(), wazero.NewRuntimeConfig(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +47,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestNoPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
+	fac, err := NewBasicFactory(t.Context(), wazero.NewRuntimeConfig(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +68,7 @@ func TestNoPrimitiveCleanup(t *testing.T) {
 }
 
 func TestNoOptionalPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
+	fac, err := NewBasicFactory(t.Context(), wazero.NewRuntimeConfig(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +93,7 @@ func TestNoOptionalPrimitiveCleanup(t *testing.T) {
 }
 
 func TestResultPrimitiveCleanup(t *testing.T) {
-	fac, err := NewBasicFactory(t.Context(), SlogLogger{}, Utils{})
+	fac, err := NewBasicFactory(t.Context(), wazero.NewRuntimeConfig(), SlogLogger{}, Utils{})
 	if err != nil {
 		t.Fatal(err)
 	}

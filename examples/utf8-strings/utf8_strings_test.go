@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // The Component Model requires every string to be valid UTF-8. The bindings
@@ -28,7 +30,7 @@ func (h *Host) Take(_ context.Context, s string) {
 
 func newInstance(t *testing.T, host *Host) *Utf8StringsInstance {
 	t.Helper()
-	fac, err := NewUtf8StringsFactory(t.Context(), host)
+	fac, err := NewUtf8StringsFactory(t.Context(), wazero.NewRuntimeConfig(), host)
 	if err != nil {
 		t.Fatal(err)
 	}

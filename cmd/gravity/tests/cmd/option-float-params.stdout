@@ -72,10 +72,17 @@ type OptionFloatParamsFactory struct {
 	exports *exportedFunctionCache
 }
 
+// NewOptionFloatParamsFactory returns a factory for instances of the guest, whose wazero
+// runtime is configured by config; wazero.NewRuntimeConfig() is wazero's default.
+// config.WithCloseOnContextDone(true) stops a guest call when its context is done,
+// at a cost on every call into the guest, and closes the instance the call was
+// made on, which must not be used again. config.WithMemoryLimitPages bounds the
+// memory of each instance.
 func NewOptionFloatParamsFactory(
 	ctx context.Context,
+	config wazero.RuntimeConfig,
 ) (*OptionFloatParamsFactory, error) {
-	wazeroRuntime := wazero.NewRuntime(ctx)
+	wazeroRuntime := wazero.NewRuntimeWithConfig(ctx, config)
 	gravityExportCache := &exportedFunctionCache{}
 
 	// Compiling the module takes a LONG time, so we want to do it once and hold
@@ -111,7 +118,8 @@ func (f *OptionFloatParamsFactory) Close(ctx context.Context) {
 // instantiate one per goroutine. A host implementation must not call back
 // into the instance that called it: the instance reuses one api.Function per
 // export, and wazero's Function.Call must not be called again until the
-// previous Call returns.
+// previous Call returns. An instance whose call was stopped by a done context
+// is closed, and must not be used again.
 type OptionFloatParamsInstance struct {
 	module api.Module
 	exports *exportedFunctions

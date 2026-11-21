@@ -68,15 +68,21 @@ type ImportParamWidthsFactory struct {
 	exports *exportedFunctionCache
 }
 
-// NewImportParamWidthsFactory returns a factory for instances of the guest.
+// NewImportParamWidthsFactory returns a factory for instances of the guest, whose wazero
+// runtime is configured by config; wazero.NewRuntimeConfig() is wazero's default.
+// config.WithCloseOnContextDone(true) stops a guest call when its context is done,
+// at a cost on every call into the guest, and closes the instance the call was
+// made on, which must not be used again. config.WithMemoryLimitPages bounds the
+// memory of each instance.
 // Every instance the factory creates shares the host-interface implementations
 // passed here, so they must be safe for concurrent use when instances run on
 // separate goroutines.
 func NewImportParamWidthsFactory(
 	ctx context.Context,
+	config wazero.RuntimeConfig,
 	host IImportParamWidthsHost,
 ) (*ImportParamWidthsFactory, error) {
-	wazeroRuntime := wazero.NewRuntime(ctx)
+	wazeroRuntime := wazero.NewRuntimeWithConfig(ctx, config)
 	gravityExportCache := &exportedFunctionCache{}
 
 	_, err0 := wazeroRuntime.NewHostModuleBuilder("gravity:import-param-widths/host").
@@ -158,7 +164,8 @@ func (f *ImportParamWidthsFactory) Close(ctx context.Context) {
 // instantiate one per goroutine. A host implementation must not call back
 // into the instance that called it: the instance reuses one api.Function per
 // export, and wazero's Function.Call must not be called again until the
-// previous Call returns.
+// previous Call returns. An instance whose call was stopped by a done context
+// is closed, and must not be used again.
 type ImportParamWidthsInstance struct {
 	module api.Module
 	exports *exportedFunctions

@@ -6,6 +6,8 @@ import (
 	"math"
 	"runtime"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 type Runtime struct {
@@ -40,7 +42,7 @@ func (r *Runtime) Puts(_ context.Context, msg string) { r.msg = msg }
 
 func TestBasic(t *testing.T) {
 	r := &Runtime{}
-	fac, err := NewExampleFactory(t.Context(), r)
+	fac, err := NewExampleFactory(t.Context(), wazero.NewRuntimeConfig(), r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +72,7 @@ func TestBasic(t *testing.T) {
 
 func TestCallGetU32(t *testing.T) {
 	r := &Runtime{}
-	fac, err := NewExampleFactory(t.Context(), r)
+	fac, err := NewExampleFactory(t.Context(), wazero.NewRuntimeConfig(), r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +98,7 @@ func TestCallGetU32(t *testing.T) {
 func roundTrip[T comparable](t *testing.T, values []T, set func(*Runtime, T), call func(*ExampleInstance, context.Context) T) {
 	t.Helper()
 	r := &Runtime{}
-	fac, err := NewExampleFactory(t.Context(), r)
+	fac, err := NewExampleFactory(t.Context(), wazero.NewRuntimeConfig(), r)
 	if err != nil {
 		t.Fatal(err)
 	}

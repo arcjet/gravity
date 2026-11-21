@@ -5,6 +5,8 @@ import (
 	"math"
 	"reflect"
 	"testing"
+
+	"github.com/tetratelabs/wazero"
 )
 
 // Host records the record it receives and replies with a different one, so the
@@ -47,7 +49,7 @@ var cases = map[string]Everything{
 
 func newInstance(t *testing.T, h *Host) *MemoryInstance {
 	t.Helper()
-	fac, err := NewMemoryFactory(t.Context(), h)
+	fac, err := NewMemoryFactory(t.Context(), wazero.NewRuntimeConfig(), h)
 	if err != nil {
 		t.Fatal(err)
 	}
