@@ -165,6 +165,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-cleanup-errors"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-concurrent-instances"
 version = "0.0.2"
 dependencies = [
@@ -262,6 +270,14 @@ dependencies = [
 
 [[package]]
 name = "example-result-errors"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
+name = "example-utf8-strings"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",

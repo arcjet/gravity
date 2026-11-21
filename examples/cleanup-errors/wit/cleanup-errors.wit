@@ -1,0 +1,15 @@
+package gravity:cleanup-errors;
+
+// The host calls an export's `cabi_post_*` function after reading its result,
+// so the guest can free the memory the result points into. Each export below
+// returns normally, and then that cleanup traps.
+world cleanup-errors {
+  // Clean up normally.
+  export value: func() -> result<string, string>;
+  // The cleanup traps after a value is returned.
+  export fail-value: func() -> result<string, string>;
+  // The cleanup traps after the guest returns its own error.
+  export fail-error: func() -> result<_, string>;
+  // The cleanup traps in an export that cannot return an error.
+  export fail-plain: func() -> string;
+}

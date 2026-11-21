@@ -8,6 +8,7 @@ import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -332,13 +333,18 @@ func (i *EnumDiscriminantsInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -387,10 +393,8 @@ func (i *EnumDiscriminantsInstance) Echo(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo: %w", err))
 			}
 		}
 	}()
@@ -460,10 +464,8 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-list"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-list: %w", err))
 			}
 		}
 	}()
@@ -551,10 +553,8 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-entry"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-entry: %w", err))
 			}
 		}
 	}()
@@ -595,6 +595,10 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok8 {
 		panic(errors.New("failed to read bytes from memory"))
+	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf8) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
 	}
 	str8 := string(buf8)
 	value9 := Entry{
@@ -646,10 +650,8 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after echo-option: %w", err))
 			}
 		}
 	}()
@@ -721,10 +723,8 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after via-host: %w", err))
 			}
 		}
 	}()
@@ -764,10 +764,8 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_host-entries"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after host-entries: %w", err))
 			}
 		}
 	}()
@@ -824,6 +822,10 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 		if !ok7 {
 			panic(errors.New("failed to read bytes from memory"))
 		}
+		// The return type doesn't contain an error so we panic if one is encountered
+		if !utf8.Valid(buf7) {
+			panic(errors.New("invalid UTF-8 in string received from the guest"))
+		}
 		str7 := string(buf7)
 		value8 := Entry{
 			At: enum4,
@@ -876,10 +878,8 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after via-host-option: %w", err))
 			}
 		}
 	}()

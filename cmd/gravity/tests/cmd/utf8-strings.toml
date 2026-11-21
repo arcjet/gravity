@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world utf8-strings ../../target/wasm32-unknown-unknown/release/example_utf8_strings.wasm"

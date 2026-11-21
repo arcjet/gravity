@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world cleanup-errors ../../target/wasm32-unknown-unknown/release/example_cleanup_errors.wasm"

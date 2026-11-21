@@ -273,6 +273,9 @@ func NewMemoryFactory(
 		if !ok30 {
 			panic(errors.New("failed to read bytes from memory"))
 		}
+		if !utf8.Valid(buf30) {
+			panic(errors.New("invalid UTF-8 in string received from the guest"))
+		}
 		str30 := string(buf30)
 		value31, ok31 := mod.Memory().ReadFloat32Le(uint32(arg0 + 60))
 		// The return type doesn't contain an error so we panic if one is encountered
@@ -427,13 +430,18 @@ func (i *MemoryInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -547,10 +555,8 @@ func (i *MemoryInstance) RoundTrip(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after round-trip: %w", err))
 			}
 		}
 	}()
@@ -673,6 +679,10 @@ func (i *MemoryInstance) RoundTrip(
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok49 {
 		panic(errors.New("failed to read bytes from memory"))
+	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf49) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
 	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 60))
@@ -799,10 +809,8 @@ func (i *MemoryInstance) CallHostEcho(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_call-host-echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after call-host-echo: %w", err))
 			}
 		}
 	}()
@@ -926,6 +934,10 @@ func (i *MemoryInstance) CallHostEcho(
 	if !ok49 {
 		panic(errors.New("failed to read bytes from memory"))
 	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf49) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
+	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 60))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -1033,10 +1045,8 @@ func (i *MemoryInstance) RoundTripNarrow(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_round-trip-narrow"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw18...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after round-trip-narrow: %w", err))
 			}
 		}
 	}()
@@ -1140,6 +1150,10 @@ func (i *MemoryInstance) RoundTripNarrow(
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok49 {
 		panic(errors.New("failed to read bytes from memory"))
+	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf49) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
 	}
 	str49 := string(buf49)
 	value50, ok50 := i.module.Memory().ReadUint32Le(uint32(results18 + 64))

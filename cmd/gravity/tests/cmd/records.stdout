@@ -4,9 +4,11 @@ package records
 
 import "context"
 import "errors"
+import "fmt"
 import "github.com/tetratelabs/wazero"
 import "github.com/tetratelabs/wazero/api"
 import "sync"
+import "unicode/utf8"
 
 import _ "embed"
 
@@ -117,13 +119,18 @@ func (i *RecordsInstance) Close(ctx context.Context) error {
 }
 
 // writeString will put a Go string into the Wasm memory following the Component
-// Model calling conventions, such as allocating memory with the realloc function
+// Model calling conventions, such as allocating memory with the realloc function.
+// The Component Model requires a string to be valid UTF-8, and a Go string can
+// hold any bytes, so writeString refuses one that is not.
 func writeString(
 	ctx context.Context,
 	s string,
 	memory api.Memory,
 	realloc api.Function,
 ) (uint64, uint64, error) {
+	if !utf8.ValidString(s) {
+		return 1, 0, errors.New("invalid UTF-8 in string passed to the guest")
+	}
 	if len(s) == 0 {
 		return 1, 0, nil
 	}
@@ -203,10 +210,8 @@ func (i *RecordsInstance) ModifyFoo(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_modify-foo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw10...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("failed to clean up after modify-foo: %w", err))
 			}
 		}
 	}()
@@ -251,6 +256,10 @@ func (i *RecordsInstance) ModifyFoo(
 	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok22 {
 		panic(errors.New("failed to read bytes from memory"))
+	}
+	// The return type doesn't contain an error so we panic if one is encountered
+	if !utf8.Valid(buf22) {
+		panic(errors.New("invalid UTF-8 in string received from the guest"))
 	}
 	str22 := string(buf22)
 	ptr23, ok23 := i.module.Memory().ReadUint32Le(uint32(results10 + 40))
@@ -315,7 +324,7 @@ func (i *RecordsInstance) ModifyFoo(
 func (i *RecordsInstance) ModifyFooFallible(
 	ctx context.Context,
 	f Foo,
-) (Foo, error) {
+) (_ Foo, gravity_err error) {
 	arg0 := f
 	float320 := arg0.Float32
 	float640 := arg0.Float64
@@ -375,10 +384,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_modify-foo-fallible"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw10...); err != nil {
-				// If we get an error during cleanup, something really bad is
-				// going on, so we panic. Also, you can't return the error from
-				// the `defer`
-				panic(errors.New("failed to cleanup"))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after modify-foo-fallible: %w", err))
 			}
 		}
 	}()
@@ -432,6 +438,10 @@ func (i *RecordsInstance) ModifyFooFallible(
 		if !ok23 {
 			var default23 Foo
 			return default23, errors.New("failed to read bytes from memory")
+		}
+		if !utf8.Valid(buf23) {
+			var default23 Foo
+			return default23, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str23 := string(buf23)
 		ptr24, ok24 := i.module.Memory().ReadUint32Le(uint32(results10 + 48))
@@ -506,6 +516,10 @@ func (i *RecordsInstance) ModifyFooFallible(
 		if !ok38 {
 			var default38 Foo
 			return default38, errors.New("failed to read bytes from memory")
+		}
+		if !utf8.Valid(buf38) {
+			var default38 Foo
+			return default38, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str38 := string(buf38)
 		err39 = errors.New(str38)
