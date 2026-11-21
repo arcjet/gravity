@@ -44,7 +44,8 @@ just run --world <world-name> --output <output.go> <input.wasm>
 
 `just check` runs the same steps as `.github/workflows/ci.yml`, in the same
 order: format check, a check that `Cargo.lock` holds one version of each wit
-crate, build, unit tests, the Go example tests and the CLI snapshot tests.
+crate, a check that `build.rs` rebuilds only when HEAD moves, build, unit
+tests, the Go example tests and the CLI snapshot tests.
 Each step is also its own recipe, described below.
 
 ### Unit Tests
@@ -137,6 +138,7 @@ justfile                 # Recipes for building, testing and the CI gate
 scripts/
   check-wit.sh           # Fails when Cargo.lock holds two versions of a wit crate
   check-wit-test.sh      # Runs check-wit.sh against lockfile fixtures
+  check-build-script.sh  # Fails when build.rs rebuilds an unchanged build or misses a commit
 ```
 
 **Note on generated files**: `examples/.gitignore` ignores all `*/*.go` files

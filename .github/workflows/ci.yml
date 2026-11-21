@@ -77,6 +77,11 @@ jobs:
           bash scripts/check-wit-test.sh
           bash scripts/check-wit.sh
 
+      # A rerun-if-changed path that does not exist makes cargo recompile
+      # gravity on every build. Mirrors `just check-build-script`.
+      - name: build.rs rebuilds only when HEAD moves
+        run: bash scripts/check-build-script.sh
+
       - name: cargo build
         run: cargo build --locked --verbose
         env:
