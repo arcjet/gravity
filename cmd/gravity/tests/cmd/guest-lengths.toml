@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world guest-lengths ../../target/wasm32-unknown-unknown/release/example_guest_lengths.wasm"
