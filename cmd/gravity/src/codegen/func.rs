@@ -166,28 +166,33 @@ impl<'a> Func<'a> {
         self.blocks.pop().expect("should have block to pop")
     }
 
-    /// Emits `if <cond> { ... }`, whose body returns `err` (a Go `error`
-    /// expression) where the function returns an error, and panics with it
+    /// The statements that fail with `err` (a Go `error` expression): a
+    /// return of it where the function returns an error, and a panic with it
     /// otherwise. `tmp` is the calling instruction's temporary number, which
     /// names the zero value returned beside the error.
-    fn fail_if(&mut self, tmp: usize, cond: Tokens<Go>, err: Tokens<Go>) {
+    fn failure(&self, tmp: usize, err: Tokens<Go>) -> Tokens<Go> {
         let default = &format!("default{tmp}");
+        match &self.result {
+            GoResult::Anon(GoType::ValueOrError(typ)) => quote! {
+                var $default $(typ.as_ref())
+                return $default, $err
+            },
+            GoResult::Anon(GoType::Error) => quote!(return $err),
+            GoResult::Anon(_) | GoResult::Empty => quote! {
+                $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
+                panic($err)
+            },
+        }
+    }
+
+    /// Emits `if <cond> { ... }`, whose body fails with `err` as
+    /// [`Self::failure`] does.
+    fn fail_if(&mut self, tmp: usize, cond: Tokens<Go>, err: Tokens<Go>) {
+        let failure = self.failure(tmp, err);
         quote_in! { self.body =>
             $['\r']
             if $cond {
-                $(match &self.result {
-                    GoResult::Anon(GoType::ValueOrError(typ)) => {
-                        var $default $(typ.as_ref())
-                        return $default, $err
-                    }
-                    GoResult::Anon(GoType::Error) => {
-                        return $err
-                    }
-                    GoResult::Anon(_) | GoResult::Empty => {
-                        $(comment(&["The return type doesn't contain an error so we panic if one is encountered"]))
-                        panic($err)
-                    }
-                })
+                $failure
             }
         };
     }
@@ -1335,13 +1340,17 @@ impl Bindgen for Func<'_> {
                     };
                 }
 
+                let failure = self.failure(
+                    tmp,
+                    quote!($FMT_ERRORF($(quoted(format!("invalid {name} value %v"))), $value)),
+                );
                 quote_in! { self.body =>
                     $['\r']
                     var $enum_tmp uint32
                     switch $value {
                     $cases
                     default:
-                        panic($ERRORS_NEW("invalid enum type provided"))
+                        $failure
                     }
                 };
 
@@ -1654,11 +1663,12 @@ impl Bindgen for Func<'_> {
                 quote_in! { self.body =>
                     $['\r']
                     $result := rune($operand)
-                    if !$UTF8_VALID_RUNE($result) {
-                        $(comment(["TODO(#8): Return an error if the return type allows it"]))
-                        panic($ERRORS_NEW("invalid char value encountered"))
-                    }
                 };
+                self.fail_if(
+                    tmp,
+                    quote!(!$UTF8_VALID_RUNE($result)),
+                    quote!($FMT_ERRORF("invalid char value %#x", uint32($operand))),
+                );
                 results.push(Operand::SingleValue(result.into()));
             }
             // A host function receives float32 and float64 directly, and the

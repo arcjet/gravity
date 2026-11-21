@@ -229,8 +229,8 @@ func NewMemoryFactory(
 		}
 		result21 := rune(value20)
 		if !utf8.ValidRune(result21) {
-			// TODO(#8): Return an error if the return type allows it
-			panic(errors.New("invalid char value encountered"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid char value %#x", uint32(value20)))
 		}
 		value22, ok22 := mod.Memory().ReadByte(uint32(arg0 + 48))
 		// The return type doesn't contain an error so we panic if one is encountered
@@ -358,7 +358,8 @@ func NewMemoryFactory(
 		case ColorBlue:
 			enum47 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid color value %v", field35_11))
 		}
 		mod.Memory().WriteByte(arg1+48, uint8(enum47))
 		if field35_12 == nil {
@@ -533,7 +534,8 @@ func (i *MemoryInstance) RoundTrip(
 	case ColorBlue:
 		enum13 = 2
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid color value %v", field1_11))
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
 	if field1_12 == nil {
@@ -641,8 +643,8 @@ func (i *MemoryInstance) RoundTrip(
 	}
 	result40 := rune(value39)
 	if !utf8.ValidRune(result40) {
-		// TODO(#8): Return an error if the return type allows it
-		panic(errors.New("invalid char value encountered"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid char value %#x", uint32(value39)))
 	}
 	value41, ok41 := i.module.Memory().ReadByte(uint32(results18 + 48))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -792,7 +794,8 @@ func (i *MemoryInstance) CallHostEcho(
 	case ColorBlue:
 		enum13 = 2
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid color value %v", field1_11))
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
 	if field1_12 == nil {
@@ -900,8 +903,8 @@ func (i *MemoryInstance) CallHostEcho(
 	}
 	result40 := rune(value39)
 	if !utf8.ValidRune(result40) {
-		// TODO(#8): Return an error if the return type allows it
-		panic(errors.New("invalid char value encountered"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid char value %#x", uint32(value39)))
 	}
 	value41, ok41 := i.module.Memory().ReadByte(uint32(results18 + 48))
 	// The return type doesn't contain an error so we panic if one is encountered

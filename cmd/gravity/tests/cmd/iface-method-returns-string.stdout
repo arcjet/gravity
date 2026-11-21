@@ -594,8 +594,8 @@ func (i *ExampleInstance) CallGetChar(
 	results0 := raw0[0]
 	result1 := rune(results0)
 	if !utf8.ValidRune(result1) {
-		// TODO(#8): Return an error if the return type allows it
-		panic(errors.New("invalid char value encountered"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid char value %#x", uint32(results0)))
 	}
 	return result1
 }

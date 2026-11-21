@@ -253,6 +253,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-invalid-values"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-memory"
 version = "0.0.2"
 dependencies = [

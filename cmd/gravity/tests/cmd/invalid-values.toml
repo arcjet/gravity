@@ -1,0 +1,2 @@
+bin.name = "gravity"
+args = "--world invalid-values ../../target/wasm32-unknown-unknown/release/example_invalid_values.wasm"

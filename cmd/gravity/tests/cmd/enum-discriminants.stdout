@@ -176,7 +176,8 @@ func NewEnumDiscriminantsFactory(
 		case LevelFatal:
 			enum2 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid level value %v", value1))
 		}
 		return enum2
 	}).
@@ -223,7 +224,8 @@ func NewEnumDiscriminantsFactory(
 			case LevelFatal:
 				enum2 = 4
 			default:
-				panic(errors.New("invalid enum type provided"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("invalid level value %v", field1_0))
 			}
 			mod.Memory().WriteByte(base+0, uint8(enum2))
 			memory3 := mod.Memory()
@@ -287,7 +289,8 @@ func NewEnumDiscriminantsFactory(
 			case LevelFatal:
 				enum3 = 4
 			default:
-				panic(errors.New("invalid enum type provided"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("invalid level value %v", variantPayload))
 			}
 			mod.Memory().WriteByte(arg2+1, uint8(enum3))
 		}
@@ -395,7 +398,8 @@ func (i *EnumDiscriminantsInstance) Echo(
 	case LevelFatal:
 		enum0 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid level value %v", arg0))
 	}
 	raw1, err1 := i.exports.get("echo").Call(ctx, uint64(enum0))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -473,7 +477,8 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid level value %v", e))
 		}
 		i.module.Memory().WriteByte(base+0, uint8(enum0))
 	}
@@ -562,7 +567,8 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	case LevelFatal:
 		enum1 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid level value %v", field0_0))
 	}
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
@@ -663,7 +669,8 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid level value %v", variantPayload))
 		}
 		variant1_0 = 1
 		variant1_1 = enum0
@@ -739,7 +746,8 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	case LevelFatal:
 		enum0 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid level value %v", arg0))
 	}
 	raw1, err1 := i.exports.get("via-host").Call(ctx, uint64(enum0))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -896,7 +904,8 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid level value %v", variantPayload))
 		}
 		variant1_0 = 1
 		variant1_1 = enum0

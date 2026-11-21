@@ -318,7 +318,8 @@ func NewRegressionsFactory(
 		case BotVerifierValidatorResponseUnverifiable:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid bot-verifier-validator-response value %v", value1))
 		}
 		return enum2
 	}).
@@ -378,7 +379,8 @@ func NewRegressionsFactory(
 		case StatusUnknown:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid status value %v", value1))
 		}
 		return enum2
 	}).
@@ -413,7 +415,8 @@ func NewRegressionsFactory(
 		case EmailCheckerValidatorResponseMaybe:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid email-checker-validator-response value %v", value1))
 		}
 		return enum2
 	}).

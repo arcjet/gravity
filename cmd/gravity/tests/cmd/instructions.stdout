@@ -354,7 +354,8 @@ func (i *InstructionsInstance) EnumInput(
 	case EnumValuesThree:
 		enum0 = 2
 	default:
-		panic(errors.New("invalid enum type provided"))
+		// The return type doesn't contain an error so we panic if one is encountered
+		panic(fmt.Errorf("invalid enum-values value %v", arg0))
 	}
 	_, err1 := i.exports.get("enum-input").Call(ctx, uint64(enum0))
 	// The return type doesn't contain an error so we panic if one is encountered
