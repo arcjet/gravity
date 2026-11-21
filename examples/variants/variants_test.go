@@ -12,7 +12,10 @@ import (
 func TestClassify_UnitCase(t *testing.T) {
 	ins := newInstance(t)
 
-	got := ins.Classify(t.Context(), "email")
+	got, err := ins.Classify(t.Context(), "email")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, ok := got.(EntityEmail); !ok {
 		t.Fatalf("Classify(\"email\") = %T, want EntityEmail", got)
 	}
@@ -24,7 +27,10 @@ func TestClassify_UnitCase(t *testing.T) {
 func TestClassify_PayloadCase(t *testing.T) {
 	ins := newInstance(t)
 
-	got := ins.Classify(t.Context(), "anything-else")
+	got, err := ins.Classify(t.Context(), "anything-else")
+	if err != nil {
+		t.Fatal(err)
+	}
 	custom, ok := got.(EntityCustom)
 	if !ok {
 		t.Fatalf("Classify(\"anything-else\") = %T, want EntityCustom", got)
@@ -41,7 +47,10 @@ func TestClassify_PayloadCase(t *testing.T) {
 func TestTagAll(t *testing.T) {
 	ins := newInstance(t)
 
-	got := ins.TagAll(t.Context(), []string{"email", "custom-thing", "ip"})
+	got, err := ins.TagAll(t.Context(), []string{"email", "custom-thing", "ip"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(got) != 3 {
 		t.Fatalf("TagAll len = %d, want 3", len(got))
 	}
@@ -71,21 +80,27 @@ func TestChoose_DirectRecordDispatch(t *testing.T) {
 	ins := newInstance(t)
 
 	window := uint32(3)
-	got := ins.Choose(t.Context(), Allow{
+	got, err := ins.Choose(t.Context(), Allow{
 		Entities: []Entity{
 			EntityEmail{},
 			EntityCustom{Value: "tagged"},
 		},
 		ContextWindowSize: &window,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "allow:2:ctx=Some(3)"
 	if got != want {
 		t.Errorf("Choose(Allow{...}) = %q, want %q", got, want)
 	}
 
-	got = ins.Choose(t.Context(), Deny{
+	got, err = ins.Choose(t.Context(), Deny{
 		Entities: []Entity{EntityIpAddress{}},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	want = "deny:1"
 	if got != want {
 		t.Errorf("Choose(Deny{...}) = %q, want %q", got, want)
@@ -98,20 +113,26 @@ func TestChoose_DirectRecordDispatch(t *testing.T) {
 func TestChooseMany(t *testing.T) {
 	ins := newInstance(t)
 
-	got := ins.ChooseMany(t.Context(), EntitiesAllowAll{
+	got, err := ins.ChooseMany(t.Context(), EntitiesAllowAll{
 		Value: []Entity{
 			EntityEmail{},
 			EntityPhoneNumber{},
 			EntityCustom{Value: "x"},
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got != "allow-all:3" {
 		t.Errorf("ChooseMany allow-all = %q, want \"allow-all:3\"", got)
 	}
 
-	got = ins.ChooseMany(t.Context(), EntitiesDenyAll{
+	got, err = ins.ChooseMany(t.Context(), EntitiesDenyAll{
 		Value: []Entity{EntityIpAddress{}, EntityCreditCardNumber{}},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got != "deny-all:2" {
 		t.Errorf("ChooseMany deny-all = %q, want \"deny-all:2\"", got)
 	}

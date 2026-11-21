@@ -318,7 +318,8 @@ func NewRegressionsFactory(
 		case BotVerifierValidatorResponseUnverifiable:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid bot-verifier-validator-response value %v", value1))
 		}
 		return enum2
 	}).
@@ -378,7 +379,8 @@ func NewRegressionsFactory(
 		case StatusUnknown:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid status value %v", value1))
 		}
 		return enum2
 	}).
@@ -413,7 +415,8 @@ func NewRegressionsFactory(
 		case EmailCheckerValidatorResponseMaybe:
 			enum2 = 2
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid email-checker-validator-response value %v", value1))
 		}
 		return enum2
 	}).
@@ -600,142 +603,142 @@ func writeString(
 func (i *RegressionsInstance) CheckEnabled(
 	ctx context.Context,
 	key string,
-) bool {
+) (_ bool, gravity_err error) {
 	arg0 := key
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 bool
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("check-enabled").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 bool
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	value2 := results1 != 0
-	return value2
+	return value2, nil
 }
 
 func (i *RegressionsInstance) CheckStatus(
 	ctx context.Context,
 	key string,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := key
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint32
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("check-status").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *RegressionsInstance) DoubleValue(
 	ctx context.Context,
 	value uint32,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := value
 	result0 := uint32(arg0)
 	raw1, err1 := i.exports.get("double-value").Call(ctx, uint64(result0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *RegressionsInstance) RunPing(
 	ctx context.Context,
-) bool {
+) (_ bool, gravity_err error) {
 	raw0, err0 := i.exports.get("run-ping").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 bool
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	value1 := results0 != 0
-	return value1
+	return value1, nil
 }
 
 func (i *RegressionsInstance) CheckEmailAllowed(
 	ctx context.Context,
 	email string,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := email
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint32
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("check-email-allowed").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *RegressionsInstance) CheckBotVerified(
 	ctx context.Context,
 	botId string,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := botId
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 uint32
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("check-bot-verified").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 
 	results1 := raw1[0]
 	result2 := uint32(results1)
-	return result2
+	return result2, nil
 }
 
 func (i *RegressionsInstance) RunIpLookup(
 	ctx context.Context,
 	ip string,
-) string {
+) (_ string, gravity_err error) {
 	arg0 := ip
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 string
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("run-ip-lookup").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 string
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -744,59 +747,58 @@ func (i *RegressionsInstance) RunIpLookup(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_run-ip-lookup"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after run-ip-lookup: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after run-ip-lookup: %w", err))
 			}
 		}
 	}()
 
 	results1 := raw1[0]
 	ptr2, ok2 := i.module.Memory().ReadUint32Le(uint32(results1 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default2 string
+		return default2, errors.New("failed to read pointer from memory")
 	}
 	len3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read length from memory"))
+		var default3 string
+		return default3, errors.New("failed to read length from memory")
 	}
 	buf4, ok4 := i.module.Memory().Read(ptr2, len3)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default4 string
+		return default4, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf4) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default4 string
+		return default4, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str4 := string(buf4)
-	return str4
+	return str4, nil
 }
 
 func (i *RegressionsInstance) RunJobs(
 	ctx context.Context,
 	id uint32,
 	name string,
-) uint32 {
+) (_ uint32, gravity_err error) {
 	arg0 := id
 	arg1 := name
 	result0 := uint32(arg0)
 	memory1 := i.module.Memory()
 	realloc1 := i.exports.get("cabi_realloc")
 	ptr1, len1, err1 := writeString(ctx, arg1, memory1, realloc1)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 uint32
+		return default1, err1
 	}
 	raw2, err2 := i.exports.get("run-jobs").Call(ctx, uint64(result0), uint64(ptr1), uint64(len1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 uint32
+		return default2, err2
 	}
 
 	results2 := raw2[0]
 	result3 := uint32(results2)
-	return result3
+	return result3, nil
 }
 

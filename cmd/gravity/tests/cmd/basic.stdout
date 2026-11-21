@@ -372,22 +372,22 @@ func (i *BasicInstance) Hello(
 
 func (i *BasicInstance) Primitive(
 	ctx context.Context,
-) bool {
+) (_ bool, gravity_err error) {
 	raw0, err0 := i.exports.get("primitive").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 bool
+		return default0, err0
 	}
 
 	results0 := raw0[0]
 	value1 := results0 != 0
-	return value1
+	return value1, nil
 }
 
 func (i *BasicInstance) OptionalPrimitive(
 	ctx context.Context,
 	b *bool,
-) *bool {
+) (_ *bool, gravity_err error) {
 	arg0 := b
 	var variant1_0 uint32
 	var variant1_1 uint32
@@ -406,29 +406,29 @@ func (i *BasicInstance) OptionalPrimitive(
 		variant1_1 = value0
 	}
 	raw2, err2 := i.exports.get("optional-primitive").Call(ctx, uint64(variant1_0), uint64(variant1_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 *bool
+		return default2, err2
 	}
 
 	results2 := raw2[0]
 	value3, ok3 := i.module.Memory().ReadByte(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read byte from memory"))
+		var default3 *bool
+		return default3, errors.New("failed to read byte from memory")
 	}
 	var result6 *bool
 	if value3 != 0 {
 		value4, ok4 := i.module.Memory().ReadByte(uint32(results2 + 1))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
-			panic(errors.New("failed to read byte from memory"))
+			var default4 *bool
+			return default4, errors.New("failed to read byte from memory")
 		}
 		value5 := value4 != 0
 		someValue6 := value5
 		result6 = &someValue6
 	}
-	return result6
+	return result6, nil
 }
 
 func (i *BasicInstance) ResultPrimitive(
@@ -499,7 +499,7 @@ func (i *BasicInstance) ResultPrimitive(
 func (i *BasicInstance) OptionalString(
 	ctx context.Context,
 	s *string,
-) *string {
+) (_ *string, gravity_err error) {
 	arg0 := s
 	var variant1_0 uint32
 	var variant1_1 uint64
@@ -513,18 +513,18 @@ func (i *BasicInstance) OptionalString(
 		memory0 := i.module.Memory()
 		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
-			panic(err0)
+			var default0 *string
+			return default0, err0
 		}
 		variant1_0 = 1
 		variant1_1 = ptr0
 		variant1_2 = len0
 	}
 	raw2, err2 := i.exports.get("optional-string").Call(ctx, uint64(variant1_0), uint64(variant1_1), uint64(variant1_2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 *string
+		return default2, err2
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -533,43 +533,42 @@ func (i *BasicInstance) OptionalString(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_optional-string"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after optional-string: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after optional-string: %w", err))
 			}
 		}
 	}()
 
 	results2 := raw2[0]
 	value3, ok3 := i.module.Memory().ReadByte(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read byte from memory"))
+		var default3 *string
+		return default3, errors.New("failed to read byte from memory")
 	}
 	var result7 *string
 	if value3 != 0 {
 		ptr4, ok4 := i.module.Memory().ReadUint32Le(uint32(results2 + 4))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
-			panic(errors.New("failed to read pointer from memory"))
+			var default4 *string
+			return default4, errors.New("failed to read pointer from memory")
 		}
 		len5, ok5 := i.module.Memory().ReadUint32Le(uint32(results2 + 8))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok5 {
-			panic(errors.New("failed to read length from memory"))
+			var default5 *string
+			return default5, errors.New("failed to read length from memory")
 		}
 		buf6, ok6 := i.module.Memory().Read(ptr4, len5)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok6 {
-			panic(errors.New("failed to read bytes from memory"))
+			var default6 *string
+			return default6, errors.New("failed to read bytes from memory")
 		}
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !utf8.Valid(buf6) {
-			panic(errors.New("invalid UTF-8 in string received from the guest"))
+			var default6 *string
+			return default6, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str6 := string(buf6)
 		someValue7 := str6
 		result7 = &someValue7
 	}
-	return result7
+	return result7, nil
 }
 

@@ -176,7 +176,8 @@ func NewEnumDiscriminantsFactory(
 		case LevelFatal:
 			enum2 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			// The return type doesn't contain an error so we panic if one is encountered
+			panic(fmt.Errorf("invalid level value %v", value1))
 		}
 		return enum2
 	}).
@@ -223,7 +224,8 @@ func NewEnumDiscriminantsFactory(
 			case LevelFatal:
 				enum2 = 4
 			default:
-				panic(errors.New("invalid enum type provided"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("invalid level value %v", field1_0))
 			}
 			mod.Memory().WriteByte(base+0, uint8(enum2))
 			memory3 := mod.Memory()
@@ -287,7 +289,8 @@ func NewEnumDiscriminantsFactory(
 			case LevelFatal:
 				enum3 = 4
 			default:
-				panic(errors.New("invalid enum type provided"))
+				// The return type doesn't contain an error so we panic if one is encountered
+				panic(fmt.Errorf("invalid level value %v", variantPayload))
 			}
 			mod.Memory().WriteByte(arg2+1, uint8(enum3))
 		}
@@ -380,7 +383,7 @@ func writeString(
 func (i *EnumDiscriminantsInstance) Echo(
 	ctx context.Context,
 	l Level,
-) Level {
+) (_ Level, gravity_err error) {
 	arg0 := l
 	var enum0 uint32
 	switch arg0 {
@@ -395,12 +398,13 @@ func (i *EnumDiscriminantsInstance) Echo(
 	case LevelFatal:
 		enum0 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		var default0 Level
+		return default0, fmt.Errorf("invalid level value %v", arg0)
 	}
 	raw1, err1 := i.exports.get("echo").Call(ctx, uint64(enum0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 Level
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -409,8 +413,7 @@ func (i *EnumDiscriminantsInstance) Echo(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after echo: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after echo: %w", err))
 			}
 		}
 	}()
@@ -429,33 +432,33 @@ func (i *EnumDiscriminantsInstance) Echo(
 	case 4:
 		enum2 = LevelFatal
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid level discriminant"))
+		var default0 Level
+		return default0, errors.New("invalid level discriminant")
 	}
-	return enum2
+	return enum2, nil
 }
 
 func (i *EnumDiscriminantsInstance) EchoList(
 	ctx context.Context,
 	ls []Level,
-) []Level {
+) (_ []Level, gravity_err error) {
 	arg0 := ls
 	vec1 := arg0
 	len1 := uint64(len(vec1))
 	if len1 > 4294967295 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 4294967295", len1))
+		var default1 []Level
+		return default1, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 4294967295", len1)
 	}
 	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 1, len1 * 1)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 []Level
+		return default1, err1
 	}
 	ptr1 := result1[0]
 	pages1, _ := i.module.Memory().Grow(0)
 	if uint64(ptr1)+len1 * 1 > uint64(pages1)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 1, ptr1))
+		var default1 []Level
+		return default1, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 1, ptr1)
 	}
 	for idx := uint64(0); idx < len1; idx++ {
 		e := vec1[idx]
@@ -473,14 +476,15 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			var default0 []Level
+			return default0, fmt.Errorf("invalid level value %v", e)
 		}
 		i.module.Memory().WriteByte(base+0, uint8(enum0))
 	}
 	raw2, err2 := i.exports.get("echo-list").Call(ctx, uint64(ptr1), uint64(len1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 []Level
+		return default2, err2
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -489,37 +493,36 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-list"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after echo-list: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after echo-list: %w", err))
 			}
 		}
 	}()
 
 	results2 := raw2[0]
 	ptr3, ok3 := i.module.Memory().ReadUint32Le(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default3 []Level
+		return default3, errors.New("failed to read pointer from memory")
 	}
 	len4, ok4 := i.module.Memory().ReadUint32Le(uint32(results2 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read length from memory"))
+		var default4 []Level
+		return default4, errors.New("failed to read length from memory")
 	}
 	base7 := ptr3
 	len7 := len4
 	pages7, _ := i.module.Memory().Grow(0)
 	if uint64(base7)+uint64(len7) * 1 > uint64(pages7)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len7, base7))
+		var default7 []Level
+		return default7, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len7, base7)
 	}
 	result7 := make([]Level, len7)
 	for idx7 := uint32(0); idx7 < len7; idx7++ {
 		base := base7 + idx7 * 1
 		value5, ok5 := i.module.Memory().ReadByte(uint32(base + 0))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok5 {
-			panic(errors.New("failed to read byte from memory"))
+			var default5 []Level
+			return default5, errors.New("failed to read byte from memory")
 		}
 		var enum6 Level
 		switch value5 {
@@ -534,18 +537,18 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		case 4:
 			enum6 = LevelFatal
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid level discriminant"))
+			var default0 []Level
+			return default0, errors.New("invalid level discriminant")
 		}
 		result7[idx7] = enum6
 	}
-	return result7
+	return result7, nil
 }
 
 func (i *EnumDiscriminantsInstance) EchoEntry(
 	ctx context.Context,
 	e_ Entry,
-) Entry {
+) (_ Entry, gravity_err error) {
 	arg0 := e_
 	field0_0 := arg0.At
 	field0_1 := arg0.Msg
@@ -562,19 +565,20 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	case LevelFatal:
 		enum1 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		var default1 Entry
+		return default1, fmt.Errorf("invalid level value %v", field0_0)
 	}
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
 	ptr2, len2, err2 := writeString(ctx, field0_1, memory2, realloc2)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 Entry
+		return default2, err2
 	}
 	raw3, err3 := i.exports.get("echo-entry").Call(ctx, uint64(enum1), uint64(ptr2), uint64(len2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 Entry
+		return default3, err3
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -583,17 +587,16 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-entry"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw3...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after echo-entry: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after echo-entry: %w", err))
 			}
 		}
 	}()
 
 	results3 := raw3[0]
 	value4, ok4 := i.module.Memory().ReadByte(uint32(results3 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read byte from memory"))
+		var default4 Entry
+		return default4, errors.New("failed to read byte from memory")
 	}
 	var enum5 Level
 	switch value4 {
@@ -608,40 +611,40 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	case 4:
 		enum5 = LevelFatal
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid level discriminant"))
+		var default0 Entry
+		return default0, errors.New("invalid level discriminant")
 	}
 	ptr6, ok6 := i.module.Memory().ReadUint32Le(uint32(results3 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok6 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default6 Entry
+		return default6, errors.New("failed to read pointer from memory")
 	}
 	len7, ok7 := i.module.Memory().ReadUint32Le(uint32(results3 + 8))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok7 {
-		panic(errors.New("failed to read length from memory"))
+		var default7 Entry
+		return default7, errors.New("failed to read length from memory")
 	}
 	buf8, ok8 := i.module.Memory().Read(ptr6, len7)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok8 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default8 Entry
+		return default8, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf8) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default8 Entry
+		return default8, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str8 := string(buf8)
 	value9 := Entry{
 		At: enum5,
 		Msg: str8,
 	}
-	return value9
+	return value9, nil
 }
 
 func (i *EnumDiscriminantsInstance) EchoOption(
 	ctx context.Context,
 	l *Level,
-) *Level {
+) (_ *Level, gravity_err error) {
 	arg0 := l
 	var variant1_0 uint32
 	var variant1_1 uint32
@@ -663,15 +666,16 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			var default0 *Level
+			return default0, fmt.Errorf("invalid level value %v", variantPayload)
 		}
 		variant1_0 = 1
 		variant1_1 = enum0
 	}
 	raw2, err2 := i.exports.get("echo-option").Call(ctx, uint64(variant1_0), uint64(variant1_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 *Level
+		return default2, err2
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -680,24 +684,23 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_echo-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after echo-option: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after echo-option: %w", err))
 			}
 		}
 	}()
 
 	results2 := raw2[0]
 	value3, ok3 := i.module.Memory().ReadByte(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read byte from memory"))
+		var default3 *Level
+		return default3, errors.New("failed to read byte from memory")
 	}
 	var result6 *Level
 	if value3 != 0 {
 		value4, ok4 := i.module.Memory().ReadByte(uint32(results2 + 1))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
-			panic(errors.New("failed to read byte from memory"))
+			var default4 *Level
+			return default4, errors.New("failed to read byte from memory")
 		}
 		var enum5 Level
 		switch value4 {
@@ -712,19 +715,19 @@ func (i *EnumDiscriminantsInstance) EchoOption(
 		case 4:
 			enum5 = LevelFatal
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid level discriminant"))
+			var default0 *Level
+			return default0, errors.New("invalid level discriminant")
 		}
 		someValue6 := enum5
 		result6 = &someValue6
 	}
-	return result6
+	return result6, nil
 }
 
 func (i *EnumDiscriminantsInstance) ViaHost(
 	ctx context.Context,
 	l Level,
-) Level {
+) (_ Level, gravity_err error) {
 	arg0 := l
 	var enum0 uint32
 	switch arg0 {
@@ -739,12 +742,13 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	case LevelFatal:
 		enum0 = 4
 	default:
-		panic(errors.New("invalid enum type provided"))
+		var default0 Level
+		return default0, fmt.Errorf("invalid level value %v", arg0)
 	}
 	raw1, err1 := i.exports.get("via-host").Call(ctx, uint64(enum0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 Level
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -753,8 +757,7 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after via-host: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after via-host: %w", err))
 			}
 		}
 	}()
@@ -773,19 +776,19 @@ func (i *EnumDiscriminantsInstance) ViaHost(
 	case 4:
 		enum2 = LevelFatal
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid level discriminant"))
+		var default0 Level
+		return default0, errors.New("invalid level discriminant")
 	}
-	return enum2
+	return enum2, nil
 }
 
 func (i *EnumDiscriminantsInstance) HostEntries(
 	ctx context.Context,
-) []Entry {
+) (_ []Entry, gravity_err error) {
 	raw0, err0 := i.exports.get("host-entries").Call(ctx, )
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 []Entry
+		return default0, err0
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -794,37 +797,36 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_host-entries"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw0...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after host-entries: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after host-entries: %w", err))
 			}
 		}
 	}()
 
 	results0 := raw0[0]
 	ptr1, ok1 := i.module.Memory().ReadUint32Le(uint32(results0 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok1 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default1 []Entry
+		return default1, errors.New("failed to read pointer from memory")
 	}
 	len2, ok2 := i.module.Memory().ReadUint32Le(uint32(results0 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read length from memory"))
+		var default2 []Entry
+		return default2, errors.New("failed to read length from memory")
 	}
 	base9 := ptr1
 	len9 := len2
 	pages9, _ := i.module.Memory().Grow(0)
 	if uint64(base9)+uint64(len9) * 12 > uint64(pages9)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len9, base9))
+		var default9 []Entry
+		return default9, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len9, base9)
 	}
 	result9 := make([]Entry, len9)
 	for idx9 := uint32(0); idx9 < len9; idx9++ {
 		base := base9 + idx9 * 12
 		value3, ok3 := i.module.Memory().ReadByte(uint32(base + 0))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok3 {
-			panic(errors.New("failed to read byte from memory"))
+			var default3 []Entry
+			return default3, errors.New("failed to read byte from memory")
 		}
 		var enum4 Level
 		switch value3 {
@@ -839,27 +841,27 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 		case 4:
 			enum4 = LevelFatal
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid level discriminant"))
+			var default0 []Entry
+			return default0, errors.New("invalid level discriminant")
 		}
 		ptr5, ok5 := i.module.Memory().ReadUint32Le(uint32(base + 4))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok5 {
-			panic(errors.New("failed to read pointer from memory"))
+			var default5 []Entry
+			return default5, errors.New("failed to read pointer from memory")
 		}
 		len6, ok6 := i.module.Memory().ReadUint32Le(uint32(base + 8))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok6 {
-			panic(errors.New("failed to read length from memory"))
+			var default6 []Entry
+			return default6, errors.New("failed to read length from memory")
 		}
 		buf7, ok7 := i.module.Memory().Read(ptr5, len6)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok7 {
-			panic(errors.New("failed to read bytes from memory"))
+			var default7 []Entry
+			return default7, errors.New("failed to read bytes from memory")
 		}
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !utf8.Valid(buf7) {
-			panic(errors.New("invalid UTF-8 in string received from the guest"))
+			var default7 []Entry
+			return default7, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str7 := string(buf7)
 		value8 := Entry{
@@ -868,13 +870,13 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 		}
 		result9[idx9] = value8
 	}
-	return result9
+	return result9, nil
 }
 
 func (i *EnumDiscriminantsInstance) ViaHostOption(
 	ctx context.Context,
 	l *Level,
-) *Level {
+) (_ *Level, gravity_err error) {
 	arg0 := l
 	var variant1_0 uint32
 	var variant1_1 uint32
@@ -896,15 +898,16 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 		case LevelFatal:
 			enum0 = 4
 		default:
-			panic(errors.New("invalid enum type provided"))
+			var default0 *Level
+			return default0, fmt.Errorf("invalid level value %v", variantPayload)
 		}
 		variant1_0 = 1
 		variant1_1 = enum0
 	}
 	raw2, err2 := i.exports.get("via-host-option").Call(ctx, uint64(variant1_0), uint64(variant1_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 *Level
+		return default2, err2
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -913,24 +916,23 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_via-host-option"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after via-host-option: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after via-host-option: %w", err))
 			}
 		}
 	}()
 
 	results2 := raw2[0]
 	value3, ok3 := i.module.Memory().ReadByte(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read byte from memory"))
+		var default3 *Level
+		return default3, errors.New("failed to read byte from memory")
 	}
 	var result6 *Level
 	if value3 != 0 {
 		value4, ok4 := i.module.Memory().ReadByte(uint32(results2 + 1))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
-			panic(errors.New("failed to read byte from memory"))
+			var default4 *Level
+			return default4, errors.New("failed to read byte from memory")
 		}
 		var enum5 Level
 		switch value4 {
@@ -945,12 +947,12 @@ func (i *EnumDiscriminantsInstance) ViaHostOption(
 		case 4:
 			enum5 = LevelFatal
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid level discriminant"))
+			var default0 *Level
+			return default0, errors.New("invalid level discriminant")
 		}
 		someValue6 := enum5
 		result6 = &someValue6
 	}
-	return result6
+	return result6, nil
 }
 

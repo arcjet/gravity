@@ -168,7 +168,7 @@ func (i *OptionFloatParamsInstance) Scale(
 	ctx context.Context,
 	value float64,
 	factor *float64,
-) float64 {
+) (_ float64, gravity_err error) {
 	arg0 := value
 	arg1 := factor
 	result0 := api.EncodeF64(arg0)
@@ -184,21 +184,21 @@ func (i *OptionFloatParamsInstance) Scale(
 		variant2_1 = result1
 	}
 	raw3, err3 := i.exports.get("scale").Call(ctx, uint64(result0), uint64(variant2_0), uint64(variant2_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 float64
+		return default3, err3
 	}
 
 	results3 := raw3[0]
 	result4 := api.DecodeF64(results3)
-	return result4
+	return result4, nil
 }
 
 func (i *OptionFloatParamsInstance) Scale32(
 	ctx context.Context,
 	value float32,
 	factor *float32,
-) float32 {
+) (_ float32, gravity_err error) {
 	arg0 := value
 	arg1 := factor
 	result0 := api.EncodeF32(arg0)
@@ -214,20 +214,20 @@ func (i *OptionFloatParamsInstance) Scale32(
 		variant2_1 = result1
 	}
 	raw3, err3 := i.exports.get("scale32").Call(ctx, uint64(result0), uint64(variant2_0), uint64(variant2_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 float32
+		return default3, err3
 	}
 
 	results3 := raw3[0]
 	result4 := api.DecodeF32(results3)
-	return result4
+	return result4, nil
 }
 
 func (i *OptionFloatParamsInstance) ToMeters(
 	ctx context.Context,
 	l interface{},
-) float64 {
+) (_ float64, gravity_err error) {
 	arg0 := l
 	var variant2_0 uint32
 	var variant2_1 uint64
@@ -247,17 +247,17 @@ func (i *OptionFloatParamsInstance) ToMeters(
 			variant2_0 = 2
 			variant2_1 = 0
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid variant type provided"))
+			var default2 float64
+			return default2, errors.New("invalid variant type provided")
 	}
 	raw3, err3 := i.exports.get("to-meters").Call(ctx, uint64(variant2_0), uint64(variant2_1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err3 != nil {
-		panic(err3)
+		var default3 float64
+		return default3, err3
 	}
 
 	results3 := raw3[0]
 	result4 := api.DecodeF64(results3)
-	return result4
+	return result4, nil
 }
 

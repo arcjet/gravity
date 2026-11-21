@@ -37,7 +37,9 @@ func TestSharedCaseNamesStayDistinct(t *testing.T) {
 		CredentialKindSignedToken: ViaSignedToken,
 		CredentialKindBearer:      ViaAnonymous,
 	} {
-		if got := ins.ViaFor(t.Context(), in); got != want {
+		if got, err := ins.ViaFor(t.Context(), in); err != nil {
+			t.Fatal(err)
+		} else if got != want {
 			t.Errorf("ViaFor(%v) = %v, want %v", in, got, want)
 		}
 	}
@@ -46,10 +48,14 @@ func TestSharedCaseNamesStayDistinct(t *testing.T) {
 func TestCaseNamedLikeAType(t *testing.T) {
 	ins := newInstance(t)
 	p := Point{X: 3, Y: -4}
-	if got := ins.Describe(t.Context(), ShapePoint, p); got != "point(3, -4)" {
+	if got, err := ins.Describe(t.Context(), ShapePoint, p); err != nil {
+		t.Fatal(err)
+	} else if got != "point(3, -4)" {
 		t.Errorf("Describe(ShapePoint) = %q", got)
 	}
-	if got := ins.Describe(t.Context(), ShapeLine, p); got != "line to (3, -4)" {
+	if got, err := ins.Describe(t.Context(), ShapeLine, p); err != nil {
+		t.Fatal(err)
+	} else if got != "line to (3, -4)" {
 		t.Errorf("Describe(ShapeLine) = %q", got)
 	}
 }

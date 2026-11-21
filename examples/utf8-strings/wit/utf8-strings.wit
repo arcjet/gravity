@@ -15,14 +15,14 @@ world utf8-strings {
 
   // The host passes a string to an export that can return an error.
   export echo: func(s: string) -> result<string, string>;
-  // The host passes a string to an export that cannot return an error.
+  // The host passes a string to an export whose WIT result is not a result.
   export byte-length: func(s: string) -> u32;
   // The guest returns a string that is not valid UTF-8.
   export invalid: func() -> result<string, string>;
   // The guest returns an error message that is not valid UTF-8.
   export invalid-error: func() -> result<_, string>;
-  // The guest returns a string that is not valid UTF-8, from an export that
-  // cannot return an error.
+  // The guest returns a string that is not valid UTF-8, from an export whose
+  // WIT result is not a result.
   export invalid-plain: func() -> string;
   // The guest passes host.text's string back, so the host writes it.
   export from-host: func() -> result<string, string>;

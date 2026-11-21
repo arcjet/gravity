@@ -169,6 +169,12 @@ would call this like
 the return value is defined as a `result<string, string>`, it is translated into
 the idiomatic Go return type `(string, error)`.
 
+Every exported function returns an error, so a guest trap or a failed access to
+guest memory reaches the caller as an error rather than a panic. A function
+whose WIT result is a `T` other than `result` returns `(T, error)`, and one
+with no result returns `error`. For example, `export count: func() -> u32`
+becomes `Count(ctx context.Context) (uint32, error)`.
+
 When you are done with an instance, you are expected to call `Close` but you'll
 probably just want to `defer` it, like `defer inst.Close(ctx)`.
 

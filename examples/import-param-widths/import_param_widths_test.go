@@ -64,7 +64,10 @@ func TestWideImportParams(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			h := &Host{}
 			ins := newInstance(t, h)
-			got := ins.CallWide(t.Context(), want.a, want.b, want.c, want.d, want.e, want.f)
+			got, err := ins.CallWide(t.Context(), want.a, want.b, want.c, want.d, want.e, want.f)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if h.wide != want {
 				t.Errorf("host received %+v, want %+v", h.wide, want)
 			}
@@ -78,11 +81,15 @@ func TestWideImportParams(t *testing.T) {
 func TestOptionS64ImportParam(t *testing.T) {
 	h := &Host{}
 	ins := newInstance(t, h)
-	if got := ins.CallOpt(t.Context(), nil); got != -1 || h.opt != nil {
+	if got, err := ins.CallOpt(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	} else if got != -1 || h.opt != nil {
 		t.Errorf("CallOpt(nil) = %v (host got %v), want -1 (nil)", got, h.opt)
 	}
 	v := int64(math.MinInt64)
-	if got := ins.CallOpt(t.Context(), &v); got != v || h.opt == nil || *h.opt != v {
+	if got, err := ins.CallOpt(t.Context(), &v); err != nil {
+		t.Fatal(err)
+	} else if got != v || h.opt == nil || *h.opt != v {
 		t.Errorf("CallOpt(%d) = %v (host got %v), want %d", v, got, h.opt, v)
 	}
 }

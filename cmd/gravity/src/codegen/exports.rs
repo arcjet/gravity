@@ -258,16 +258,16 @@ mod tests {
         assert!(generated.contains("func (i *TestInstance) AddNumber("));
         assert!(generated.contains("value uint32"));
         assert!(generated.contains("ctx context.Context"));
-        assert!(generated.contains(") uint32 {"));
+        assert!(generated.contains(") (_ uint32, gravity_err error) {"));
 
         // Verify function body
         assert!(generated.contains("arg0 := value"));
         assert!(generated.contains("i.exports.get(\"add-number\").Call(ctx, uint64(result0))"));
         assert!(generated.contains("if err1 != nil {"));
-        assert!(generated.contains("panic(err1)"));
+        assert!(generated.contains("return default1, err1"));
         assert!(generated.contains("results1 := raw1[0]"));
         assert!(generated.contains("result2 := uint32(results1)"));
-        assert!(generated.contains("return result2"));
+        assert!(generated.contains("return result2, nil"));
 
         // I32FromU32 / U32FromI32 are no-op reinterpretations — they must not
         // use api.EncodeU32 or api.DecodeU32 (which round-trip through uint64,
@@ -280,6 +280,37 @@ mod tests {
             !generated.contains("api.DecodeU32"),
             "Export must not use api.DecodeU32 (needless uint32→uint64→uint32 round-trip), got:\n{generated}"
         );
+    }
+
+    /// Every export returns an error, so a trap reaches the caller rather
+    /// than panicking. An export with no WIT result returns `error`: the core
+    /// wasm function returns no value and needs no cleanup.
+    #[test]
+    fn test_export_without_result_returns_error() {
+        let fixture = Fixture::parse(
+            "package test:fixture;
+            world test-world {
+                export reset: func(n: u32);
+            }",
+        );
+        let generated = generate(&fixture, "reset");
+        for expected in [
+            ") (gravity_err error) {",
+            "_, err1 := i.exports.get(\"reset\").Call(ctx, uint64(result0))",
+            "return err1",
+            "return nil",
+        ] {
+            assert!(
+                generated.contains(expected),
+                "expected `{expected}`, got:\n{generated}"
+            );
+        }
+        for unexpected in ["panic(", "raw1", "cabi_post_reset"] {
+            assert!(
+                !generated.contains(unexpected),
+                "unexpected `{unexpected}`, got:\n{generated}"
+            );
+        }
     }
 
     /// Regression test: export function with a variant parameter containing

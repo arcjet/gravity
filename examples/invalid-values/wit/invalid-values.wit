@@ -1,0 +1,13 @@
+package gravity:invalid-values;
+
+// A Go enum can hold a value that is none of its cases, and a guest can
+// return a char that is not a Unicode scalar value. The bindings refuse
+// either with an error.
+world invalid-values {
+  enum color { red, green, blue }
+
+  export name: func(c: color) -> result<string, string>;
+  export name-plain: func(c: color) -> string;
+  // Returns U+D800, a surrogate, which no char may hold.
+  export surrogate: func() -> result<char, string>;
+}

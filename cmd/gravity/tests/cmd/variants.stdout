@@ -213,19 +213,19 @@ func writeString(
 func (i *VariantsInstance) Classify(
 	ctx context.Context,
 	input string,
-) Entity {
+) (_ Entity, gravity_err error) {
 	arg0 := input
 	memory0 := i.module.Memory()
 	realloc0 := i.exports.get("cabi_realloc")
 	ptr0, len0, err0 := writeString(ctx, arg0, memory0, realloc0)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err0 != nil {
-		panic(err0)
+		var default0 Entity
+		return default0, err0
 	}
 	raw1, err1 := i.exports.get("classify").Call(ctx, uint64(ptr0), uint64(len0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 Entity
+		return default1, err1
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -234,17 +234,16 @@ func (i *VariantsInstance) Classify(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_classify"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw1...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after classify: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after classify: %w", err))
 			}
 		}
 	}()
 
 	results1 := raw1[0]
 	value2, ok2 := i.module.Memory().ReadByte(uint32(results1 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok2 {
-		panic(errors.New("failed to read byte from memory"))
+		var default2 Entity
+		return default2, errors.New("failed to read byte from memory")
 	}
 	var value6 Entity
 	switch value2 {
@@ -258,54 +257,54 @@ func (i *VariantsInstance) Classify(
 		value6 = EntityCreditCardNumber{}
 	case 4:
 		ptr3, ok3 := i.module.Memory().ReadUint32Le(uint32(results1 + 4))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok3 {
-			panic(errors.New("failed to read pointer from memory"))
+			var default3 Entity
+			return default3, errors.New("failed to read pointer from memory")
 		}
 		len4, ok4 := i.module.Memory().ReadUint32Le(uint32(results1 + 8))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok4 {
-			panic(errors.New("failed to read length from memory"))
+			var default4 Entity
+			return default4, errors.New("failed to read length from memory")
 		}
 		buf5, ok5 := i.module.Memory().Read(ptr3, len4)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok5 {
-			panic(errors.New("failed to read bytes from memory"))
+			var default5 Entity
+			return default5, errors.New("failed to read bytes from memory")
 		}
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !utf8.Valid(buf5) {
-			panic(errors.New("invalid UTF-8 in string received from the guest"))
+			var default5 Entity
+			return default5, errors.New("invalid UTF-8 in string received from the guest")
 		}
 		str5 := string(buf5)
 		value6 = EntityCustom{Value: str5}
 	default:
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(errors.New("invalid entity discriminant"))
+		var default0 Entity
+		return default0, errors.New("invalid entity discriminant")
 	}
-	return value6
+	return value6, nil
 }
 
 func (i *VariantsInstance) TagAll(
 	ctx context.Context,
 	inputs []string,
-) []Detected {
+) (_ []Detected, gravity_err error) {
 	arg0 := inputs
 	vec1 := arg0
 	len1 := uint64(len(vec1))
 	if len1 > 536870911 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len1))
+		var default1 []Detected
+		return default1, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 536870911", len1)
 	}
 	result1, err1 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len1 * 8)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err1 != nil {
-		panic(err1)
+		var default1 []Detected
+		return default1, err1
 	}
 	ptr1 := result1[0]
 	pages1, _ := i.module.Memory().Grow(0)
 	if uint64(ptr1)+len1 * 8 > uint64(pages1)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1))
+		var default1 []Detected
+		return default1, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1)
 	}
 	for idx := uint64(0); idx < len1; idx++ {
 		e := vec1[idx]
@@ -313,17 +312,17 @@ func (i *VariantsInstance) TagAll(
 		memory0 := i.module.Memory()
 		realloc0 := i.exports.get("cabi_realloc")
 		ptr0, len0, err0 := writeString(ctx, e, memory0, realloc0)
-		// The return type doesn't contain an error so we panic if one is encountered
 		if err0 != nil {
-			panic(err0)
+			var default0 []Detected
+			return default0, err0
 		}
 		i.module.Memory().WriteUint32Le(base+4, uint32(len0))
 		i.module.Memory().WriteUint32Le(base+0, uint32(ptr0))
 	}
 	raw2, err2 := i.exports.get("tag-all").Call(ctx, uint64(ptr1), uint64(len1))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
-		panic(err2)
+		var default2 []Detected
+		return default2, err2
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -332,37 +331,36 @@ func (i *VariantsInstance) TagAll(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_tag-all"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw2...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after tag-all: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after tag-all: %w", err))
 			}
 		}
 	}()
 
 	results2 := raw2[0]
 	ptr3, ok3 := i.module.Memory().ReadUint32Le(uint32(results2 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok3 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default3 []Detected
+		return default3, errors.New("failed to read pointer from memory")
 	}
 	len4, ok4 := i.module.Memory().ReadUint32Le(uint32(results2 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok4 {
-		panic(errors.New("failed to read length from memory"))
+		var default4 []Detected
+		return default4, errors.New("failed to read length from memory")
 	}
 	base15 := ptr3
 	len15 := len4
 	pages15, _ := i.module.Memory().Grow(0)
 	if uint64(base15)+uint64(len15) * 20 > uint64(pages15)*65536 {
-		// The return type doesn't contain an error so we panic if one is encountered
-		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len15, base15))
+		var default15 []Detected
+		return default15, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len15, base15)
 	}
 	result15 := make([]Detected, len15)
 	for idx15 := uint32(0); idx15 < len15; idx15++ {
 		base := base15 + idx15 * 20
 		value5, ok5 := i.module.Memory().ReadByte(uint32(base + 0))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok5 {
-			panic(errors.New("failed to read byte from memory"))
+			var default5 []Detected
+			return default5, errors.New("failed to read byte from memory")
 		}
 		var value9 Entity
 		switch value5 {
@@ -376,40 +374,40 @@ func (i *VariantsInstance) TagAll(
 			value9 = EntityCreditCardNumber{}
 		case 4:
 			ptr6, ok6 := i.module.Memory().ReadUint32Le(uint32(base + 4))
-			// The return type doesn't contain an error so we panic if one is encountered
 			if !ok6 {
-				panic(errors.New("failed to read pointer from memory"))
+				var default6 []Detected
+				return default6, errors.New("failed to read pointer from memory")
 			}
 			len7, ok7 := i.module.Memory().ReadUint32Le(uint32(base + 8))
-			// The return type doesn't contain an error so we panic if one is encountered
 			if !ok7 {
-				panic(errors.New("failed to read length from memory"))
+				var default7 []Detected
+				return default7, errors.New("failed to read length from memory")
 			}
 			buf8, ok8 := i.module.Memory().Read(ptr6, len7)
-			// The return type doesn't contain an error so we panic if one is encountered
 			if !ok8 {
-				panic(errors.New("failed to read bytes from memory"))
+				var default8 []Detected
+				return default8, errors.New("failed to read bytes from memory")
 			}
-			// The return type doesn't contain an error so we panic if one is encountered
 			if !utf8.Valid(buf8) {
-				panic(errors.New("invalid UTF-8 in string received from the guest"))
+				var default8 []Detected
+				return default8, errors.New("invalid UTF-8 in string received from the guest")
 			}
 			str8 := string(buf8)
 			value9 = EntityCustom{Value: str8}
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid entity discriminant"))
+			var default0 []Detected
+			return default0, errors.New("invalid entity discriminant")
 		}
 		value10, ok10 := i.module.Memory().ReadUint32Le(uint32(base + 12))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok10 {
-			panic(errors.New("failed to read i32 from memory"))
+			var default10 []Detected
+			return default10, errors.New("failed to read i32 from memory")
 		}
 		result11 := uint32(value10)
 		value12, ok12 := i.module.Memory().ReadUint32Le(uint32(base + 16))
-		// The return type doesn't contain an error so we panic if one is encountered
 		if !ok12 {
-			panic(errors.New("failed to read i32 from memory"))
+			var default12 []Detected
+			return default12, errors.New("failed to read i32 from memory")
 		}
 		result13 := uint32(value12)
 		value14 := Detected{
@@ -419,13 +417,13 @@ func (i *VariantsInstance) TagAll(
 		}
 		result15[idx15] = value14
 	}
-	return result15
+	return result15, nil
 }
 
 func (i *VariantsInstance) Choose(
 	ctx context.Context,
 	input interface{},
-) string {
+) (_ string, gravity_err error) {
 	arg0 := input
 	var variant10_0 uint32
 	var variant10_1 uint64
@@ -439,19 +437,19 @@ func (i *VariantsInstance) Choose(
 			vec3 := field0_0
 			len3 := uint64(len(vec3))
 			if len3 > 357913941 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len3))
+				var default3 string
+				return default3, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len3)
 			}
 			result3, err3 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len3 * 12)
-			// The return type doesn't contain an error so we panic if one is encountered
 			if err3 != nil {
-				panic(err3)
+				var default3 string
+				return default3, err3
 			}
 			ptr3 := result3[0]
 			pages3, _ := i.module.Memory().Grow(0)
 			if uint64(ptr3)+len3 * 12 > uint64(pages3)*65536 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len3 * 12, ptr3))
+				var default3 string
+				return default3, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len3 * 12, ptr3)
 			}
 			for idx := uint64(0); idx < len3; idx++ {
 				e := vec3[idx]
@@ -475,15 +473,15 @@ func (i *VariantsInstance) Choose(
 						memory1 := i.module.Memory()
 						realloc1 := i.exports.get("cabi_realloc")
 						ptr1, len1, err1 := writeString(ctx, variantPayload, memory1, realloc1)
-						// The return type doesn't contain an error so we panic if one is encountered
 						if err1 != nil {
-							panic(err1)
+							var default1 string
+							return default1, err1
 						}
 						i.module.Memory().WriteUint32Le(base+8, uint32(len1))
 						i.module.Memory().WriteUint32Le(base+4, uint32(ptr1))
 					default:
-						// The return type doesn't contain an error so we panic if one is encountered
-						panic(errors.New("invalid variant type provided"))
+						var default2 string
+						return default2, errors.New("invalid variant type provided")
 				}
 			}
 			var variant5_0 uint32
@@ -507,19 +505,19 @@ func (i *VariantsInstance) Choose(
 			vec9 := field6_0
 			len9 := uint64(len(vec9))
 			if len9 > 357913941 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len9))
+				var default9 string
+				return default9, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len9)
 			}
 			result9, err9 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len9 * 12)
-			// The return type doesn't contain an error so we panic if one is encountered
 			if err9 != nil {
-				panic(err9)
+				var default9 string
+				return default9, err9
 			}
 			ptr9 := result9[0]
 			pages9, _ := i.module.Memory().Grow(0)
 			if uint64(ptr9)+len9 * 12 > uint64(pages9)*65536 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 12, ptr9))
+				var default9 string
+				return default9, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 12, ptr9)
 			}
 			for idx := uint64(0); idx < len9; idx++ {
 				e := vec9[idx]
@@ -543,15 +541,15 @@ func (i *VariantsInstance) Choose(
 						memory7 := i.module.Memory()
 						realloc7 := i.exports.get("cabi_realloc")
 						ptr7, len7, err7 := writeString(ctx, variantPayload, memory7, realloc7)
-						// The return type doesn't contain an error so we panic if one is encountered
 						if err7 != nil {
-							panic(err7)
+							var default7 string
+							return default7, err7
 						}
 						i.module.Memory().WriteUint32Le(base+8, uint32(len7))
 						i.module.Memory().WriteUint32Le(base+4, uint32(ptr7))
 					default:
-						// The return type doesn't contain an error so we panic if one is encountered
-						panic(errors.New("invalid variant type provided"))
+						var default8 string
+						return default8, errors.New("invalid variant type provided")
 				}
 			}
 			variant10_0 = 1
@@ -560,13 +558,13 @@ func (i *VariantsInstance) Choose(
 			variant10_3 = 0
 			variant10_4 = 0
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid variant type provided"))
+			var default10 string
+			return default10, errors.New("invalid variant type provided")
 	}
 	raw11, err11 := i.exports.get("choose").Call(ctx, uint64(variant10_0), uint64(variant10_1), uint64(variant10_2), uint64(variant10_3), uint64(variant10_4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err11 != nil {
-		panic(err11)
+		var default11 string
+		return default11, err11
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -575,40 +573,39 @@ func (i *VariantsInstance) Choose(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_choose"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw11...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after choose: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after choose: %w", err))
 			}
 		}
 	}()
 
 	results11 := raw11[0]
 	ptr12, ok12 := i.module.Memory().ReadUint32Le(uint32(results11 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok12 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default12 string
+		return default12, errors.New("failed to read pointer from memory")
 	}
 	len13, ok13 := i.module.Memory().ReadUint32Le(uint32(results11 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok13 {
-		panic(errors.New("failed to read length from memory"))
+		var default13 string
+		return default13, errors.New("failed to read length from memory")
 	}
 	buf14, ok14 := i.module.Memory().Read(ptr12, len13)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok14 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default14 string
+		return default14, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf14) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default14 string
+		return default14, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str14 := string(buf14)
-	return str14
+	return str14, nil
 }
 
 func (i *VariantsInstance) ChooseMany(
 	ctx context.Context,
 	input interface{},
-) string {
+) (_ string, gravity_err error) {
 	arg0 := input
 	var variant6_0 uint32
 	var variant6_1 uint64
@@ -619,19 +616,19 @@ func (i *VariantsInstance) ChooseMany(
 			vec2 := variantPayload
 			len2 := uint64(len(vec2))
 			if len2 > 357913941 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len2))
+				var default2 string
+				return default2, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len2)
 			}
 			result2, err2 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len2 * 12)
-			// The return type doesn't contain an error so we panic if one is encountered
 			if err2 != nil {
-				panic(err2)
+				var default2 string
+				return default2, err2
 			}
 			ptr2 := result2[0]
 			pages2, _ := i.module.Memory().Grow(0)
 			if uint64(ptr2)+len2 * 12 > uint64(pages2)*65536 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len2 * 12, ptr2))
+				var default2 string
+				return default2, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len2 * 12, ptr2)
 			}
 			for idx := uint64(0); idx < len2; idx++ {
 				e := vec2[idx]
@@ -655,15 +652,15 @@ func (i *VariantsInstance) ChooseMany(
 						memory0 := i.module.Memory()
 						realloc0 := i.exports.get("cabi_realloc")
 						ptr0, len0, err0 := writeString(ctx, variantPayload, memory0, realloc0)
-						// The return type doesn't contain an error so we panic if one is encountered
 						if err0 != nil {
-							panic(err0)
+							var default0 string
+							return default0, err0
 						}
 						i.module.Memory().WriteUint32Le(base+8, uint32(len0))
 						i.module.Memory().WriteUint32Le(base+4, uint32(ptr0))
 					default:
-						// The return type doesn't contain an error so we panic if one is encountered
-						panic(errors.New("invalid variant type provided"))
+						var default1 string
+						return default1, errors.New("invalid variant type provided")
 				}
 			}
 			variant6_0 = 0
@@ -674,19 +671,19 @@ func (i *VariantsInstance) ChooseMany(
 			vec5 := variantPayload
 			len5 := uint64(len(vec5))
 			if len5 > 357913941 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len5))
+				var default5 string
+				return default5, fmt.Errorf("list of %d elements is too long for the guest, which takes at most 357913941", len5)
 			}
 			result5, err5 := i.exports.get("cabi_realloc").Call(ctx, 0, 0, 4, len5 * 12)
-			// The return type doesn't contain an error so we panic if one is encountered
 			if err5 != nil {
-				panic(err5)
+				var default5 string
+				return default5, err5
 			}
 			ptr5 := result5[0]
 			pages5, _ := i.module.Memory().Grow(0)
 			if uint64(ptr5)+len5 * 12 > uint64(pages5)*65536 {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len5 * 12, ptr5))
+				var default5 string
+				return default5, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len5 * 12, ptr5)
 			}
 			for idx := uint64(0); idx < len5; idx++ {
 				e := vec5[idx]
@@ -710,28 +707,28 @@ func (i *VariantsInstance) ChooseMany(
 						memory3 := i.module.Memory()
 						realloc3 := i.exports.get("cabi_realloc")
 						ptr3, len3, err3 := writeString(ctx, variantPayload, memory3, realloc3)
-						// The return type doesn't contain an error so we panic if one is encountered
 						if err3 != nil {
-							panic(err3)
+							var default3 string
+							return default3, err3
 						}
 						i.module.Memory().WriteUint32Le(base+8, uint32(len3))
 						i.module.Memory().WriteUint32Le(base+4, uint32(ptr3))
 					default:
-						// The return type doesn't contain an error so we panic if one is encountered
-						panic(errors.New("invalid variant type provided"))
+						var default4 string
+						return default4, errors.New("invalid variant type provided")
 				}
 			}
 			variant6_0 = 1
 			variant6_1 = ptr5
 			variant6_2 = len5
 		default:
-			// The return type doesn't contain an error so we panic if one is encountered
-			panic(errors.New("invalid variant type provided"))
+			var default6 string
+			return default6, errors.New("invalid variant type provided")
 	}
 	raw7, err7 := i.exports.get("choose-many").Call(ctx, uint64(variant6_0), uint64(variant6_1), uint64(variant6_2))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if err7 != nil {
-		panic(err7)
+		var default7 string
+		return default7, err7
 	}
 
 	// The cleanup via `cabi_post_*` cleans up the memory in the guest. By
@@ -740,33 +737,32 @@ func (i *VariantsInstance) ChooseMany(
 	defer func() {
 		if postFn := i.exports.get("cabi_post_choose-many"); postFn != nil {
 			if _, err := postFn.Call(ctx, raw7...); err != nil {
-				// The return type doesn't contain an error so we panic if one is encountered
-				panic(fmt.Errorf("failed to clean up after choose-many: %w", err))
+				gravity_err = errors.Join(gravity_err, fmt.Errorf("failed to clean up after choose-many: %w", err))
 			}
 		}
 	}()
 
 	results7 := raw7[0]
 	ptr8, ok8 := i.module.Memory().ReadUint32Le(uint32(results7 + 0))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok8 {
-		panic(errors.New("failed to read pointer from memory"))
+		var default8 string
+		return default8, errors.New("failed to read pointer from memory")
 	}
 	len9, ok9 := i.module.Memory().ReadUint32Le(uint32(results7 + 4))
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok9 {
-		panic(errors.New("failed to read length from memory"))
+		var default9 string
+		return default9, errors.New("failed to read length from memory")
 	}
 	buf10, ok10 := i.module.Memory().Read(ptr8, len9)
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !ok10 {
-		panic(errors.New("failed to read bytes from memory"))
+		var default10 string
+		return default10, errors.New("failed to read bytes from memory")
 	}
-	// The return type doesn't contain an error so we panic if one is encountered
 	if !utf8.Valid(buf10) {
-		panic(errors.New("invalid UTF-8 in string received from the guest"))
+		var default10 string
+		return default10, errors.New("invalid UTF-8 in string received from the guest")
 	}
 	str10 := string(buf10)
-	return str10
+	return str10, nil
 }
 

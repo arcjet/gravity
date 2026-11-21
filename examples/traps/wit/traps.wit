@@ -1,0 +1,12 @@
+package gravity:traps;
+
+// Every export returns an error, so when the guest traps the caller gets the
+// trap as an error, whether or not the WIT function's result is a result.
+// Each export traps when `fail` is true.
+world traps {
+  record finding { start: u32, end: u32, kind: string }
+
+  export count: func(text: string, fail: bool) -> u32;
+  export detect: func(text: string, fail: bool) -> list<finding>;
+  export reset: func(fail: bool);
+}
