@@ -27,7 +27,7 @@ n := NORMAL
 # snapshot tests
 [doc('run the full CI gate')]
 [group('ci')]
-check: lint check-wit build test test-go test-cli
+check: lint check-wit check-build-script build test test-go test-cli
 
 # install the toolchain, components and targets pinned in rust-toolchain.toml
 [group('setup')]
@@ -61,6 +61,16 @@ check-wit:
     @echo '{{ h }}lint: one version of each wit crate{{ n }}'
     @bash scripts/check-wit-test.sh
     @bash scripts/check-wit.sh
+
+# check that cmd/gravity/build.rs leaves an unchanged build fresh and rebuilds
+# when HEAD moves, in a repository and in a worktree. See
+# scripts/check-build-script.sh.
+[doc('check that build.rs rebuilds only when HEAD moves')]
+[group('ci')]
+[group('test')]
+check-build-script:
+    @echo '{{ h }}test: build.rs rebuilds only when HEAD moves{{ n }}'
+    @bash scripts/check-build-script.sh
 
 # lint with clippy. Not part of `check`, because CI does not run clippy.
 [doc('lint with clippy (not part of the CI gate)')]
