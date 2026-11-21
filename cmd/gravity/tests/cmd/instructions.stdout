@@ -367,7 +367,8 @@ func (i *InstructionsInstance) IndirectParams(
 		panic(err0)
 	}
 	ptr0 := uint32(result0[0])
-	if uint64(ptr0)+68 > uint64(i.module.Memory().Size()) {
+	pages0, _ := i.module.Memory().Grow(0)
+	if uint64(ptr0)+68 > uint64(pages0)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
 	}

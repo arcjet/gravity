@@ -194,13 +194,18 @@ impl<'a> Func<'a> {
 
     /// Emits the check that `size` bytes at `ptr` (Go expressions that
     /// convert to `uint64`) lie inside guest memory, failing with `err`.
+    ///
+    /// The memory's size is its page count from `Grow(0)`, which changes
+    /// nothing, times 65536: `Memory.Size()` is a `uint32` and reads zero for
+    /// a memory at the maximum 65536 pages, as wazero documents.
     fn fail_unless_in_memory(&mut self, tmp: usize, ptr: &str, size: Tokens<Go>, err: Tokens<Go>) {
         let module_handle = self.module_handle();
-        self.fail_if(
-            tmp,
-            quote!(uint64($ptr)+$size > uint64($module_handle.Memory().Size())),
-            err,
-        );
+        let pages = &format!("pages{tmp}");
+        quote_in! { self.body =>
+            $['\r']
+            $pages, _ := $module_handle.Memory().Grow(0)
+        };
+        self.fail_if(tmp, quote!(uint64($ptr)+$size > uint64($pages)*65536), err);
     }
 
     /// Emits `valueN, okN := <module>.Memory().<read>(uint32(ptr + offset))`

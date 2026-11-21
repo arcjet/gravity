@@ -193,7 +193,8 @@ func (i *ConcurrentInstancesInstance) Join(
 		panic(err1)
 	}
 	ptr1 := result1[0]
-	if uint64(ptr1)+len1 * 8 > uint64(i.module.Memory().Size()) {
+	pages1, _ := i.module.Memory().Grow(0)
+	if uint64(ptr1)+len1 * 8 > uint64(pages1)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1))
 	}

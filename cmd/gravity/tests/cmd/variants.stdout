@@ -294,7 +294,8 @@ func (i *VariantsInstance) TagAll(
 		panic(err1)
 	}
 	ptr1 := result1[0]
-	if uint64(ptr1)+len1 * 8 > uint64(i.module.Memory().Size()) {
+	pages1, _ := i.module.Memory().Grow(0)
+	if uint64(ptr1)+len1 * 8 > uint64(pages1)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 8, ptr1))
 	}
@@ -342,7 +343,8 @@ func (i *VariantsInstance) TagAll(
 	}
 	base15 := ptr3
 	len15 := len4
-	if uint64(base15)+uint64(len15) * 20 > uint64(i.module.Memory().Size()) {
+	pages15, _ := i.module.Memory().Grow(0)
+	if uint64(base15)+uint64(len15) * 20 > uint64(pages15)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len15, base15))
 	}
@@ -438,7 +440,8 @@ func (i *VariantsInstance) Choose(
 				panic(err3)
 			}
 			ptr3 := result3[0]
-			if uint64(ptr3)+len3 * 12 > uint64(i.module.Memory().Size()) {
+			pages3, _ := i.module.Memory().Grow(0)
+			if uint64(ptr3)+len3 * 12 > uint64(pages3)*65536 {
 				// The return type doesn't contain an error so we panic if one is encountered
 				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len3 * 12, ptr3))
 			}
@@ -505,7 +508,8 @@ func (i *VariantsInstance) Choose(
 				panic(err9)
 			}
 			ptr9 := result9[0]
-			if uint64(ptr9)+len9 * 12 > uint64(i.module.Memory().Size()) {
+			pages9, _ := i.module.Memory().Grow(0)
+			if uint64(ptr9)+len9 * 12 > uint64(pages9)*65536 {
 				// The return type doesn't contain an error so we panic if one is encountered
 				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 12, ptr9))
 			}
@@ -616,7 +620,8 @@ func (i *VariantsInstance) ChooseMany(
 				panic(err2)
 			}
 			ptr2 := result2[0]
-			if uint64(ptr2)+len2 * 12 > uint64(i.module.Memory().Size()) {
+			pages2, _ := i.module.Memory().Grow(0)
+			if uint64(ptr2)+len2 * 12 > uint64(pages2)*65536 {
 				// The return type doesn't contain an error so we panic if one is encountered
 				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len2 * 12, ptr2))
 			}
@@ -670,7 +675,8 @@ func (i *VariantsInstance) ChooseMany(
 				panic(err5)
 			}
 			ptr5 := result5[0]
-			if uint64(ptr5)+len5 * 12 > uint64(i.module.Memory().Size()) {
+			pages5, _ := i.module.Memory().Grow(0)
+			if uint64(ptr5)+len5 * 12 > uint64(pages5)*65536 {
 				// The return type doesn't contain an error so we panic if one is encountered
 				panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len5 * 12, ptr5))
 			}

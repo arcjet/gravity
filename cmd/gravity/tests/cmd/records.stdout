@@ -182,7 +182,8 @@ func (i *RecordsInstance) ModifyFoo(
 		panic(err7)
 	}
 	ptr7 := result7[0]
-	if uint64(ptr7)+len7 * 4 > uint64(i.module.Memory().Size()) {
+	pages7, _ := i.module.Memory().Grow(0)
+	if uint64(ptr7)+len7 * 4 > uint64(pages7)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len7 * 4, ptr7))
 	}
@@ -204,7 +205,8 @@ func (i *RecordsInstance) ModifyFoo(
 		panic(err9)
 	}
 	ptr9 := result9[0]
-	if uint64(ptr9)+len9 * 8 > uint64(i.module.Memory().Size()) {
+	pages9, _ := i.module.Memory().Grow(0)
+	if uint64(ptr9)+len9 * 8 > uint64(pages9)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 8, ptr9))
 	}
@@ -290,7 +292,8 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	base28 := ptr23
 	len28 := len24
-	if uint64(base28)+uint64(len28) * 4 > uint64(i.module.Memory().Size()) {
+	pages28, _ := i.module.Memory().Grow(0)
+	if uint64(base28)+uint64(len28) * 4 > uint64(pages28)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len28, base28))
 	}
@@ -318,7 +321,8 @@ func (i *RecordsInstance) ModifyFoo(
 	}
 	base33 := ptr29
 	len33 := len30
-	if uint64(base33)+uint64(len33) * 8 > uint64(i.module.Memory().Size()) {
+	pages33, _ := i.module.Memory().Grow(0)
+	if uint64(base33)+uint64(len33) * 8 > uint64(pages33)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len33, base33))
 	}
@@ -380,7 +384,8 @@ func (i *RecordsInstance) ModifyFooFallible(
 		return default7, err7
 	}
 	ptr7 := result7[0]
-	if uint64(ptr7)+len7 * 4 > uint64(i.module.Memory().Size()) {
+	pages7, _ := i.module.Memory().Grow(0)
+	if uint64(ptr7)+len7 * 4 > uint64(pages7)*65536 {
 		var default7 Foo
 		return default7, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len7 * 4, ptr7)
 	}
@@ -402,7 +407,8 @@ func (i *RecordsInstance) ModifyFooFallible(
 		return default9, err9
 	}
 	ptr9 := result9[0]
-	if uint64(ptr9)+len9 * 8 > uint64(i.module.Memory().Size()) {
+	pages9, _ := i.module.Memory().Grow(0)
+	if uint64(ptr9)+len9 * 8 > uint64(pages9)*65536 {
 		var default9 Foo
 		return default9, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len9 * 8, ptr9)
 	}
@@ -496,7 +502,8 @@ func (i *RecordsInstance) ModifyFooFallible(
 		}
 		base29 := ptr24
 		len29 := len25
-		if uint64(base29)+uint64(len29) * 4 > uint64(i.module.Memory().Size()) {
+		pages29, _ := i.module.Memory().Grow(0)
+		if uint64(base29)+uint64(len29) * 4 > uint64(pages29)*65536 {
 			var default29 Foo
 			return default29, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len29, base29)
 		}
@@ -524,7 +531,8 @@ func (i *RecordsInstance) ModifyFooFallible(
 		}
 		base34 := ptr30
 		len34 := len31
-		if uint64(base34)+uint64(len34) * 8 > uint64(i.module.Memory().Size()) {
+		pages34, _ := i.module.Memory().Grow(0)
+		if uint64(base34)+uint64(len34) * 8 > uint64(pages34)*65536 {
 			var default34 Foo
 			return default34, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len34, base34)
 		}

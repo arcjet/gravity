@@ -194,7 +194,8 @@ func NewEnumDiscriminantsFactory(
 			panic(err4)
 		}
 		ptr4 := result4[0]
-		if uint64(ptr4)+len4 * 12 > uint64(mod.Memory().Size()) {
+		pages4, _ := mod.Memory().Grow(0)
+		if uint64(ptr4)+len4 * 12 > uint64(pages4)*65536 {
 			// The return type doesn't contain an error so we panic if one is encountered
 			panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len4 * 12, ptr4))
 		}
@@ -444,7 +445,8 @@ func (i *EnumDiscriminantsInstance) EchoList(
 		panic(err1)
 	}
 	ptr1 := result1[0]
-	if uint64(ptr1)+len1 * 1 > uint64(i.module.Memory().Size()) {
+	pages1, _ := i.module.Memory().Grow(0)
+	if uint64(ptr1)+len1 * 1 > uint64(pages1)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 1, ptr1))
 	}
@@ -499,7 +501,8 @@ func (i *EnumDiscriminantsInstance) EchoList(
 	}
 	base7 := ptr3
 	len7 := len4
-	if uint64(base7)+uint64(len7) * 1 > uint64(i.module.Memory().Size()) {
+	pages7, _ := i.module.Memory().Grow(0)
+	if uint64(base7)+uint64(len7) * 1 > uint64(pages7)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len7, base7))
 	}
@@ -803,7 +806,8 @@ func (i *EnumDiscriminantsInstance) HostEntries(
 	}
 	base9 := ptr1
 	len9 := len2
-	if uint64(base9)+uint64(len9) * 12 > uint64(i.module.Memory().Size()) {
+	pages9, _ := i.module.Memory().Grow(0)
+	if uint64(base9)+uint64(len9) * 12 > uint64(pages9)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len9, base9))
 	}

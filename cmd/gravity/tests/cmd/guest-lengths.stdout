@@ -213,7 +213,8 @@ func (i *GuestLengthsInstance) LongList(
 	}
 	base5 := ptr1
 	len5 := len2
-	if uint64(base5)+uint64(len5) * 4 > uint64(i.module.Memory().Size()) {
+	pages5, _ := i.module.Memory().Grow(0)
+	if uint64(base5)+uint64(len5) * 4 > uint64(pages5)*65536 {
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("list of %d elements at %d does not fit in guest memory", len5, base5))
 	}
@@ -273,7 +274,8 @@ func (i *GuestLengthsInstance) LongListResult(
 		}
 		base6 := ptr2
 		len6 := len3
-		if uint64(base6)+uint64(len6) * 4 > uint64(i.module.Memory().Size()) {
+		pages6, _ := i.module.Memory().Grow(0)
+		if uint64(base6)+uint64(len6) * 4 > uint64(pages6)*65536 {
 			var default6 []uint32
 			return default6, fmt.Errorf("list of %d elements at %d does not fit in guest memory", len6, base6)
 		}
@@ -334,7 +336,8 @@ func (i *GuestLengthsInstance) Sum(
 		return default1, err1
 	}
 	ptr1 := result1[0]
-	if uint64(ptr1)+len1 * 4 > uint64(i.module.Memory().Size()) {
+	pages1, _ := i.module.Memory().Grow(0)
+	if uint64(ptr1)+len1 * 4 > uint64(pages1)*65536 {
 		var default1 uint32
 		return default1, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len1 * 4, ptr1)
 	}
@@ -423,7 +426,8 @@ func (i *GuestLengthsInstance) Count(
 		return default74, err74
 	}
 	ptr74 := result74[0]
-	if uint64(ptr74)+len74 * 520 > uint64(i.module.Memory().Size()) {
+	pages74, _ := i.module.Memory().Grow(0)
+	if uint64(ptr74)+len74 * 520 > uint64(pages74)*65536 {
 		var default74 uint32
 		return default74, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", len74 * 520, ptr74)
 	}
@@ -711,7 +715,8 @@ func (i *GuestLengthsInstance) Wide(
 		return default0, err0
 	}
 	ptr0 := uint32(result0[0])
-	if uint64(ptr0)+68 > uint64(i.module.Memory().Size()) {
+	pages0, _ := i.module.Memory().Grow(0)
+	if uint64(ptr0)+68 > uint64(pages0)*65536 {
 		var default0 uint32
 		return default0, fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0)
 	}
