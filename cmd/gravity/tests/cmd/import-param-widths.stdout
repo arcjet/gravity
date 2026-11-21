@@ -21,7 +21,7 @@ type IImportParamWidthsHost interface {
 		b int64,
 		c float32,
 		d float64,
-		e uint32,
+		e_ uint32,
 		f int8,
 	) float64
 	Opt(
@@ -209,14 +209,14 @@ func (i *ImportParamWidthsInstance) CallWide(
 	b int64,
 	c float32,
 	d float64,
-	e uint32,
+	e_ uint32,
 	f int8,
 ) float64 {
 	arg0 := a
 	arg1 := b
 	arg2 := c
 	arg3 := d
-	arg4 := e
+	arg4 := e_
 	arg5 := f
 	value0 := uint64(arg0)
 	value1 := uint64(arg1)

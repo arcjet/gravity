@@ -202,10 +202,10 @@ func NewEnumDiscriminantsFactory(
 		for idx := uint64(0); idx < len4; idx++ {
 			e := vec4[idx]
 			base := uint32(ptr4 + uint64(idx) * uint64(12))
-			at1 := e.At
-			msg1 := e.Msg
+			field1_0 := e.At
+			field1_1 := e.Msg
 			var enum2 uint32
-			switch at1 {
+			switch field1_0 {
 			case LevelTrace:
 				enum2 = 0
 			case LevelDebug:
@@ -222,7 +222,7 @@ func NewEnumDiscriminantsFactory(
 			mod.Memory().WriteByte(base+0, uint8(enum2))
 			memory3 := mod.Memory()
 			realloc3 := gravityExportCache.lookup(mod, "cabi_realloc")
-			ptr3, len3, err3 := writeString(ctx, msg1, memory3, realloc3)
+			ptr3, len3, err3 := writeString(ctx, field1_1, memory3, realloc3)
 			if err3 != nil {
 				panic(err3)
 			}
@@ -537,13 +537,13 @@ func (i *EnumDiscriminantsInstance) EchoList(
 
 func (i *EnumDiscriminantsInstance) EchoEntry(
 	ctx context.Context,
-	e Entry,
+	e_ Entry,
 ) Entry {
-	arg0 := e
-	at0 := arg0.At
-	msg0 := arg0.Msg
+	arg0 := e_
+	field0_0 := arg0.At
+	field0_1 := arg0.Msg
 	var enum1 uint32
-	switch at0 {
+	switch field0_0 {
 	case LevelTrace:
 		enum1 = 0
 	case LevelDebug:
@@ -559,7 +559,7 @@ func (i *EnumDiscriminantsInstance) EchoEntry(
 	}
 	memory2 := i.module.Memory()
 	realloc2 := i.exports.get("cabi_realloc")
-	ptr2, len2, err2 := writeString(ctx, msg0, memory2, realloc2)
+	ptr2, len2, err2 := writeString(ctx, field0_1, memory2, realloc2)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err2 != nil {
 		panic(err2)

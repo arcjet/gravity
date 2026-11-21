@@ -1,0 +1,69 @@
+package name_collisions
+
+import (
+	"context"
+	"fmt"
+	"testing"
+)
+
+// WIT names that would take a name the generated code uses get a trailing
+// underscore as Go locals, so these bindings compile, and each value reaches
+// the guest unchanged.
+
+// Mod answers mod.echo. The constructor parameter it is passed as is named
+// mod_, because every host function declares mod.
+type Mod struct{}
+
+func (Mod) Echo(_ context.Context, type_ string, ctx_ uint32, len_ uint32) string {
+	return fmt.Sprintf("%s %d %d", type_, ctx_, len_)
+}
+
+func newInstance(t *testing.T) *NameCollisionsInstance {
+	t.Helper()
+	fac, err := NewNameCollisionsFactory(t.Context(), Mod{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { fac.Close(context.Background()) })
+	ins, err := fac.Instantiate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ins.Close(context.Background()) })
+	return ins
+}
+
+// A field named ptr1 reaches the guest as itself, not as another string's
+// address.
+func TestRecordFieldEndingInDigits(t *testing.T) {
+	ins := newInstance(t)
+	got := ins.Pick(t.Context(), R{
+		T0: "a", T1: "b", T2: "c", T3: "d", T4: "e",
+		T5: "f", T6: "g", T7: "h", T8: "i", T9: "j",
+		Ptr1: 0x1234_5678_9abc,
+	})
+	if got != 0x1234_5678_9abc {
+		t.Fatalf("Pick returned %#x, want 0x123456789abc", got)
+	}
+}
+
+func TestEscapedParameters(t *testing.T) {
+	ins := newInstance(t)
+	for _, c := range []struct{ got, want string }{
+		{ins.Keywords(t.Context(), "type", 1, 2, 3, true), "type 1 2 3 true"},
+		{ins.FixedNames(t.Context(), 4, "errors", 5, 6), "4 errors 5 6"},
+		{ins.Numbered(t.Context(), 7, 8, "writeString"), "7 8 writeString"},
+	} {
+		if c.got != c.want {
+			t.Fatalf("got %q, want %q", c.got, c.want)
+		}
+	}
+}
+
+func TestEscapedConstructorAndHostParameters(t *testing.T) {
+	ins := newInstance(t)
+	got := ins.CallHost(t.Context(), "hello")
+	if want := "hello 7 5"; got != want {
+		t.Fatalf("CallHost = %q, want %q", got, want)
+	}
+}

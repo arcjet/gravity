@@ -372,55 +372,55 @@ func (i *InstructionsInstance) IndirectParams(
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
 	}
-	a1 := arg0.A
-	b1 := arg0.B
-	c1 := arg0.C
-	d1 := arg0.D
-	e1 := arg0.E
-	f1 := arg0.F
-	g1 := arg0.G
-	h1 := arg0.H
-	i1 := arg0.I
-	j1 := arg0.J
-	k1 := arg0.K
-	l1 := arg0.L
-	m1 := arg0.M
-	n1 := arg0.N
-	o1 := arg0.O
-	p1 := arg0.P
-	result2 := uint32(a1)
+	field1_0 := arg0.A
+	field1_1 := arg0.B
+	field1_2 := arg0.C
+	field1_3 := arg0.D
+	field1_4 := arg0.E
+	field1_5 := arg0.F
+	field1_6 := arg0.G
+	field1_7 := arg0.H
+	field1_8 := arg0.I
+	field1_9 := arg0.J
+	field1_10 := arg0.K
+	field1_11 := arg0.L
+	field1_12 := arg0.M
+	field1_13 := arg0.N
+	field1_14 := arg0.O
+	field1_15 := arg0.P
+	result2 := uint32(field1_0)
 	i.module.Memory().WriteUint32Le(ptr0+0, uint32(result2))
-	result3 := uint32(b1)
+	result3 := uint32(field1_1)
 	i.module.Memory().WriteUint32Le(ptr0+4, uint32(result3))
-	result4 := uint32(c1)
+	result4 := uint32(field1_2)
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result4))
-	result5 := uint32(d1)
+	result5 := uint32(field1_3)
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(result5))
-	result6 := uint32(e1)
+	result6 := uint32(field1_4)
 	i.module.Memory().WriteUint32Le(ptr0+16, uint32(result6))
-	result7 := uint32(f1)
+	result7 := uint32(field1_5)
 	i.module.Memory().WriteUint32Le(ptr0+20, uint32(result7))
-	result8 := uint32(g1)
+	result8 := uint32(field1_6)
 	i.module.Memory().WriteUint32Le(ptr0+24, uint32(result8))
-	result9 := uint32(h1)
+	result9 := uint32(field1_7)
 	i.module.Memory().WriteUint32Le(ptr0+28, uint32(result9))
-	result10 := uint32(i1)
+	result10 := uint32(field1_8)
 	i.module.Memory().WriteUint32Le(ptr0+32, uint32(result10))
-	result11 := uint32(j1)
+	result11 := uint32(field1_9)
 	i.module.Memory().WriteUint32Le(ptr0+36, uint32(result11))
-	result12 := uint32(k1)
+	result12 := uint32(field1_10)
 	i.module.Memory().WriteUint32Le(ptr0+40, uint32(result12))
-	result13 := uint32(l1)
+	result13 := uint32(field1_11)
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(result13))
-	result14 := uint32(m1)
+	result14 := uint32(field1_12)
 	i.module.Memory().WriteUint32Le(ptr0+48, uint32(result14))
-	result15 := uint32(n1)
+	result15 := uint32(field1_13)
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(result15))
-	result16 := uint32(o1)
+	result16 := uint32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(result16))
 	memory17 := i.module.Memory()
 	realloc17 := i.exports.get("cabi_realloc")
-	ptr17, len17, err17 := writeString(ctx, p1, memory17, realloc17)
+	ptr17, len17, err17 := writeString(ctx, field1_15, memory17, realloc17)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err17 != nil {
 		panic(err17)

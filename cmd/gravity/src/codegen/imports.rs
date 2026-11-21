@@ -172,7 +172,7 @@ impl<'a> ImportAnalyzer<'a> {
             name: interface_name.clone(),
             methods,
             types,
-            constructor_param_name: GoIdentifier::private(interface_name),
+            constructor_param_name: GoIdentifier::local(interface_name),
             go_interface_name,
             wazero_module_name,
         }
@@ -183,7 +183,7 @@ impl<'a> ImportAnalyzer<'a> {
             .params
             .iter()
             .map(|Param { name, ty, .. }| Parameter {
-                name: GoIdentifier::private(name),
+                name: GoIdentifier::local(name),
                 go_type: resolve_param_type(ty, self.resolve),
                 wit_type: *ty,
             })
@@ -314,7 +314,7 @@ impl<'a> ImportAnalyzer<'a> {
             .params
             .iter()
             .map(|Param { name, ty, .. }| Parameter {
-                name: GoIdentifier::private(name),
+                name: GoIdentifier::local(name),
                 go_type: resolve_param_type(ty, self.resolve),
                 wit_type: *ty,
             })

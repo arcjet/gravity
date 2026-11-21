@@ -253,6 +253,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-name-collisions"
+version = "0.0.2"
+dependencies = [
+ "wit-bindgen",
+ "wit-component",
+]
+
+[[package]]
 name = "example-option-float-params"
 version = "0.0.2"
 dependencies = [

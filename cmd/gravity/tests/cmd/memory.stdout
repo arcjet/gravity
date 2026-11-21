@@ -301,50 +301,50 @@ func NewMemoryFactory(
 			AF32: result32,
 		}
 		value34 := host.Echo(ctx, value33)
-		aU835 := value34.AU8
-		aS835 := value34.AS8
-		aU1635 := value34.AU16
-		aS1635 := value34.AS16
-		aU3235 := value34.AU32
-		aS3235 := value34.AS32
-		aU6435 := value34.AU64
-		aS6435 := value34.AS64
-		aF6435 := value34.AF64
-		aBool35 := value34.ABool
-		aChar35 := value34.AChar
-		aColor35 := value34.AColor
-		aOpt35 := value34.AOpt
-		aStr35 := value34.AStr
-		aF3235 := value34.AF32
-		value36 := uint32(aU835)
+		field35_0 := value34.AU8
+		field35_1 := value34.AS8
+		field35_2 := value34.AU16
+		field35_3 := value34.AS16
+		field35_4 := value34.AU32
+		field35_5 := value34.AS32
+		field35_6 := value34.AU64
+		field35_7 := value34.AS64
+		field35_8 := value34.AF64
+		field35_9 := value34.ABool
+		field35_10 := value34.AChar
+		field35_11 := value34.AColor
+		field35_12 := value34.AOpt
+		field35_13 := value34.AStr
+		field35_14 := value34.AF32
+		value36 := uint32(field35_0)
 		mod.Memory().WriteByte(arg1+0, uint8(value36))
-		value37 := uint32(aS835)
+		value37 := uint32(field35_1)
 		mod.Memory().WriteByte(arg1+1, uint8(value37))
-		value38 := uint32(aU1635)
+		value38 := uint32(field35_2)
 		mod.Memory().WriteUint16Le(arg1+2, uint16(value38))
-		value39 := uint32(aS1635)
+		value39 := uint32(field35_3)
 		mod.Memory().WriteUint16Le(arg1+4, uint16(value39))
-		result40 := uint32(aU3235)
+		result40 := uint32(field35_4)
 		mod.Memory().WriteUint32Le(arg1+8, uint32(result40))
-		value41 := uint32(aS3235)
+		value41 := uint32(field35_5)
 		mod.Memory().WriteUint32Le(arg1+12, uint32(value41))
-		value42 := uint64(aU6435)
+		value42 := uint64(field35_6)
 		mod.Memory().WriteUint64Le(arg1+16, uint64(value42))
-		value43 := uint64(aS6435)
+		value43 := uint64(field35_7)
 		mod.Memory().WriteUint64Le(arg1+24, uint64(value43))
-		result44 := aF6435
+		result44 := field35_8
 		mod.Memory().WriteFloat64Le(arg1+32, result44)
 		var value45 uint32
-		if aBool35 {
+		if field35_9 {
 			value45 = 1
 		} else {
 			value45 = 0
 		}
 		mod.Memory().WriteByte(arg1+40, uint8(value45))
-		value46 := uint32(aChar35)
+		value46 := uint32(field35_10)
 		mod.Memory().WriteUint32Le(arg1+44, uint32(value46))
 		var enum47 uint32
-		switch aColor35 {
+		switch field35_11 {
 		case ColorRed:
 			enum47 = 0
 		case ColorGreen:
@@ -355,23 +355,23 @@ func NewMemoryFactory(
 			panic(errors.New("invalid enum type provided"))
 		}
 		mod.Memory().WriteByte(arg1+48, uint8(enum47))
-		if aOpt35 == nil {
+		if field35_12 == nil {
 			mod.Memory().WriteByte(arg1+49, uint8(0))
 		} else {
-			variantPayload := *aOpt35
+			variantPayload := *field35_12
 			mod.Memory().WriteByte(arg1+49, uint8(1))
 			value48 := uint32(variantPayload)
 			mod.Memory().WriteByte(arg1+50, uint8(value48))
 		}
 		memory50 := mod.Memory()
 		realloc50 := gravityExportCache.lookup(mod, "cabi_realloc")
-		ptr50, len50, err50 := writeString(ctx, aStr35, memory50, realloc50)
+		ptr50, len50, err50 := writeString(ctx, field35_13, memory50, realloc50)
 		if err50 != nil {
 			panic(err50)
 		}
 		mod.Memory().WriteUint32Le(arg1+56, uint32(len50))
 		mod.Memory().WriteUint32Le(arg1+52, uint32(ptr50))
-		result51 := aF3235
+		result51 := field35_14
 		mod.Memory().WriteFloat32Le(arg1+60, result51)
 	}).
 	Export("echo").
@@ -475,50 +475,50 @@ func (i *MemoryInstance) RoundTrip(
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
 	}
-	aU81 := arg0.AU8
-	aS81 := arg0.AS8
-	aU161 := arg0.AU16
-	aS161 := arg0.AS16
-	aU321 := arg0.AU32
-	aS321 := arg0.AS32
-	aU641 := arg0.AU64
-	aS641 := arg0.AS64
-	aF641 := arg0.AF64
-	aBool1 := arg0.ABool
-	aChar1 := arg0.AChar
-	aColor1 := arg0.AColor
-	aOpt1 := arg0.AOpt
-	aStr1 := arg0.AStr
-	aF321 := arg0.AF32
-	value2 := uint32(aU81)
+	field1_0 := arg0.AU8
+	field1_1 := arg0.AS8
+	field1_2 := arg0.AU16
+	field1_3 := arg0.AS16
+	field1_4 := arg0.AU32
+	field1_5 := arg0.AS32
+	field1_6 := arg0.AU64
+	field1_7 := arg0.AS64
+	field1_8 := arg0.AF64
+	field1_9 := arg0.ABool
+	field1_10 := arg0.AChar
+	field1_11 := arg0.AColor
+	field1_12 := arg0.AOpt
+	field1_13 := arg0.AStr
+	field1_14 := arg0.AF32
+	value2 := uint32(field1_0)
 	i.module.Memory().WriteByte(ptr0+0, uint8(value2))
-	value3 := uint32(aS81)
+	value3 := uint32(field1_1)
 	i.module.Memory().WriteByte(ptr0+1, uint8(value3))
-	value4 := uint32(aU161)
+	value4 := uint32(field1_2)
 	i.module.Memory().WriteUint16Le(ptr0+2, uint16(value4))
-	value5 := uint32(aS161)
+	value5 := uint32(field1_3)
 	i.module.Memory().WriteUint16Le(ptr0+4, uint16(value5))
-	result6 := uint32(aU321)
+	result6 := uint32(field1_4)
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result6))
-	value7 := uint32(aS321)
+	value7 := uint32(field1_5)
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(value7))
-	value8 := uint64(aU641)
+	value8 := uint64(field1_6)
 	i.module.Memory().WriteUint64Le(ptr0+16, uint64(value8))
-	value9 := uint64(aS641)
+	value9 := uint64(field1_7)
 	i.module.Memory().WriteUint64Le(ptr0+24, uint64(value9))
-	result10 := api.EncodeF64(aF641)
+	result10 := api.EncodeF64(field1_8)
 	i.module.Memory().WriteUint64Le(ptr0+32, result10)
 	var value11 uint32
-	if aBool1 {
+	if field1_9 {
 		value11 = 1
 	} else {
 		value11 = 0
 	}
 	i.module.Memory().WriteByte(ptr0+40, uint8(value11))
-	value12 := uint32(aChar1)
+	value12 := uint32(field1_10)
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(value12))
 	var enum13 uint32
-	switch aColor1 {
+	switch field1_11 {
 	case ColorRed:
 		enum13 = 0
 	case ColorGreen:
@@ -529,24 +529,24 @@ func (i *MemoryInstance) RoundTrip(
 		panic(errors.New("invalid enum type provided"))
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
-	if aOpt1 == nil {
+	if field1_12 == nil {
 		i.module.Memory().WriteByte(ptr0+49, uint8(0))
 	} else {
-		variantPayload := *aOpt1
+		variantPayload := *field1_12
 		i.module.Memory().WriteByte(ptr0+49, uint8(1))
 		value14 := uint32(variantPayload)
 		i.module.Memory().WriteByte(ptr0+50, uint8(value14))
 	}
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
-	ptr16, len16, err16 := writeString(ctx, aStr1, memory16, realloc16)
+	ptr16, len16, err16 := writeString(ctx, field1_13, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
 		panic(err16)
 	}
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
-	result17 := api.EncodeF32(aF321)
+	result17 := api.EncodeF32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
 	raw18, err18 := i.exports.get("round-trip").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -734,50 +734,50 @@ func (i *MemoryInstance) CallHostEcho(
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 64, ptr0))
 	}
-	aU81 := arg0.AU8
-	aS81 := arg0.AS8
-	aU161 := arg0.AU16
-	aS161 := arg0.AS16
-	aU321 := arg0.AU32
-	aS321 := arg0.AS32
-	aU641 := arg0.AU64
-	aS641 := arg0.AS64
-	aF641 := arg0.AF64
-	aBool1 := arg0.ABool
-	aChar1 := arg0.AChar
-	aColor1 := arg0.AColor
-	aOpt1 := arg0.AOpt
-	aStr1 := arg0.AStr
-	aF321 := arg0.AF32
-	value2 := uint32(aU81)
+	field1_0 := arg0.AU8
+	field1_1 := arg0.AS8
+	field1_2 := arg0.AU16
+	field1_3 := arg0.AS16
+	field1_4 := arg0.AU32
+	field1_5 := arg0.AS32
+	field1_6 := arg0.AU64
+	field1_7 := arg0.AS64
+	field1_8 := arg0.AF64
+	field1_9 := arg0.ABool
+	field1_10 := arg0.AChar
+	field1_11 := arg0.AColor
+	field1_12 := arg0.AOpt
+	field1_13 := arg0.AStr
+	field1_14 := arg0.AF32
+	value2 := uint32(field1_0)
 	i.module.Memory().WriteByte(ptr0+0, uint8(value2))
-	value3 := uint32(aS81)
+	value3 := uint32(field1_1)
 	i.module.Memory().WriteByte(ptr0+1, uint8(value3))
-	value4 := uint32(aU161)
+	value4 := uint32(field1_2)
 	i.module.Memory().WriteUint16Le(ptr0+2, uint16(value4))
-	value5 := uint32(aS161)
+	value5 := uint32(field1_3)
 	i.module.Memory().WriteUint16Le(ptr0+4, uint16(value5))
-	result6 := uint32(aU321)
+	result6 := uint32(field1_4)
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result6))
-	value7 := uint32(aS321)
+	value7 := uint32(field1_5)
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(value7))
-	value8 := uint64(aU641)
+	value8 := uint64(field1_6)
 	i.module.Memory().WriteUint64Le(ptr0+16, uint64(value8))
-	value9 := uint64(aS641)
+	value9 := uint64(field1_7)
 	i.module.Memory().WriteUint64Le(ptr0+24, uint64(value9))
-	result10 := api.EncodeF64(aF641)
+	result10 := api.EncodeF64(field1_8)
 	i.module.Memory().WriteUint64Le(ptr0+32, result10)
 	var value11 uint32
-	if aBool1 {
+	if field1_9 {
 		value11 = 1
 	} else {
 		value11 = 0
 	}
 	i.module.Memory().WriteByte(ptr0+40, uint8(value11))
-	value12 := uint32(aChar1)
+	value12 := uint32(field1_10)
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(value12))
 	var enum13 uint32
-	switch aColor1 {
+	switch field1_11 {
 	case ColorRed:
 		enum13 = 0
 	case ColorGreen:
@@ -788,24 +788,24 @@ func (i *MemoryInstance) CallHostEcho(
 		panic(errors.New("invalid enum type provided"))
 	}
 	i.module.Memory().WriteByte(ptr0+48, uint8(enum13))
-	if aOpt1 == nil {
+	if field1_12 == nil {
 		i.module.Memory().WriteByte(ptr0+49, uint8(0))
 	} else {
-		variantPayload := *aOpt1
+		variantPayload := *field1_12
 		i.module.Memory().WriteByte(ptr0+49, uint8(1))
 		value14 := uint32(variantPayload)
 		i.module.Memory().WriteByte(ptr0+50, uint8(value14))
 	}
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
-	ptr16, len16, err16 := writeString(ctx, aStr1, memory16, realloc16)
+	ptr16, len16, err16 := writeString(ctx, field1_13, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
 		panic(err16)
 	}
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(ptr16))
-	result17 := api.EncodeF32(aF321)
+	result17 := api.EncodeF32(field1_14)
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(result17))
 	raw18, err18 := i.exports.get("call-host-echo").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered
@@ -993,60 +993,60 @@ func (i *MemoryInstance) RoundTripNarrow(
 		// The return type doesn't contain an error so we panic if one is encountered
 		panic(fmt.Errorf("cabi_realloc returned %d bytes at %d, outside guest memory", 68, ptr0))
 	}
-	n01 := arg0.N0
-	n11 := arg0.N1
-	n21 := arg0.N2
-	n31 := arg0.N3
-	n41 := arg0.N4
-	n51 := arg0.N5
-	n61 := arg0.N6
-	n71 := arg0.N7
-	n81 := arg0.N8
-	n91 := arg0.N9
-	n101 := arg0.N10
-	n111 := arg0.N11
-	n121 := arg0.N12
-	n131 := arg0.N13
-	s1 := arg0.S
-	f1 := arg0.F
-	result2 := uint32(n01)
+	field1_0 := arg0.N0
+	field1_1 := arg0.N1
+	field1_2 := arg0.N2
+	field1_3 := arg0.N3
+	field1_4 := arg0.N4
+	field1_5 := arg0.N5
+	field1_6 := arg0.N6
+	field1_7 := arg0.N7
+	field1_8 := arg0.N8
+	field1_9 := arg0.N9
+	field1_10 := arg0.N10
+	field1_11 := arg0.N11
+	field1_12 := arg0.N12
+	field1_13 := arg0.N13
+	field1_14 := arg0.S
+	field1_15 := arg0.F
+	result2 := uint32(field1_0)
 	i.module.Memory().WriteUint32Le(ptr0+0, uint32(result2))
-	result3 := uint32(n11)
+	result3 := uint32(field1_1)
 	i.module.Memory().WriteUint32Le(ptr0+4, uint32(result3))
-	result4 := uint32(n21)
+	result4 := uint32(field1_2)
 	i.module.Memory().WriteUint32Le(ptr0+8, uint32(result4))
-	result5 := uint32(n31)
+	result5 := uint32(field1_3)
 	i.module.Memory().WriteUint32Le(ptr0+12, uint32(result5))
-	result6 := uint32(n41)
+	result6 := uint32(field1_4)
 	i.module.Memory().WriteUint32Le(ptr0+16, uint32(result6))
-	result7 := uint32(n51)
+	result7 := uint32(field1_5)
 	i.module.Memory().WriteUint32Le(ptr0+20, uint32(result7))
-	result8 := uint32(n61)
+	result8 := uint32(field1_6)
 	i.module.Memory().WriteUint32Le(ptr0+24, uint32(result8))
-	result9 := uint32(n71)
+	result9 := uint32(field1_7)
 	i.module.Memory().WriteUint32Le(ptr0+28, uint32(result9))
-	result10 := uint32(n81)
+	result10 := uint32(field1_8)
 	i.module.Memory().WriteUint32Le(ptr0+32, uint32(result10))
-	result11 := uint32(n91)
+	result11 := uint32(field1_9)
 	i.module.Memory().WriteUint32Le(ptr0+36, uint32(result11))
-	result12 := uint32(n101)
+	result12 := uint32(field1_10)
 	i.module.Memory().WriteUint32Le(ptr0+40, uint32(result12))
-	result13 := uint32(n111)
+	result13 := uint32(field1_11)
 	i.module.Memory().WriteUint32Le(ptr0+44, uint32(result13))
-	result14 := uint32(n121)
+	result14 := uint32(field1_12)
 	i.module.Memory().WriteUint32Le(ptr0+48, uint32(result14))
-	result15 := uint32(n131)
+	result15 := uint32(field1_13)
 	i.module.Memory().WriteUint32Le(ptr0+52, uint32(result15))
 	memory16 := i.module.Memory()
 	realloc16 := i.exports.get("cabi_realloc")
-	ptr16, len16, err16 := writeString(ctx, s1, memory16, realloc16)
+	ptr16, len16, err16 := writeString(ctx, field1_14, memory16, realloc16)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err16 != nil {
 		panic(err16)
 	}
 	i.module.Memory().WriteUint32Le(ptr0+60, uint32(len16))
 	i.module.Memory().WriteUint32Le(ptr0+56, uint32(ptr16))
-	result17 := api.EncodeF32(f1)
+	result17 := api.EncodeF32(field1_15)
 	i.module.Memory().WriteUint32Le(ptr0+64, uint32(result17))
 	raw18, err18 := i.exports.get("round-trip-narrow").Call(ctx, uint64(ptr0))
 	// The return type doesn't contain an error so we panic if one is encountered

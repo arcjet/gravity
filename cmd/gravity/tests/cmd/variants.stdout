@@ -426,9 +426,9 @@ func (i *VariantsInstance) Choose(
 	var variant10_4 uint32
 	switch variantPayload := arg0.(type) {
 		case Allow:
-			entities0 := variantPayload.Entities
-			contextWindowSize0 := variantPayload.ContextWindowSize
-			vec3 := entities0
+			field0_0 := variantPayload.Entities
+			field0_1 := variantPayload.ContextWindowSize
+			vec3 := field0_0
 			len3 := uint64(len(vec3))
 			if len3 > 357913941 {
 				// The return type doesn't contain an error so we panic if one is encountered
@@ -480,11 +480,11 @@ func (i *VariantsInstance) Choose(
 			}
 			var variant5_0 uint32
 			var variant5_1 uint32
-			if contextWindowSize0 == nil {
+			if field0_1 == nil {
 				variant5_0 = 0
 				variant5_1 = 0
 			} else {
-				variantPayload := *contextWindowSize0
+				variantPayload := *field0_1
 				result4 := uint32(variantPayload)
 				variant5_0 = 1
 				variant5_1 = result4
@@ -495,8 +495,8 @@ func (i *VariantsInstance) Choose(
 			variant10_3 = variant5_0
 			variant10_4 = variant5_1
 		case Deny:
-			entities6 := variantPayload.Entities
-			vec9 := entities6
+			field6_0 := variantPayload.Entities
+			vec9 := field6_0
 			len9 := uint64(len(vec9))
 			if len9 > 357913941 {
 				// The return type doesn't contain an error so we panic if one is encountered

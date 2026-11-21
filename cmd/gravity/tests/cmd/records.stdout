@@ -152,25 +152,25 @@ func (i *RecordsInstance) ModifyFoo(
 	f Foo,
 ) Foo {
 	arg0 := f
-	float320 := arg0.Float32
-	float640 := arg0.Float64
-	uint320 := arg0.Uint32
-	uint640 := arg0.Uint64
-	s0 := arg0.S
-	vf320 := arg0.Vf32
-	vf640 := arg0.Vf64
-	result1 := api.EncodeF32(float320)
-	result2 := api.EncodeF64(float640)
-	result3 := uint32(uint320)
-	value4 := uint64(uint640)
+	field0_0 := arg0.Float32
+	field0_1 := arg0.Float64
+	field0_2 := arg0.Uint32
+	field0_3 := arg0.Uint64
+	field0_4 := arg0.S
+	field0_5 := arg0.Vf32
+	field0_6 := arg0.Vf64
+	result1 := api.EncodeF32(field0_0)
+	result2 := api.EncodeF64(field0_1)
+	result3 := uint32(field0_2)
+	value4 := uint64(field0_3)
 	memory5 := i.module.Memory()
 	realloc5 := i.exports.get("cabi_realloc")
-	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
+	ptr5, len5, err5 := writeString(ctx, field0_4, memory5, realloc5)
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err5 != nil {
 		panic(err5)
 	}
-	vec7 := vf320
+	vec7 := field0_5
 	len7 := uint64(len(vec7))
 	if len7 > 1073741823 {
 		// The return type doesn't contain an error so we panic if one is encountered
@@ -193,7 +193,7 @@ func (i *RecordsInstance) ModifyFoo(
 		result6 := api.EncodeF32(e)
 		i.module.Memory().WriteUint32Le(base+0, uint32(result6))
 	}
-	vec9 := vf640
+	vec9 := field0_6
 	len9 := uint64(len(vec9))
 	if len9 > 536870911 {
 		// The return type doesn't contain an error so we panic if one is encountered
@@ -354,25 +354,25 @@ func (i *RecordsInstance) ModifyFooFallible(
 	f Foo,
 ) (_ Foo, gravity_err error) {
 	arg0 := f
-	float320 := arg0.Float32
-	float640 := arg0.Float64
-	uint320 := arg0.Uint32
-	uint640 := arg0.Uint64
-	s0 := arg0.S
-	vf320 := arg0.Vf32
-	vf640 := arg0.Vf64
-	result1 := api.EncodeF32(float320)
-	result2 := api.EncodeF64(float640)
-	result3 := uint32(uint320)
-	value4 := uint64(uint640)
+	field0_0 := arg0.Float32
+	field0_1 := arg0.Float64
+	field0_2 := arg0.Uint32
+	field0_3 := arg0.Uint64
+	field0_4 := arg0.S
+	field0_5 := arg0.Vf32
+	field0_6 := arg0.Vf64
+	result1 := api.EncodeF32(field0_0)
+	result2 := api.EncodeF64(field0_1)
+	result3 := uint32(field0_2)
+	value4 := uint64(field0_3)
 	memory5 := i.module.Memory()
 	realloc5 := i.exports.get("cabi_realloc")
-	ptr5, len5, err5 := writeString(ctx, s0, memory5, realloc5)
+	ptr5, len5, err5 := writeString(ctx, field0_4, memory5, realloc5)
 	if err5 != nil {
 		var default5 Foo
 		return default5, err5
 	}
-	vec7 := vf320
+	vec7 := field0_5
 	len7 := uint64(len(vec7))
 	if len7 > 1073741823 {
 		var default7 Foo
@@ -395,7 +395,7 @@ func (i *RecordsInstance) ModifyFooFallible(
 		result6 := api.EncodeF32(e)
 		i.module.Memory().WriteUint32Le(base+0, uint32(result6))
 	}
-	vec9 := vf640
+	vec9 := field0_6
 	len9 := uint64(len(vec9))
 	if len9 > 536870911 {
 		var default9 Foo

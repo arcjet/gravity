@@ -328,10 +328,10 @@ func (i *EnumCollisionsInstance) Describe(
 	default:
 		panic(errors.New("invalid enum type provided"))
 	}
-	x1 := arg1.X
-	y1 := arg1.Y
-	value2 := uint32(x1)
-	value3 := uint32(y1)
+	field1_0 := arg1.X
+	field1_1 := arg1.Y
+	value2 := uint32(field1_0)
+	value3 := uint32(field1_1)
 	raw4, err4 := i.exports.get("describe").Call(ctx, uint64(enum0), uint64(value2), uint64(value3))
 	// The return type doesn't contain an error so we panic if one is encountered
 	if err4 != nil {
