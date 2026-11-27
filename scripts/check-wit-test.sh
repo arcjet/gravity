@@ -89,7 +89,7 @@ version = "0.263.0"
 EOF
 
 expect one-version 0
-expect split-wit-component 1 "wit-bindgen-rust requires wit-component 0.262.0: pin wit-component to =0.262.0"
+expect split-wit-component 1 "wit-bindgen-rust requires wit-component 0.262.0: pin wit-component to =0.262.0 in cmd/gravity/Cargo.toml."
 expect split-wit-parser 1 "Cargo.lock holds wit-parser 0.262.0 0.263.0. wit-bindgen-core requires wit-parser 0.262.0"
 
 exit $((failures > 0))

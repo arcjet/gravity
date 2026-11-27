@@ -38,7 +38,7 @@ for pair in wit-parser:wit-bindgen-core wit-component:wit-bindgen-rust; do
   required=$(required_by "$dependent" "$crate")
   message="Cargo.lock holds $crate $versions."
   if [[ -n "$required" ]]; then
-    message+=" $dependent requires $crate $required: pin wit-component to =$required."
+    message+=" $dependent requires $crate $required: pin wit-component to =$required in cmd/gravity/Cargo.toml."
   fi
   message+=" wit-bindgen, wit-bindgen-core and wit-component move as one set (see AGENTS.md)."
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then

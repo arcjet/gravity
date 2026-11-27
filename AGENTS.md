@@ -217,7 +217,9 @@ load manifest"; `just clean-examples` removes them.
 `wit-bindgen` release requires exactly one `wit-parser`/`wit-component` minor
 (read `wit-bindgen-rust`'s dependencies on crates.io), and two `wit-parser`
 versions in one build fail to compile with mismatched `Resolve`/`World` types.
-Bump every example's pins with them. Dependabot's `wit` group picks each
+Only `cmd/gravity` depends on `wit-component` directly; the examples depend on
+`wit-bindgen` alone and get the `wit-component` it requires, so bump their
+`wit-bindgen` pins with `cmd/gravity`'s. Dependabot's `wit` group picks each
 crate's latest version independently, so it can propose a `wit-component`
 one minor ahead of what the new `wit-bindgen` requires; `just check-wit`, and
 the matching CI step, fail on such an update before the build does.
@@ -234,7 +236,8 @@ the matching CI step, fail on such an update before the build does.
 
 ## Adding a New Example
 
-1. Create `examples/<name>/` with `Cargo.toml` (`crate-type = ["cdylib"]`),
+1. Create `examples/<name>/` with `Cargo.toml` (`crate-type = ["cdylib"]`, and
+   `wit-bindgen` as its only dependency),
    `wit/<name>.wit`, and `src/lib.rs`
 2. The workspace `Cargo.toml` uses `members = ["examples/*"]`, so new crates are
    picked up automatically. Its `default-members = ["cmd/*"]` keeps them out of

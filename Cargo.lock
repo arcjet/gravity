@@ -161,7 +161,6 @@ name = "example-basic"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -169,7 +168,6 @@ name = "example-cancellation"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -177,7 +175,6 @@ name = "example-cleanup-errors"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -185,7 +182,6 @@ name = "example-concurrent-instances"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -193,7 +189,6 @@ name = "example-enum-collisions"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -201,7 +196,6 @@ name = "example-enum-discriminants"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -209,7 +203,6 @@ name = "example-export-memo"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -217,7 +210,6 @@ name = "example-guest-lengths"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -225,7 +217,6 @@ name = "example-iface-method-returns-string"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -233,7 +224,6 @@ name = "example-import-param-widths"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -241,7 +231,6 @@ name = "example-instructions"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -249,7 +238,6 @@ name = "example-interface-exports"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -257,7 +245,6 @@ name = "example-invalid-values"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -265,7 +252,6 @@ name = "example-memory"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -273,7 +259,6 @@ name = "example-name-collisions"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -281,7 +266,6 @@ name = "example-option-float-params"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -289,7 +273,6 @@ name = "example-records"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -297,7 +280,6 @@ name = "example-regressions"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -305,7 +287,6 @@ name = "example-result-errors"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -313,7 +294,6 @@ name = "example-traps"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -321,7 +301,6 @@ name = "example-utf8-strings"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
@@ -329,7 +308,6 @@ name = "example-variants"
 version = "0.0.2"
 dependencies = [
  "wit-bindgen",
- "wit-component",
 ]
 
 [[package]]
